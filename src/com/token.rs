@@ -1,0 +1,99 @@
+use logos::Logos;
+use std::fmt::Display;
+
+#[derive(Debug, Copy, Clone, Logos, PartialEq, Eq)]
+#[logos(skip r"[^\S\n\r]+")]
+pub enum Token {
+    Eof,
+    #[regex(r"[\n\r]\s*")]
+    Newline,
+
+    #[token("(")]
+    LeftParen,
+    #[token(")")]
+    RightParen,
+    #[token("[")]
+    LeftBracket,
+    #[token("]")]
+    RightBracket,
+
+    #[token("=>")]
+    Maps,
+    #[token(":=")]
+    Assign,
+    #[token(",")]
+    Comma,
+
+    #[token("do")]
+    Do,
+    #[token("end")]
+    End,
+    #[token("let")]
+    Let,
+    #[token("fun")]
+    Fun,
+    #[token("if")]
+    If,
+    #[token("then")]
+    Then,
+    #[token("else")]
+    Else,
+    #[token("while")]
+    While,
+    #[token("loop")]
+    Loop,
+    #[token("break")]
+    Break,
+    #[token("skip")]
+    Skip,
+    #[token("true")]
+    True,
+    #[token("false")]
+    False,
+
+    #[regex(r"[^\W\d_]\w*")]
+    Ident,
+    #[regex(r"\d+")]
+    Int,
+    #[regex(r"\d+\.\d+")]
+    Float,
+    #[regex(r#""[^"]*""#)]
+    String,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Eof => write!(f, "end-of-file"),
+            Token::Newline => write!(f, "newline"),
+
+            Token::LeftParen => write!(f, "'('"),
+            Token::RightParen => write!(f, "')'"),
+            Token::LeftBracket => write!(f, "'['"),
+            Token::RightBracket => write!(f, "']'"),
+
+            Token::Maps => write!(f, "'=>'"),
+            Token::Assign => write!(f, "':='"),
+            Token::Comma => write!(f, "','"),
+
+            Token::Do => write!(f, "'do' keyword"),
+            Token::End => write!(f, "'end' keyword"),
+            Token::Let => write!(f, "'let' keyword"),
+            Token::Fun => write!(f, "'fun' keyword"),
+            Token::If => write!(f, "'if' keyword"),
+            Token::Then => write!(f, "'then' keyword"),
+            Token::Else => write!(f, "'else' keyword"),
+            Token::While => write!(f, "'while' keyword"),
+            Token::Loop => write!(f, "'loop' keyword"),
+            Token::Break => write!(f, "'break' keyword"),
+            Token::Skip => write!(f, "'skip' keyword"),
+            Token::True => write!(f, "'true' keyword"),
+            Token::False => write!(f, "'false' keyword"),
+
+            Token::Ident => write!(f, "identifier"),
+            Token::Int => write!(f, "integer literal"),
+            Token::Float => write!(f, "floating-point literal"),
+            Token::String => write!(f, "string literal"),
+        }
+    }
+}
