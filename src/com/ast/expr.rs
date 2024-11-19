@@ -1,6 +1,6 @@
 use logos::Span;
 
-use super::{item_spans, mix_spans, Label};
+use super::{item_spans, mix_spans, Label, EMPTY_SPAN};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -15,6 +15,9 @@ pub enum Expr {
     Array(Array),
     Block(Block),
     Conditional(Conditional),
+    Break(Break),
+    Skip(Skip),
+    Call(Call),
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +85,27 @@ pub struct FallbackBranch {
     pub body: Box<[Expr]>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Break {
+    pub break_kw: Span,
+    pub label: Box<Label>,
+    pub expr: Option<Box<Expr>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Skip {
+    pub skip_kw: Span,
+    pub label: Box<Label>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Call {
+    pub left_paren: Span,
+    pub right_paren: Span,
+    pub callee: Box<Expr>,
+    pub args: Box<[Expr]>,
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -116,6 +140,18 @@ impl Expr {
                         .map(|(else_kw, branch)| mix_spans([else_kw.clone(), branch.span()])),
                 ),
                 e.end_kw.clone(),
+            ]),
+            Expr::Break(e) => mix_spans([
+                e.break_kw.clone(),
+                e.label.span(),
+                e.expr.as_ref().map(|e| e.span()).unwrap_or(EMPTY_SPAN),
+            ]),
+            Expr::Skip(e) => mix_spans([e.skip_kw.clone(), e.label.span()]),
+            Expr::Call(e) => mix_spans([
+                e.callee.span(),
+                e.left_paren.clone(),
+                item_spans(&e.args),
+                e.right_paren.clone(),
             ]),
         }
     }

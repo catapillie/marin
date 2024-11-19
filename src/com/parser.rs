@@ -133,20 +133,40 @@ impl<'src, 'e> Parser<'src, 'e> {
     }
 
     pub fn try_parse_primary_expression(&mut self) -> Option<ast::Expr> {
-        let expr = match self.peek() {
+        let mut expr = match self.peek() {
             Token::Int => self.try_parse_int_expression(),
             Token::Float => self.try_parse_float_expression(),
             Token::String => self.try_parse_string_expression(),
             Token::True => self.try_parse_true_expression(),
             Token::False => self.try_parse_false_expression(),
             Token::Ident => self.try_parse_var_expression(),
+
             Token::LeftParen => self.try_parse_tuple_expression(),
             Token::LeftBracket => self.try_parse_array_expression(),
-            Token::Do => self.try_parse_block_expression(),
 
+            Token::Do => self.try_parse_block_expression(),
             Token::If | Token::While => self.try_parse_conditional_expression(),
+            Token::Break => self.try_parse_break_expression(),
+            Token::Skip => self.try_parse_skip_expression(),
             _ => None,
         }?;
+
+        loop {
+            if let Some(left_paren) = self.try_expect_token(Token::LeftParen) {
+                let args = self.parse_comma_separated_items();
+                let right_paren = self.expect_token(Token::RightParen);
+
+                expr = ast::Expr::Call(ast::Call {
+                    left_paren,
+                    right_paren,
+                    callee: Box::new(expr),
+                    args,
+                });
+                continue;
+            }
+
+            break;
+        }
 
         Some(expr)
     }
@@ -288,6 +308,28 @@ impl<'src, 'e> Parser<'src, 'e> {
             label: Box::new(label),
             guard: Box::new(guard),
             body,
+        }))
+    }
+
+    fn try_parse_break_expression(&mut self) -> Option<ast::Expr> {
+        let break_kw = self.try_expect_token(Token::Break)?;
+        let label = self.parse_optional_label();
+        let expr = self.try_parse_expression().map(Box::new);
+
+        Some(ast::Expr::Break(ast::Break {
+            break_kw,
+            label: Box::new(label),
+            expr,
+        }))
+    }
+
+    fn try_parse_skip_expression(&mut self) -> Option<ast::Expr> {
+        let skip_kw = self.try_expect_token(Token::Skip)?;
+        let label = self.parse_optional_label();
+
+        Some(ast::Expr::Skip(ast::Skip {
+            skip_kw,
+            label: Box::new(label),
         }))
     }
 
