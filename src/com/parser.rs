@@ -139,8 +139,12 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::String => self.try_parse_string_expression(),
             Token::True => self.try_parse_true_expression(),
             Token::False => self.try_parse_false_expression(),
+            Token::Ident => self.try_parse_var_expression(),
             Token::LeftParen => self.try_parse_tuple_expression(),
             Token::LeftBracket => self.try_parse_array_expression(),
+            Token::Do => self.try_parse_block_expression(),
+
+            Token::If | Token::While => self.try_parse_conditional_expression(),
             _ => None,
         }?;
 
@@ -172,6 +176,11 @@ impl<'src, 'e> Parser<'src, 'e> {
             .map(|token| ast::Expr::False(ast::Lexeme { span: token }))
     }
 
+    fn try_parse_var_expression(&mut self) -> Option<ast::Expr> {
+        self.try_expect_token(Token::Ident)
+            .map(|token| ast::Expr::Var(ast::Lexeme { span: token }))
+    }
+
     fn try_parse_tuple_expression(&mut self) -> Option<ast::Expr> {
         let left_paren = self.try_expect_token(Token::LeftParen)?;
         let items = self.parse_comma_separated_items();
@@ -196,6 +205,107 @@ impl<'src, 'e> Parser<'src, 'e> {
         }))
     }
 
+    fn try_parse_block_expression(&mut self) -> Option<ast::Expr> {
+        let do_kw = self.try_expect_token(Token::Do)?;
+        let label = self.parse_optional_label();
+        let items = self.parse_newline_separated_items();
+        let end_kw = self.expect_token(Token::End);
+
+        Some(ast::Expr::Block(ast::Block {
+            do_kw,
+            end_kw,
+            label: Box::new(label),
+            items,
+        }))
+    }
+
+    fn try_parse_conditional_expression(&mut self) -> Option<ast::Expr> {
+        let first_branch = self.try_parse_non_empty_branch()?;
+
+        let mut else_branches = Vec::new();
+        while let Some(else_kw) = self.try_expect_token(Token::Else) {
+            let else_branch = self.try_parse_branch();
+            else_branches.push((else_kw, else_branch));
+        }
+
+        let end_kw = self.expect_token(Token::End);
+
+        Some(ast::Expr::Conditional(ast::Conditional {
+            first_branch: Box::new(first_branch),
+            else_branches: else_branches.into(),
+            end_kw,
+        }))
+    }
+
+    fn try_parse_non_empty_branch(&mut self) -> Option<ast::Branch> {
+        match self.peek() {
+            Token::If => self.try_parse_if_branch(),
+            Token::While => self.try_parse_while_branch(),
+            _ => None,
+        }
+    }
+
+    fn try_parse_branch(&mut self) -> ast::Branch {
+        if let Some(branch) = self.try_parse_non_empty_branch() {
+            return branch;
+        };
+
+        let label = self.parse_optional_label();
+        let body = self.parse_newline_separated_items();
+
+        ast::Branch::Fallback(ast::FallbackBranch {
+            label: Box::new(label),
+            body,
+        })
+    }
+
+    fn try_parse_if_branch(&mut self) -> Option<ast::Branch> {
+        let if_kw = self.try_expect_token(Token::If)?;
+        let label = self.parse_optional_label();
+        let guard = self.expect_expression();
+        let then_kw = self.expect_token(Token::Then);
+        let body = self.parse_newline_separated_items();
+
+        Some(ast::Branch::If(ast::IfBranch {
+            if_kw,
+            then_kw,
+            label: Box::new(label),
+            guard: Box::new(guard),
+            body,
+        }))
+    }
+
+    fn try_parse_while_branch(&mut self) -> Option<ast::Branch> {
+        let while_kw = self.try_expect_token(Token::While)?;
+        let label = self.parse_optional_label();
+        let guard = self.expect_expression();
+        let do_kw = self.expect_token(Token::Do);
+        let body = self.parse_newline_separated_items();
+
+        Some(ast::Branch::While(ast::WhileBranch {
+            while_kw,
+            do_kw,
+            label: Box::new(label),
+            guard: Box::new(guard),
+            body,
+        }))
+    }
+
+    fn parse_optional_label(&mut self) -> ast::Label {
+        let Some(left_chev) = self.try_expect_token(Token::LeftChev) else {
+            return ast::Label::Empty(self.pos_from()..self.pos_from());
+        };
+
+        let name_expr = self.expect_expression();
+        let right_chev = self.expect_token(Token::RightChev);
+
+        ast::Label::Named(ast::NamedLabel {
+            left_chev,
+            right_chev,
+            name_expr: Box::new(name_expr),
+        })
+    }
+
     fn parse_comma_separated_items(&mut self) -> Box<[ast::Expr]> {
         let mut items = Vec::new();
 
@@ -206,6 +316,21 @@ impl<'src, 'e> Parser<'src, 'e> {
             if self.try_expect_token(Token::Comma).is_some() {
                 self.try_expect_token(Token::Newline);
             } else if self.try_expect_token(Token::Newline).is_none() {
+                break;
+            }
+        }
+
+        items.into()
+    }
+
+    fn parse_newline_separated_items(&mut self) -> Box<[ast::Expr]> {
+        let mut items = Vec::new();
+
+        self.try_expect_token(Token::Newline);
+        while let Some(item) = self.try_parse_expression() {
+            items.push(item);
+
+            if self.try_expect_token(Token::Newline).is_none() {
                 break;
             }
         }

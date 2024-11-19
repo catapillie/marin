@@ -16,6 +16,10 @@ pub enum Token {
     LeftBracket,
     #[token("]")]
     RightBracket,
+    #[token("<")]
+    LeftChev,
+    #[token(">")]
+    RightChev,
 
     #[token("=>")]
     Maps,
@@ -71,6 +75,8 @@ impl Display for Token {
             Token::RightParen => write!(f, "')'"),
             Token::LeftBracket => write!(f, "'['"),
             Token::RightBracket => write!(f, "']'"),
+            Token::LeftChev => write!(f, "'<'"),
+            Token::RightChev => write!(f, "'>'"),
 
             Token::Maps => write!(f, "'=>'"),
             Token::Assign => write!(f, "':='"),
