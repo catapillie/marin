@@ -13,11 +13,14 @@ pub enum Expr {
     Var(Lexeme),
     Tuple(Tuple),
     Array(Array),
+    Spread(Lexeme),
     Block(Block),
     Conditional(Conditional),
     Break(Break),
     Skip(Skip),
     Call(Call),
+    Let(Let),
+    Fun(Fun),
 }
 
 #[derive(Debug, Clone)]
@@ -106,6 +109,22 @@ pub struct Call {
     pub args: Box<[Expr]>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Let {
+    pub let_kw: Span,
+    pub assign: Option<Span>,
+    pub pattern: Box<Expr>,
+    pub value: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Fun {
+    pub fun_kw: Span,
+    pub maps: Option<Span>,
+    pub signature: Box<Expr>,
+    pub value: Box<Expr>,
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -126,6 +145,7 @@ impl Expr {
                 item_spans(&e.items),
                 e.right_bracket.clone(),
             ]),
+            Expr::Spread(e) => e.span.clone(),
             Expr::Block(e) => mix_spans([
                 e.do_kw.clone(),
                 e.label.span(),
@@ -152,6 +172,18 @@ impl Expr {
                 e.left_paren.clone(),
                 item_spans(&e.args),
                 e.right_paren.clone(),
+            ]),
+            Expr::Let(e) => mix_spans([
+                e.let_kw.clone(),
+                e.pattern.span(),
+                e.assign.clone().unwrap_or(EMPTY_SPAN),
+                e.value.span(),
+            ]),
+            Expr::Fun(e) => mix_spans([
+                e.fun_kw.clone(),
+                e.signature.span(),
+                e.maps.clone().unwrap_or(EMPTY_SPAN),
+                e.value.span(),
             ]),
         }
     }

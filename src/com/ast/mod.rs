@@ -13,9 +13,7 @@ fn item_spans(items: &[Expr]) -> Span {
 }
 
 fn mix_spans(spans: impl IntoIterator<Item = Span>) -> Span {
-    spans
-        .into_iter()
-        .fold(EMPTY_SPAN, |left, right| {
-            usize::min(left.start, right.start)..usize::max(left.end, right.end)
-        })
+    spans.into_iter().fold(EMPTY_SPAN, |left, right| {
+        usize::min(left.start, right.start)..usize::max(left.end, right.end)
+    })
 }

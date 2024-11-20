@@ -115,7 +115,7 @@ impl<'src, 'e> Parser<'src, 'e> {
     }
 
     pub fn expect_expression(&mut self) -> ast::Expr {
-        match self.try_parse_primary_expression() {
+        match self.try_parse_expression() {
             Some(expr) => expr,
             None => {
                 let span = self.pos_from()..self.pos_from();
@@ -132,6 +132,20 @@ impl<'src, 'e> Parser<'src, 'e> {
         self.try_parse_primary_expression()
     }
 
+    pub fn expect_primary_expression(&mut self) -> ast::Expr {
+        match self.try_parse_primary_expression() {
+            Some(expr) => expr,
+            None => {
+                let span = self.pos_from()..self.pos_from();
+                self.reports.push(
+                    Report::error(Header::ExpectedExpression())
+                        .with_label(Label::Empty, span.clone()),
+                );
+                ast::Expr::Missing(ast::Lexeme { span })
+            }
+        }
+    }
+
     pub fn try_parse_primary_expression(&mut self) -> Option<ast::Expr> {
         let mut expr = match self.peek() {
             Token::Int => self.try_parse_int_expression(),
@@ -140,6 +154,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::True => self.try_parse_true_expression(),
             Token::False => self.try_parse_false_expression(),
             Token::Ident => self.try_parse_var_expression(),
+            Token::Spread => self.try_parse_spread_expression(),
 
             Token::LeftParen => self.try_parse_tuple_expression(),
             Token::LeftBracket => self.try_parse_array_expression(),
@@ -148,6 +163,8 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::If | Token::While => self.try_parse_conditional_expression(),
             Token::Break => self.try_parse_break_expression(),
             Token::Skip => self.try_parse_skip_expression(),
+            Token::Let => self.try_parse_let_expression(),
+            Token::Fun => self.try_parse_fun_expression(),
             _ => None,
         }?;
 
@@ -199,6 +216,11 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_var_expression(&mut self) -> Option<ast::Expr> {
         self.try_expect_token(Token::Ident)
             .map(|token| ast::Expr::Var(ast::Lexeme { span: token }))
+    }
+
+    fn try_parse_spread_expression(&mut self) -> Option<ast::Expr> {
+        self.try_expect_token(Token::Spread)
+            .map(|token| ast::Expr::Spread(ast::Lexeme { span: token }))
     }
 
     fn try_parse_tuple_expression(&mut self) -> Option<ast::Expr> {
@@ -330,6 +352,52 @@ impl<'src, 'e> Parser<'src, 'e> {
         Some(ast::Expr::Skip(ast::Skip {
             skip_kw,
             label: Box::new(label),
+        }))
+    }
+
+    fn try_parse_let_expression(&mut self) -> Option<ast::Expr> {
+        let let_kw = self.try_expect_token(Token::Let)?;
+        let pattern = self.expect_primary_expression();
+
+        let (assign, value) = if let Some(e) = self.try_parse_block_expression() {
+            (None, e)
+        } else if let Some(e) = self.try_parse_conditional_expression() {
+            (None, e)
+        } else {
+            (
+                Some(self.expect_token(Token::Assign)),
+                self.expect_expression(),
+            )
+        };
+
+        Some(ast::Expr::Let(ast::Let {
+            let_kw,
+            assign,
+            pattern: Box::new(pattern),
+            value: Box::new(value),
+        }))
+    }
+
+    fn try_parse_fun_expression(&mut self) -> Option<ast::Expr> {
+        let fun_kw = self.try_expect_token(Token::Fun)?;
+        let signature = self.expect_primary_expression();
+
+        let (maps, value) = if let Some(e) = self.try_parse_block_expression() {
+            (None, e)
+        } else if let Some(e) = self.try_parse_conditional_expression() {
+            (None, e)
+        } else {
+            (
+                Some(self.expect_token(Token::Maps)),
+                self.expect_expression(),
+            )
+        };
+
+        Some(ast::Expr::Fun(ast::Fun {
+            fun_kw,
+            maps,
+            signature: Box::new(signature),
+            value: Box::new(value),
         }))
     }
 
