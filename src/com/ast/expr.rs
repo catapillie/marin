@@ -13,8 +13,9 @@ pub enum Expr {
     Var(Lexeme),
     Tuple(Tuple),
     Array(Array),
-    Spread(Lexeme),
+    Spread(Spread),
     Block(Block),
+    Loop(Loop),
     Conditional(Conditional),
     Break(Break),
     Skip(Skip),
@@ -43,8 +44,22 @@ pub struct Array {
 }
 
 #[derive(Debug, Clone)]
+pub struct Spread {
+    pub spread: Span,
+    pub name: Option<Span>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Block {
     pub do_kw: Span,
+    pub end_kw: Span,
+    pub label: Box<Label>,
+    pub items: Box<[Expr]>,
+}
+#[derive(Debug, Clone)]
+
+pub struct Loop {
+    pub loop_kw: Span,
     pub end_kw: Span,
     pub label: Box<Label>,
     pub items: Box<[Expr]>,
@@ -61,6 +76,7 @@ pub struct Conditional {
 pub enum Branch {
     If(IfBranch),
     While(WhileBranch),
+    Match(MatchBranch),
     Fallback(FallbackBranch),
 }
 
@@ -80,6 +96,22 @@ pub struct WhileBranch {
     pub label: Box<Label>,
     pub guard: Box<Expr>,
     pub body: Box<[Expr]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchBranch {
+    pub match_kw: Span,
+    pub with_kw: Span,
+    pub label: Box<Label>,
+    pub scrutinee: Box<Expr>,
+    pub cases: Box<[MatchCase]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchCase {
+    pub maps: Span,
+    pub pattern: Box<Expr>,
+    pub value: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -145,9 +177,15 @@ impl Expr {
                 item_spans(&e.items),
                 e.right_bracket.clone(),
             ]),
-            Expr::Spread(e) => e.span.clone(),
+            Expr::Spread(e) => mix_spans([e.spread.clone(), e.name.clone().unwrap_or(EMPTY_SPAN)]),
             Expr::Block(e) => mix_spans([
                 e.do_kw.clone(),
+                e.label.span(),
+                item_spans(&e.items),
+                e.end_kw.clone(),
+            ]),
+            Expr::Loop(e) => mix_spans([
+                e.loop_kw.clone(),
                 e.label.span(),
                 item_spans(&e.items),
                 e.end_kw.clone(),
@@ -205,6 +243,15 @@ impl Branch {
                 b.guard.span(),
                 b.do_kw.clone(),
                 item_spans(&b.body),
+            ]),
+            Branch::Match(b) => mix_spans([
+                b.match_kw.clone(),
+                b.label.span(),
+                b.scrutinee.span(),
+                b.with_kw.clone(),
+                mix_spans(b.cases.iter().map(|case| {
+                    mix_spans([case.pattern.span(), case.maps.clone(), case.value.span()])
+                })),
             ]),
             Branch::Fallback(b) => mix_spans([b.label.span(), item_spans(&b.body)]),
         }

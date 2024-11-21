@@ -48,6 +48,10 @@ pub enum Token {
     While,
     #[token("loop")]
     Loop,
+    #[token("match")]
+    Match,
+    #[token("with")]
+    With,
     #[token("break")]
     Break,
     #[token("skip")]
@@ -94,6 +98,8 @@ impl Display for Token {
             Token::Else => write!(f, "'else' keyword"),
             Token::While => write!(f, "'while' keyword"),
             Token::Loop => write!(f, "'loop' keyword"),
+            Token::Match => write!(f, "'match' keyword"),
+            Token::With => write!(f, "'with' keyword"),
             Token::Break => write!(f, "'break' keyword"),
             Token::Skip => write!(f, "'skip' keyword"),
             Token::True => write!(f, "'true' keyword"),
