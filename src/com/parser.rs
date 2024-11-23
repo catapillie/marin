@@ -32,6 +32,10 @@ impl<'src, 'e> Parser<'src, 'e> {
         self.bounds.1
     }
 
+    fn span_here(&self) -> Span {
+        self.pos_from()..self.pos_from()
+    }
+
     fn peek(&mut self) -> Token {
         let (tok, start) = match self.lexer.peek() {
             Some((tok, span)) => (tok.ok(), span.start),
@@ -51,7 +55,7 @@ impl<'src, 'e> Parser<'src, 'e> {
 
         self.reports.push(
             Report::error(Header::InvalidCharacterSequence(&self.source[span.clone()]))
-                .with_label(Label::Empty, span),
+                .with_primary_label(Label::Empty, span),
         );
 
         let (tok, start) = match self.lexer.peek() {
@@ -89,12 +93,11 @@ impl<'src, 'e> Parser<'src, 'e> {
         if p == expected {
             self.consume_token()
         } else {
-            let span = self.pos_from()..self.pos_from();
             self.reports.push(
                 Report::error(Header::ExpectedToken(expected, p))
-                    .with_label(Label::Empty, span.clone()),
+                    .with_primary_label(Label::Empty, self.span_here()),
             );
-            span
+            self.span_here()
         }
     }
 
@@ -109,7 +112,7 @@ impl<'src, 'e> Parser<'src, 'e> {
                 Severity::Note,
                 Header::Internal("parsed expression".to_string()),
             )
-            .with_label(Label::Empty, expr.span()),
+            .with_primary_label(Label::Empty, expr.span()),
         );
         expr
     }
@@ -118,12 +121,13 @@ impl<'src, 'e> Parser<'src, 'e> {
         match self.try_parse_expression() {
             Some(expr) => expr,
             None => {
-                let span = self.pos_from()..self.pos_from();
                 self.reports.push(
                     Report::error(Header::ExpectedExpression())
-                        .with_label(Label::Empty, span.clone()),
+                        .with_primary_label(Label::Empty, self.span_here()),
                 );
-                ast::Expr::Missing(ast::Lexeme { span })
+                ast::Expr::Missing(ast::Lexeme {
+                    span: self.span_here(),
+                })
             }
         }
     }
@@ -136,12 +140,13 @@ impl<'src, 'e> Parser<'src, 'e> {
         match self.try_parse_primary_expression() {
             Some(expr) => expr,
             None => {
-                let span = self.pos_from()..self.pos_from();
                 self.reports.push(
                     Report::error(Header::ExpectedExpression())
-                        .with_label(Label::Empty, span.clone()),
+                        .with_primary_label(Label::Empty, self.span_here()),
                 );
-                ast::Expr::Missing(ast::Lexeme { span })
+                ast::Expr::Missing(ast::Lexeme {
+                    span: self.span_here(),
+                })
             }
         }
     }
@@ -166,6 +171,8 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Skip => self.try_parse_skip_expression(),
             Token::Let => self.try_parse_let_expression(),
             Token::Fun => self.try_parse_fun_expression(),
+
+            Token::Import => self.try_parse_import_expression(),
             _ => None,
         }?;
 
@@ -457,9 +464,24 @@ impl<'src, 'e> Parser<'src, 'e> {
         }
     }
 
+    fn try_parse_import_expression(&mut self) -> Option<ast::Expr> {
+        let import_kw = self.try_expect_token(Token::Import)?;
+        let queries = self.parse_strictly_comma_separated_items();
+
+        if queries.is_empty() {
+            self.reports.push(
+                Report::error(Header::EmptyImport())
+                    .with_primary_label(Label::Empty, import_kw.clone())
+                    .with_secondary_label(Label::ExpectedImportQuery, self.span_here()),
+            );
+        }
+
+        Some(ast::Expr::Import(ast::Import { import_kw, queries }))
+    }
+
     fn parse_optional_label(&mut self) -> ast::Label {
         let Some(left_chev) = self.try_expect_token(Token::LeftChev) else {
-            return ast::Label::Empty(self.pos_from()..self.pos_from());
+            return ast::Label::Empty(self.span_here());
         };
 
         let name_expr = self.expect_expression();
@@ -482,6 +504,19 @@ impl<'src, 'e> Parser<'src, 'e> {
             if self.try_expect_token(Token::Comma).is_some() {
                 self.try_expect_token(Token::Newline);
             } else if self.try_expect_token(Token::Newline).is_none() {
+                break;
+            }
+        }
+
+        items.into()
+    }
+
+    fn parse_strictly_comma_separated_items(&mut self) -> Box<[ast::Expr]> {
+        let mut items = Vec::new();
+
+        while let Some(item) = self.try_parse_expression() {
+            items.push(item);
+            if self.try_expect_token(Token::Comma).is_none() {
                 break;
             }
         }

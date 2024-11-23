@@ -34,6 +34,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Access(..) => todo!(),
             E::Let(..) => todo!(),
             E::Fun(..) => todo!(),
+            E::Import(..) => todo!(),
         }
     }
 }

@@ -1,12 +1,17 @@
 pub enum Label {
     Empty,
+    ExpectedImportQuery,
 }
 
 impl Label {
     #[rustfmt::skip]
     pub fn msg(&self) -> String {
+        use Label as L;
         match self {
-            Label::Empty => "".to_string(),
+            L::Empty
+                => "".to_string(),
+            L::ExpectedImportQuery
+                => "expected one or more import queries".to_string(),
         }
     }
 }

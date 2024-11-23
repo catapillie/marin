@@ -23,6 +23,7 @@ pub enum Expr {
     Access(Access),
     Let(Let),
     Fun(Fun),
+    Import(Import),
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +166,12 @@ pub struct Fun {
     pub value: Box<Expr>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub import_kw: Span,
+    pub queries: Box<[Expr]>,
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -219,11 +226,7 @@ impl Expr {
                 item_spans(&e.args),
                 e.right_paren.clone(),
             ]),
-            Expr::Access(e) => mix_spans([
-                e.accessed.span(),
-                e.dot.clone(),
-                e.name.clone(),
-            ]),
+            Expr::Access(e) => mix_spans([e.accessed.span(), e.dot.clone(), e.name.clone()]),
             Expr::Let(e) => mix_spans([
                 e.let_kw.clone(),
                 e.pattern.span(),
@@ -236,6 +239,7 @@ impl Expr {
                 e.maps.clone().unwrap_or(EMPTY_SPAN),
                 e.value.span(),
             ]),
+            Expr::Import(e) => mix_spans([e.import_kw.clone(), item_spans(&e.queries)]),
         }
     }
 }

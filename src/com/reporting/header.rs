@@ -5,31 +5,36 @@ pub enum Header<'src> {
     InvalidCharacterSequence(&'src str),
     ExpectedToken(Token, Token),
     ExpectedExpression(),
+    EmptyImport(),
 }
 
 impl<'src> Header<'src> {
     #[rustfmt::skip]
     pub fn name(&self) -> &str {
-        use Header as R;
+        use Header as H;
         match self {
-            R::Internal(..) => "internal",
-            R::InvalidCharacterSequence(..) => "invalid_character_sequence",
-            R::ExpectedToken(..) => "expected_token",
-            R::ExpectedExpression(..) => "expected_expression",
+            H::Internal(..) => "internal",
+            H::InvalidCharacterSequence(..) => "invalid_character_sequence",
+            H::ExpectedToken(..) => "expected_token",
+            H::ExpectedExpression(..) => "expected_expression",
+            H::EmptyImport(..) => "empty_import",
         }
     }
 
     #[rustfmt::skip]
     pub fn msg(&self) -> String {
+        use Header as H;
         match self {
-            Header::Internal(msg)
+            H::Internal(msg)
                 => msg.clone(),
-            Header::InvalidCharacterSequence(seq)
+            H::InvalidCharacterSequence(seq)
                 => format!("invalid characters '{seq}'"),
-            Header::ExpectedToken(want, have)
+            H::ExpectedToken(want, have)
                 => format!("expected {want}, encounted {have} instead"),
-            Header::ExpectedExpression()
+            H::ExpectedExpression()
                 => "expected an expression".to_string(),
+            H::EmptyImport()
+                => "empty import expression".to_string(),
         }
     }
 }
