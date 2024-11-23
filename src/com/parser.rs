@@ -183,6 +183,17 @@ impl<'src, 'e> Parser<'src, 'e> {
                 continue;
             }
 
+            self.try_expect_token(Token::Newline);
+            if let Some(dot) = self.try_expect_token(Token::Dot) {
+                let name = self.expect_token(Token::Ident);
+                expr = ast::Expr::Access(ast::Access {
+                    dot,
+                    name,
+                    accessed: Box::new(expr),
+                });
+                continue;
+            }
+
             break;
         }
 

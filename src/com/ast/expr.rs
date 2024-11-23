@@ -20,6 +20,7 @@ pub enum Expr {
     Break(Break),
     Skip(Skip),
     Call(Call),
+    Access(Access),
     Let(Let),
     Fun(Fun),
 }
@@ -142,6 +143,13 @@ pub struct Call {
 }
 
 #[derive(Debug, Clone)]
+pub struct Access {
+    pub dot: Span,
+    pub name: Span,
+    pub accessed: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Let {
     pub let_kw: Span,
     pub assign: Option<Span>,
@@ -210,6 +218,11 @@ impl Expr {
                 e.left_paren.clone(),
                 item_spans(&e.args),
                 e.right_paren.clone(),
+            ]),
+            Expr::Access(e) => mix_spans([
+                e.accessed.span(),
+                e.dot.clone(),
+                e.name.clone(),
             ]),
             Expr::Let(e) => mix_spans([
                 e.let_kw.clone(),

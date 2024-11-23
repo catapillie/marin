@@ -29,6 +29,8 @@ pub enum Token {
     Comma,
     #[token("..")]
     Spread,
+    #[token(".")]
+    Dot,
 
     #[token("do")]
     Do,
@@ -88,6 +90,7 @@ impl Display for Token {
             Token::Assign => write!(f, "':='"),
             Token::Comma => write!(f, "','"),
             Token::Spread => write!(f, "'..'"),
+            Token::Dot => write!(f, "'.'"),
 
             Token::Do => write!(f, "'do' keyword"),
             Token::End => write!(f, "'end' keyword"),
