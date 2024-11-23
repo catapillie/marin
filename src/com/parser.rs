@@ -16,7 +16,7 @@ pub struct Parser<'src, 'e> {
 }
 
 impl<'src, 'e> Parser<'src, 'e> {
-    pub fn new(source: &'src str, reports: &'e mut Vec<Report<'src>>) -> Parser<'src, 'e> {
+    pub fn new(source: &'src str, reports: &'e mut Vec<Report<'src>>) -> Self {
         let mut p = Parser {
             source,
             lexer: Token::lexer(source).spanned().peekable(),
