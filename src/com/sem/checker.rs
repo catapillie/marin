@@ -2,11 +2,11 @@ use crate::com::{ast, reporting::Report};
 
 pub struct Checker<'src, 'e> {
     source: &'src str,
-    reports: &'e mut Vec<Report<'src>>,
+    reports: &'e mut Vec<Report>,
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn new(source: &'src str, reports: &'e mut Vec<Report<'src>>) -> Self {
+    pub fn new(source: &'src str, reports: &'e mut Vec<Report>) -> Self {
         Self { source, reports }
     }
 

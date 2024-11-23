@@ -12,11 +12,11 @@ pub struct Parser<'src, 'e> {
     source: &'src str,
     lexer: Peekable<SpannedIter<'src, Token>>,
     bounds: (usize, usize),
-    reports: &'e mut Vec<Report<'src>>,
+    reports: &'e mut Vec<Report>,
 }
 
 impl<'src, 'e> Parser<'src, 'e> {
-    pub fn new(source: &'src str, reports: &'e mut Vec<Report<'src>>) -> Self {
+    pub fn new(source: &'src str, reports: &'e mut Vec<Report>) -> Self {
         let mut p = Parser {
             source,
             lexer: Token::lexer(source).spanned().peekable(),
@@ -54,8 +54,10 @@ impl<'src, 'e> Parser<'src, 'e> {
         }
 
         self.reports.push(
-            Report::error(Header::InvalidCharacterSequence(&self.source[span.clone()]))
-                .with_primary_label(Label::Empty, span),
+            Report::error(Header::InvalidCharacterSequence(
+                self.source[span.clone()].to_string(),
+            ))
+            .with_primary_label(Label::Empty, span),
         );
 
         let (tok, start) = match self.lexer.peek() {
@@ -101,7 +103,7 @@ impl<'src, 'e> Parser<'src, 'e> {
         }
     }
 
-    pub fn parse_program(&mut self) -> ast::Expr {
+    pub fn parse_file(&mut self) -> ast::Expr {
         self.try_expect_token(Token::Newline);
         let expr = self.expect_expression();
         self.try_expect_token(Token::Newline);

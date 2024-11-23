@@ -2,14 +2,14 @@ use super::{Header, Label};
 use codespan_reporting::diagnostic::{self, Diagnostic, LabelStyle, Severity};
 use logos::Span;
 
-pub struct Report<'src> {
-    pub header: Header<'src>,
+pub struct Report {
+    pub header: Header,
     pub severity: diagnostic::Severity,
     pub labels: Vec<(Label, Span, diagnostic::LabelStyle)>,
 }
 
-impl<'src> Report<'src> {
-    pub fn new(severity: Severity, header: Header<'src>) -> Self {
+impl Report {
+    pub fn new(severity: Severity, header: Header) -> Self {
         Self {
             header,
             severity,
@@ -17,7 +17,7 @@ impl<'src> Report<'src> {
         }
     }
 
-    pub fn error(header: Header<'src>) -> Self {
+    pub fn error(header: Header) -> Self {
         Self {
             header,
             severity: Severity::Error,
