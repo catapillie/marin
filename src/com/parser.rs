@@ -13,6 +13,7 @@ pub struct Parser<'src, 'e> {
     source: &'src str,
     file: usize,
     lexer: Peekable<SpannedIter<'src, Token>>,
+    prev: Token,
     bounds: (usize, usize),
     reports: &'e mut Vec<Report>,
 }
@@ -23,6 +24,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             source,
             file,
             lexer: Token::lexer(source).spanned().peekable(),
+            prev: Token::Eof,
             bounds: (0, 0),
             reports,
         };
@@ -35,12 +37,20 @@ impl<'src, 'e> Parser<'src, 'e> {
         self.bounds.1
     }
 
+    fn pos_to(&self) -> usize {
+        self.bounds.0
+    }
+
     fn span_here(&self) -> Span {
         Span::at(self.pos_from())
     }
 
     fn loc_here(&self) -> Loc {
         self.span_here().wrap(self.file)
+    }
+
+    fn loc_from_here(&self) -> Loc {
+        Span::at(self.pos_to()).wrap(self.file)
     }
 
     fn peek(&mut self) -> Token {
@@ -79,11 +89,12 @@ impl<'src, 'e> Parser<'src, 'e> {
 
     fn consume_token(&mut self) -> Span {
         let len = self.source.len();
-        let ((_, tok_span), start) = match self.lexer.next() {
+        let ((tok, tok_span), start) = match self.lexer.next() {
             Some((tok, span)) => ((tok.unwrap(), span.clone()), span.end),
             None => ((Token::Eof, len..len), len),
         };
 
+        self.prev = tok;
         self.bounds.0 = start;
         self.peek();
         tok_span.into()
@@ -104,10 +115,14 @@ impl<'src, 'e> Parser<'src, 'e> {
         } else {
             self.reports.push(
                 Report::error(Header::ExpectedToken(expected, p))
-                    .with_primary_label(Label::Empty, self.loc_here()),
+                    .with_primary_label(Label::Empty, self.loc_from_here()),
             );
             self.span_here()
         }
+    }
+
+    fn skip_newlines(&mut self) -> bool {
+        self.prev == Token::Newline || self.try_expect_token(Token::Newline).is_some()
     }
 
     pub fn parse_file(&mut self) -> ast::File {
@@ -197,7 +212,7 @@ impl<'src, 'e> Parser<'src, 'e> {
                 continue;
             }
 
-            self.try_expect_token(Token::Newline);
+            self.skip_newlines();
             if let Some(dot) = self.try_expect_token(Token::Dot) {
                 let name = self.expect_token(Token::Ident);
                 expr = ast::Expr::Access(ast::Access {
@@ -383,7 +398,7 @@ impl<'src, 'e> Parser<'src, 'e> {
         let with_kw = self.expect_token(Token::With);
 
         let mut cases = Vec::new();
-        self.try_expect_token(Token::Newline);
+        self.skip_newlines();
         loop {
             let Some(pattern) = self.try_parse_primary_expression() else {
                 break;
@@ -397,7 +412,7 @@ impl<'src, 'e> Parser<'src, 'e> {
                 value: Box::new(value),
             });
 
-            if self.try_expect_token(Token::Newline).is_none() {
+            if !self.skip_newlines() {
                 break;
             }
         }
@@ -504,13 +519,13 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn parse_comma_separated_items(&mut self) -> Box<[ast::Expr]> {
         let mut items = Vec::new();
 
-        self.try_expect_token(Token::Newline);
+        self.skip_newlines();
         while let Some(item) = self.try_parse_expression() {
             items.push(item);
 
             if self.try_expect_token(Token::Comma).is_some() {
-                self.try_expect_token(Token::Newline);
-            } else if self.try_expect_token(Token::Newline).is_none() {
+                self.skip_newlines();
+            } else if !self.skip_newlines() {
                 break;
             }
         }
@@ -534,10 +549,10 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn parse_newline_separated_items(&mut self) -> Box<[ast::Expr]> {
         let mut items = Vec::new();
 
-        self.try_expect_token(Token::Newline);
+        self.skip_newlines();
         while let Some(item) = self.try_parse_expression() {
             items.push(item);
-            if self.try_expect_token(Token::Newline).is_none() {
+            if !self.skip_newlines() {
                 break;
             }
         }
