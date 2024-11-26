@@ -1,6 +1,5 @@
-use logos::Span;
-
 use super::{mix_spans, Expr};
+use crate::com::loc::Span;
 
 #[derive(Debug, Clone)]
 pub enum Label {
@@ -18,12 +17,10 @@ pub struct NamedLabel {
 impl Label {
     pub fn span(&self) -> Span {
         match self {
-            Label::Named(named) => mix_spans([
-                named.left_chev.clone(),
-                named.right_chev.clone(),
-                named.name_expr.span(),
-            ]),
-            Label::Empty(span) => span.clone(),
+            Label::Named(named) => {
+                mix_spans([named.left_chev, named.right_chev, named.name_expr.span()])
+            }
+            Label::Empty(span) => *span,
         }
     }
 }

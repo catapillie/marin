@@ -1,11 +1,11 @@
 use super::{Header, Label};
+use crate::com::loc::Loc;
 use codespan_reporting::diagnostic::{self, Diagnostic, LabelStyle, Severity};
-use logos::Span;
 
 pub struct Report {
     pub header: Header,
     pub severity: diagnostic::Severity,
-    pub labels: Vec<(Label, Span, diagnostic::LabelStyle)>,
+    pub labels: Vec<(Label, Loc, diagnostic::LabelStyle)>,
 }
 
 impl Report {
@@ -25,17 +25,17 @@ impl Report {
         }
     }
 
-    pub fn with_primary_label(mut self, label: Label, span: Span) -> Self {
-        self.labels.push((label, span, LabelStyle::Primary));
+    pub fn with_primary_label(mut self, label: Label, loc: Loc) -> Self {
+        self.labels.push((label, loc, LabelStyle::Primary));
         self
     }
 
-    pub fn with_secondary_label(mut self, label: Label, span: Span) -> Self {
-        self.labels.push((label, span, LabelStyle::Secondary));
+    pub fn with_secondary_label(mut self, label: Label, loc: Loc) -> Self {
+        self.labels.push((label, loc, LabelStyle::Secondary));
         self
     }
 
-    pub fn to_diagnostic(&self, file: usize) -> Diagnostic<usize> {
+    pub fn to_diagnostic(&self) -> Diagnostic<usize> {
         use diagnostic::Diagnostic as D;
         use diagnostic::Label as L;
         return D::new(self.severity)
@@ -44,8 +44,8 @@ impl Report {
             .with_labels(
                 self.labels
                     .iter()
-                    .map(|(label, span, style)| {
-                        L::new(*style, file, span.clone()).with_message(label.msg())
+                    .map(|(label, loc, style)| {
+                        L::new(*style, loc.file, loc.span).with_message(label.msg())
                     })
                     .collect(),
             );

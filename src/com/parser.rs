@@ -1,24 +1,27 @@
 use codespan_reporting::diagnostic::Severity;
-use logos::{Logos, Span, SpannedIter};
+use logos::{Logos, SpannedIter};
 use std::iter::Peekable;
 
 use super::{
     ast::{self},
+    loc::{Loc, Span},
     reporting::{Header, Label, Report},
     Token,
 };
 
 pub struct Parser<'src, 'e> {
     source: &'src str,
+    file: usize,
     lexer: Peekable<SpannedIter<'src, Token>>,
     bounds: (usize, usize),
     reports: &'e mut Vec<Report>,
 }
 
 impl<'src, 'e> Parser<'src, 'e> {
-    pub fn new(source: &'src str, reports: &'e mut Vec<Report>) -> Self {
+    pub fn new(source: &'src str, file: usize, reports: &'e mut Vec<Report>) -> Self {
         let mut p = Parser {
             source,
+            file,
             lexer: Token::lexer(source).spanned().peekable(),
             bounds: (0, 0),
             reports,
@@ -33,7 +36,11 @@ impl<'src, 'e> Parser<'src, 'e> {
     }
 
     fn span_here(&self) -> Span {
-        self.pos_from()..self.pos_from()
+        Span::at(self.pos_from())
+    }
+
+    fn loc_here(&self) -> Loc {
+        self.span_here().wrap(self.file)
     }
 
     fn peek(&mut self) -> Token {
@@ -57,7 +64,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Report::error(Header::InvalidCharacterSequence(
                 self.source[span.clone()].to_string(),
             ))
-            .with_primary_label(Label::Empty, span),
+            .with_primary_label(Label::Empty, Loc::new(span.into(), self.file)),
         );
 
         let (tok, start) = match self.lexer.peek() {
@@ -79,7 +86,7 @@ impl<'src, 'e> Parser<'src, 'e> {
 
         self.bounds.0 = start;
         self.peek();
-        tok_span
+        tok_span.into()
     }
 
     fn try_expect_token(&mut self, expected: Token) -> Option<Span> {
@@ -97,26 +104,24 @@ impl<'src, 'e> Parser<'src, 'e> {
         } else {
             self.reports.push(
                 Report::error(Header::ExpectedToken(expected, p))
-                    .with_primary_label(Label::Empty, self.span_here()),
+                    .with_primary_label(Label::Empty, self.loc_here()),
             );
             self.span_here()
         }
     }
 
-    pub fn parse_file(&mut self) -> ast::Expr {
-        self.try_expect_token(Token::Newline);
-        let expr = self.expect_expression();
-        self.try_expect_token(Token::Newline);
+    pub fn parse_file(&mut self) -> ast::File {
+        let exprs = self.parse_newline_separated_items();
         self.expect_token(Token::Eof);
 
-        self.reports.push(
-            Report::new(
-                Severity::Note,
-                Header::Internal("parsed expression".to_string()),
-            )
-            .with_primary_label(Label::Empty, expr.span()),
-        );
-        expr
+        for expr in &exprs {
+            self.reports.push(
+                Report::new(Severity::Note, Header::Internal(String::default()))
+                    .with_primary_label(Label::Empty, expr.span().wrap(self.file)),
+            );
+        }
+
+        ast::File(exprs)
     }
 
     pub fn expect_expression(&mut self) -> ast::Expr {
@@ -125,7 +130,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             None => {
                 self.reports.push(
                     Report::error(Header::ExpectedExpression())
-                        .with_primary_label(Label::Empty, self.span_here()),
+                        .with_primary_label(Label::Empty, self.loc_here()),
                 );
                 ast::Expr::Missing(ast::Lexeme {
                     span: self.span_here(),
@@ -144,7 +149,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             None => {
                 self.reports.push(
                     Report::error(Header::ExpectedExpression())
-                        .with_primary_label(Label::Empty, self.span_here()),
+                        .with_primary_label(Label::Empty, self.loc_here()),
                 );
                 ast::Expr::Missing(ast::Lexeme {
                     span: self.span_here(),
@@ -473,8 +478,8 @@ impl<'src, 'e> Parser<'src, 'e> {
         if queries.is_empty() {
             self.reports.push(
                 Report::error(Header::EmptyImport())
-                    .with_primary_label(Label::Empty, import_kw.clone())
-                    .with_secondary_label(Label::ExpectedImportQuery, self.span_here()),
+                    .with_primary_label(Label::Empty, import_kw.wrap(self.file))
+                    .with_secondary_label(Label::ExpectedImportQuery, self.loc_here()),
             );
         }
 
@@ -532,7 +537,6 @@ impl<'src, 'e> Parser<'src, 'e> {
         self.try_expect_token(Token::Newline);
         while let Some(item) = self.try_parse_expression() {
             items.push(item);
-
             if self.try_expect_token(Token::Newline).is_none() {
                 break;
             }

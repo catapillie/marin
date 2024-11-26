@@ -4,6 +4,7 @@ pub enum Header {
     Internal(String),
 
     CompilerNoInput(),
+    CompilerNoSuchPath(String),
     CompilerIOPath(String, String),
     CompilerIOFile(String, String),
 
@@ -20,6 +21,7 @@ impl Header {
         match self {
             H::Internal(..) => "internal",
             H::CompilerNoInput(..) => "compiler_no_input",
+            H::CompilerNoSuchPath(..) => "compiler_no_such_path",
             H::CompilerIOPath(..) => "compiler_io_path",
             H::CompilerIOFile(..) => "compiler_io_file",
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
@@ -36,7 +38,9 @@ impl Header {
             H::Internal(msg)
                 => msg.clone(),
             H::CompilerNoInput()
-                => "no input files".to_string(),
+                => "no input file".to_string(),
+            H::CompilerNoSuchPath(path)
+                => format!("path '{path}' does not exist"),
             H::CompilerIOPath(path, msg)
                 => format!("failed to read path '{path}: {msg}"),
             H::CompilerIOFile(path, msg)

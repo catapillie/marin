@@ -10,7 +10,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         Self { source, reports }
     }
 
-    pub fn check_module(&mut self, expr: &ast::Expr) {
+    pub fn check_file(&mut self, expr: &ast::Expr) {
         _ = self.reports;
         _ = self.source;
         use ast::Expr as E;
