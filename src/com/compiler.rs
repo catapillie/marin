@@ -1,7 +1,7 @@
 use super::{
     ast,
     reporting::{Header, Report},
-    Parser,
+    Checker, Parser,
 };
 use codespan_reporting::{
     files::{self, SimpleFile},
@@ -164,8 +164,8 @@ impl Compiler<Staged> {
 }
 
 impl Compiler<Source> {
-    fn parse_file(f: &File, id: usize, reports: &mut Vec<Report>) -> Parsed {
-        let mut parser = Parser::new(f.source(), id, reports);
+    fn parse_file(file: &File, id: usize, reports: &mut Vec<Report>) -> Parsed {
+        let mut parser = Parser::new(file.source(), id, reports);
         Parsed(parser.parse_file())
     }
 
@@ -186,6 +186,33 @@ impl Compiler<Source> {
         Compiler {
             reports: self.reports,
             files: Files(parsed_files),
+        }
+    }
+}
+
+impl Compiler<Parsed> {
+    fn check_file(file: &File, id: usize, ast: &ast::File, reports: &mut Vec<Report>) {
+        let mut checker = Checker::new(file.source(), id, reports);
+        checker.check_file(ast);
+    }
+
+    pub fn check(mut self) -> Compiler<()> {
+        let mut reports = Vec::new();
+        let checked_files = self
+            .files
+            .0
+            .into_iter()
+            .enumerate()
+            .map(|(id, (f, ast))| {
+                Self::check_file(&f, id, &ast.0, &mut reports);
+                (f, ())
+            })
+            .collect();
+        self.reports.append(&mut reports);
+
+        Compiler {
+            reports: self.reports,
+            files: Files(checked_files),
         }
     }
 }

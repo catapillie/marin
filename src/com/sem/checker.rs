@@ -2,17 +2,30 @@ use crate::com::{ast, reporting::Report};
 
 pub struct Checker<'src, 'e> {
     source: &'src str,
+    file: usize,
     reports: &'e mut Vec<Report>,
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn new(source: &'src str, reports: &'e mut Vec<Report>) -> Self {
-        Self { source, reports }
+    pub fn new(source: &'src str, file: usize, reports: &'e mut Vec<Report>) -> Self {
+        Self {
+            source,
+            file,
+            reports,
+        }
     }
 
-    pub fn check_file(&mut self, expr: &ast::Expr) {
-        _ = self.reports;
+    pub fn check_file(&mut self, ast: &ast::File) {
         _ = self.source;
+        _ = self.file;
+        _ = self.reports;
+
+        for expr in &ast.0 {
+            self.check_expression(expr);
+        }
+    }
+
+    pub fn check_expression(&mut self, expr: &ast::Expr) {
         use ast::Expr as E;
         match expr {
             E::Missing(..) => todo!(),

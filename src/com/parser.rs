@@ -129,13 +129,6 @@ impl<'src, 'e> Parser<'src, 'e> {
         let exprs = self.parse_newline_separated_items();
         self.expect_token(Token::Eof);
 
-        for expr in &exprs {
-            self.reports.push(
-                Report::new(Severity::Note, Header::Internal(String::default()))
-                    .with_primary_label(Label::Empty, expr.span().wrap(self.file)),
-            );
-        }
-
         ast::File(exprs)
     }
 
