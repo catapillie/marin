@@ -1,4 +1,3 @@
-use codespan_reporting::diagnostic::Severity;
 use logos::{Logos, SpannedIter};
 use std::iter::Peekable;
 
