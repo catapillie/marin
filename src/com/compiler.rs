@@ -195,7 +195,8 @@ impl Compiler<Parsed> {
     }
 
     pub fn check(mut self) -> Compiler<()> {
-        sem::build_dependency_graph(&self.files, &mut self.reports);
+        let deps = sem::build_dependency_graph(&self.files, &mut self.reports);
+        sem::sort_dependencies(&deps, &self.files, &mut self.reports);
 
         let mut reports = Vec::new();
         let checked_files = self

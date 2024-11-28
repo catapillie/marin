@@ -1,4 +1,4 @@
-use petgraph::Graph;
+use petgraph::{algo, prelude::DiGraphMap};
 use std::{collections::HashMap, path::Path};
 
 use crate::com::{
@@ -7,25 +7,18 @@ use crate::com::{
     reporting::{Header, Label, Report},
 };
 
-pub type DepGraph = Graph<usize, ()>;
+pub type DepGraph = DiGraphMap<usize, ()>;
 
 pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) -> DepGraph {
-    let mut graph = Graph::new();
-
-    let mut files_by_path = HashMap::new();
-    let indices = files
+    let mut graph = DepGraph::with_capacity(files.0.len(), 0);
+    let files_by_path = files
         .0
         .iter()
         .enumerate()
-        .map(|(i, (f, _))| {
-            files_by_path.insert(f.name(), i);
-            graph.add_node(i)
-        })
-        .collect::<Vec<_>>();
+        .map(|(i, (f, _))| (f.name(), i))
+        .collect::<HashMap<_, _>>();
 
     for (id, (f, Parsed(ast::File(ast)))) in files.0.iter().enumerate() {
-        println!("--> [{id}] {}:", f.name());
-
         let source = f.source();
         let path = Path::new(f.name());
         for expr in ast {
@@ -57,8 +50,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                     let dep_path = Path::new(&dep_path_display);
 
                     if let Some(&dep_id) = files_by_path.get(&dep_path_display) {
-                        println!("  --> [{dep_id}] {dep_path_display}");
-                        graph.add_edge(indices[id], indices[dep_id], ());
+                        graph.add_edge(id, dep_id, ());
                     } else {
                         let rep = match dep_path.exists() {
                             true => Report::error(Header::UnstagedDependency(dep_path_display)),
@@ -76,4 +68,19 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
     }
 
     graph
+}
+
+pub fn sort_dependencies<T>(
+    graph: &DepGraph,
+    files: &Files<T>,
+    reports: &mut Vec<Report>,
+) -> Vec<Vec<usize>> {
+    let post = algo::tarjan_scc(graph);
+    for scc in &post {
+        println!("->");
+        for &id in scc.iter() {
+            println!("  -> [{id}] {}", files.0[id].0.name());
+        }
+    }
+    post
 }

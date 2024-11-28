@@ -9,14 +9,6 @@ pub struct Report {
 }
 
 impl Report {
-    pub fn new(severity: Severity, header: Header) -> Self {
-        Self {
-            header,
-            severity,
-            labels: Vec::new(),
-        }
-    }
-
     pub fn error(header: Header) -> Self {
         Self {
             header,
