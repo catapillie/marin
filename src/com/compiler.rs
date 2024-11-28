@@ -1,7 +1,5 @@
 use super::{
-    ast,
-    reporting::{Header, Report},
-    Checker, Parser,
+    ast, reporting::{Header, Report}, sem, Checker, Parser
 };
 use codespan_reporting::{
     files::{self, SimpleFile},
@@ -21,7 +19,7 @@ pub struct Compiler<Stage> {
 // compiler stage
 pub struct Staged(PathBuf);
 pub struct Source;
-pub struct Parsed(ast::File);
+pub struct Parsed(pub ast::File);
 
 // compiler initialization
 pub fn init() -> Compiler<Staged> {
@@ -197,6 +195,8 @@ impl Compiler<Parsed> {
     }
 
     pub fn check(mut self) -> Compiler<()> {
+        sem::build_dependency_graph(&self.files, &mut self.reports);
+
         let mut reports = Vec::new();
         let checked_files = self
             .files
@@ -217,8 +217,8 @@ impl Compiler<Parsed> {
     }
 }
 
-type File = SimpleFile<String, String>;
-struct Files<T>(Vec<(File, T)>);
+pub type File = SimpleFile<String, String>;
+pub struct Files<T>(pub Vec<(File, T)>);
 
 impl<T> Default for Files<T> {
     fn default() -> Self {

@@ -8,6 +8,9 @@ pub enum Header {
     CompilerIOPath(String, String),
     CompilerIOFile(String, String),
 
+    UnstagedDependency(String),
+    NoSuchDependency(String),
+
     InvalidCharacterSequence(String),
     ExpectedToken(Token, Token),
     ExpectedExpression(),
@@ -20,10 +23,15 @@ impl Header {
         use Header as H;
         match self {
             H::Internal(..) => "internal",
+
             H::CompilerNoInput(..) => "compiler_no_input",
             H::CompilerNoSuchPath(..) => "compiler_no_such_path",
             H::CompilerIOPath(..) => "compiler_io_path",
             H::CompilerIOFile(..) => "compiler_io_file",
+
+            H::UnstagedDependency(..) => "unstaged_dependency",
+            H::NoSuchDependency(..) => "no_such_dependency",
+
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
             H::ExpectedToken(..) => "expected_token",
             H::ExpectedExpression(..) => "expected_expression",
@@ -37,6 +45,7 @@ impl Header {
         match self {
             H::Internal(msg)
                 => msg.clone(),
+
             H::CompilerNoInput()
                 => "no input file".to_string(),
             H::CompilerNoSuchPath(path)
@@ -45,6 +54,12 @@ impl Header {
                 => format!("failed to read path '{path}: {msg}"),
             H::CompilerIOFile(path, msg)
                 => format!("failed to read file '{path}: {msg}"),
+
+            H::UnstagedDependency(path)
+                => format!("file dependency '{path}' is unstaged"),
+            H::NoSuchDependency(path)
+                => format!("file dependency '{path}' does not exist"),
+            
             H::InvalidCharacterSequence(seq)
                 => format!("invalid characters '{seq}'"),
             H::ExpectedToken(want, have)

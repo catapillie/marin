@@ -34,6 +34,10 @@ impl Span {
             end: usize::max(left.end, right.end),
         }
     }
+
+    pub fn lexeme<'a>(&self, source: &'a str) -> &'a str {
+        &source[self.start..self.end]
+    }
 }
 
 impl Default for Span {

@@ -1,6 +1,7 @@
 pub enum Label {
     Empty,
     ExpectedImportQuery,
+    ImportedInFile(String),
 }
 
 impl Label {
@@ -12,6 +13,8 @@ impl Label {
                 => "".to_string(),
             L::ExpectedImportQuery
                 => "expected one or more import queries".to_string(),
+            L::ImportedInFile(path)
+                => format!("imported in file {path}")
         }
     }
 }

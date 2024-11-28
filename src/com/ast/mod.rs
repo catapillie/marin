@@ -1,8 +1,10 @@
 mod expr;
 mod label;
+mod traversal;
 
 pub use expr::*;
 pub use label::*;
+pub use traversal::*;
 
 pub struct File(pub Box<[Expr]>);
 
