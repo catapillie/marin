@@ -47,64 +47,9 @@ impl<T> Compiler<T> {
 }
 
 impl Compiler<Staged> {
-    fn check_extension(path: &Path) -> bool {
-        matches!(path.extension().map(|ext| ext.to_str()), Some(Some("mar")))
-    }
-
-    fn add_dir(&mut self, path: &Path) {
-        let path_display = path.to_string_lossy().into_owned();
-
-        let entries = match std::fs::read_dir(path) {
-            Ok(entries) => entries,
-            Err(err) => {
-                self.reports.push(Report::error(Header::CompilerIOPath(
-                    path_display,
-                    err.to_string(),
-                )));
-                return;
-            }
-        };
-
-        for entry in entries {
-            let entry = match entry {
-                Ok(entry) => entry,
-                Err(err) => {
-                    self.reports.push(Report::error(Header::CompilerIOPath(
-                        path_display.clone(),
-                        err.to_string(),
-                    )));
-                    continue;
-                }
-            };
-
-            let file_path = entry.path();
-            let file_type = match entry.file_type() {
-                Ok(file_type) => file_type,
-                Err(err) => {
-                    self.reports.push(Report::error(Header::CompilerIOFile(
-                        file_path.to_string_lossy().into_owned(),
-                        err.to_string(),
-                    )));
-                    continue;
-                }
-            };
-
-            if file_type.is_dir() {
-                self.add_dir(&file_path);
-                continue;
-            }
-
-            if Self::check_extension(&file_path) {
-                self.files
-                    .0
-                    .push((File::new(String::new(), String::new()), Staged(file_path)))
-            }
-        }
-    }
-
-    pub fn add_files(&mut self, path: impl AsRef<Path>) {
+    pub fn add_file(&mut self, path: impl AsRef<Path>) {
         let path = path.as_ref();
-        let path_display = path.to_string_lossy().into_owned();
+        let path_display = path.display().to_string();
 
         if !path.exists() {
             self.reports
@@ -112,26 +57,28 @@ impl Compiler<Staged> {
             return;
         }
 
-        if path.is_dir() {
-            self.add_dir(path);
+        if !matches!(path.extension().map(|s| s.to_str()), Some(Some("mar"))) {
+            self.reports
+                .push(Report::error(Header::CompilerBadExtension(path_display)));
             return;
         }
 
-        if Self::check_extension(path) {
-            self.files.0.push((
-                File::new(String::new(), String::new()),
-                Staged(path.to_path_buf()),
-            ))
-        }
+        let full_path = path.canonicalize().expect("cannot canonicalize file path");
+
+        self.files.0.push((
+            File::new(String::new(), String::new()),
+            full_path,
+            Staged(path.to_path_buf()),
+        ))
     }
 
     fn read_file(staged: &Staged, reports: &mut Vec<Report>) -> File {
         let path = &staged.0;
-        let file_path = path.to_string_lossy().into_owned();
+        let file_path = path.display().to_string();
         let source = match std::fs::read_to_string(path) {
             Ok(source) => source,
             Err(err) => {
-                reports.push(Report::error(Header::CompilerIOFile(
+                reports.push(Report::error(Header::CompilerIO(
                     file_path.clone(),
                     err.to_string(),
                 )));
@@ -151,8 +98,8 @@ impl Compiler<Staged> {
         let source_files = self
             .files
             .0
-            .iter()
-            .map(|(_, f)| (Self::read_file(f, &mut reports), Source))
+            .into_iter()
+            .map(|(_, p, f)| (Self::read_file(&f, &mut reports), p, Source))
             .collect();
         self.reports.append(&mut reports);
 
@@ -176,9 +123,9 @@ impl Compiler<Source> {
             .0
             .into_iter()
             .enumerate()
-            .map(|(id, (f, _))| {
+            .map(|(id, (f, p, _))| {
                 let parsed = Self::parse_file(&f, id, &mut reports);
-                (f, parsed)
+                (f, p, parsed)
             })
             .collect();
         self.reports.append(&mut reports);
@@ -212,12 +159,12 @@ impl Compiler<Parsed> {
         let mut reports = Vec::new();
         for scc in order {
             for id in scc {
-                let (file, Parsed(ast)) = files[id].take().unwrap();
+                let (file, path, Parsed(ast)) = files[id].take().unwrap();
                 let name = file.name();
                 eprintln!("--> checking {} ...", name);
 
                 Self::check_file(&file, id, &ast, &mut reports);
-                checked[id] = Some((file, ()))
+                checked[id] = Some((file, path, ()))
             }
         }
         self.reports.append(&mut reports);
@@ -231,7 +178,7 @@ impl Compiler<Parsed> {
 }
 
 pub type File = SimpleFile<String, String>;
-pub struct Files<T>(pub Vec<(File, T)>);
+pub struct Files<T>(pub Vec<(File, PathBuf, T)>);
 
 impl<T> Default for Files<T> {
     fn default() -> Self {
@@ -246,21 +193,21 @@ impl<'a, T> files::Files<'a> for Files<T> {
 
     fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
         match self.0.get(id) {
-            Some((file, _)) => Ok(file.name()),
+            Some((file, _, _)) => Ok(file.name()),
             None => Err(files::Error::FileMissing),
         }
     }
 
     fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
         match self.0.get(id) {
-            Some((file, _)) => Ok(file.source()),
+            Some((file, _, _)) => Ok(file.source()),
             None => Err(files::Error::FileMissing),
         }
     }
 
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
         match self.0.get(id) {
-            Some((file, _)) => file.line_index((), byte_index),
+            Some((file, _, _)) => file.line_index((), byte_index),
             None => Err(files::Error::FileMissing),
         }
     }
@@ -271,7 +218,7 @@ impl<'a, T> files::Files<'a> for Files<T> {
         line_index: usize,
     ) -> Result<std::ops::Range<usize>, files::Error> {
         match self.0.get(id) {
-            Some((file, _)) => file.line_range((), line_index),
+            Some((file, _, _)) => file.line_range((), line_index),
             None => Err(files::Error::FileMissing),
         }
     }

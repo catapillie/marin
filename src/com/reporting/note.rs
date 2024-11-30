@@ -6,10 +6,10 @@ pub enum Note {
 impl Note {
     #[rustfmt::skip]
     pub fn msg(&self) -> String {
-        use Note as N; 
+        use Note as N;
         match self {
             N::ConsiderStage(path)
-                => format!("consider staging the file dependency: {path}"),
+                => format!("consider staging {path} in the compile command"),
             N::CyclicDependencies(deps)
                 => format!("files involved in the cycle\n  {}", deps.join("\n  ")),
         }

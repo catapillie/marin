@@ -3,6 +3,7 @@ pub enum Label {
     ExpectedImportQuery,
     ImportedInFile(String),
     ImportedInItself(String),
+    TrailingSuper,
 }
 
 impl Label {
@@ -17,7 +18,9 @@ impl Label {
             L::ImportedInFile(path)
                 => format!("imported in file {path}"),
             L::ImportedInItself(path)
-                => format!("{path} is imported it iself"),
+                => format!("{path} is imported it itself"),
+            L::TrailingSuper
+                => "import queries cannot end with 'super'".to_string(),
         }
     }
 }

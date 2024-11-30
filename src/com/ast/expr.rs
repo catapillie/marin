@@ -23,6 +23,7 @@ pub enum Expr {
     Let(Let),
     Fun(Fun),
     Import(Import),
+    Super(Lexeme),
 }
 
 #[derive(Debug, Clone)]
@@ -221,6 +222,7 @@ impl Expr {
                 e.value.span(),
             ]),
             Expr::Import(e) => mix_spans([e.import_kw, item_spans(&e.queries)]),
+            Expr::Super(e) => e.span,
         }
     }
 }

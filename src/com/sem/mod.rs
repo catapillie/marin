@@ -1,5 +1,5 @@
 mod checker;
-mod depgraph;
+mod deps;
 
 pub use checker::Checker;
-pub use depgraph::*;
+pub use deps::*;

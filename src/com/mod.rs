@@ -8,6 +8,8 @@ mod compiler;
 mod parser;
 mod token;
 
+mod file_tree;
+
 pub use compiler::init;
 pub use parser::Parser;
 pub use sem::Checker;

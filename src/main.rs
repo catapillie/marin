@@ -5,7 +5,7 @@ fn main() {
 
     let mut compiler = com::init();
     for arg in &args {
-        compiler.add_files(arg);
+        compiler.add_file(arg);
     }
 
     let compiler = compiler.read_sources().parse().check();

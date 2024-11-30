@@ -1,22 +1,26 @@
 use crate::com::Token;
 
 pub enum Header {
-    #[allow(dead_code)] Internal(String),
+    #[allow(dead_code)]
+    Internal(String),
 
     CompilerNoInput(),
     CompilerNoSuchPath(String),
-    CompilerIOPath(String, String),
-    CompilerIOFile(String, String),
+    CompilerBadExtension(String),
+    CompilerIO(String, String),
 
-    UnstagedDependency(String),
+    InvalidDependencyPath(),
     NoSuchDependency(String),
+    UnstagedDependency(String),
     SelfDependency(String),
     DependencyCycle(),
+    OutsideDependency(),
 
     InvalidCharacterSequence(String),
     ExpectedToken(Token, Token),
     ExpectedExpression(),
     EmptyImport(),
+    InvalidImportQuery(),
 }
 
 impl Header {
@@ -28,18 +32,21 @@ impl Header {
 
             H::CompilerNoInput(..) => "compiler_no_input",
             H::CompilerNoSuchPath(..) => "compiler_no_such_path",
-            H::CompilerIOPath(..) => "compiler_io_path",
-            H::CompilerIOFile(..) => "compiler_io_file",
+            H::CompilerBadExtension(..) => "compiler_bad_extension",
+            H::CompilerIO(..) => "compiler_io",
 
-            H::UnstagedDependency(..) => "unstaged_dependency",
+            H::InvalidDependencyPath(..) => "invalid_dependency_path",
             H::NoSuchDependency(..) => "no_such_dependency",
+            H::UnstagedDependency(..) => "unstaged_dependency",
             H::SelfDependency(..) => "self_dependency",
             H::DependencyCycle(..) => "dependency_cycle",
+            H::OutsideDependency(..) => "outside_dependency",
 
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
             H::ExpectedToken(..) => "expected_token",
             H::ExpectedExpression(..) => "expected_expression",
             H::EmptyImport(..) => "empty_import",
+            H::InvalidImportQuery(..) => "invalid_import_query",
         }
     }
 
@@ -54,20 +61,24 @@ impl Header {
                 => "no input file".to_string(),
             H::CompilerNoSuchPath(path)
                 => format!("path '{path}' does not exist"),
-            H::CompilerIOPath(path, msg)
-                => format!("failed to read path '{path}: {msg}"),
-            H::CompilerIOFile(path, msg)
+            H::CompilerBadExtension(path)
+                => format!("the file located at '{path}' is not a .mar source file"),
+            H::CompilerIO(path, msg)
                 => format!("failed to read file '{path}: {msg}"),
 
-            H::UnstagedDependency(path)
-                => format!("file dependency '{path}' is unstaged"),
+            H::InvalidDependencyPath()
+                => "invalid dependency path in import query".to_string(),
             H::NoSuchDependency(path)
                 => format!("file dependency '{path}' does not exist"),
+            H::UnstagedDependency(path)
+                => format!("file dependency '{path}' is unstaged"),
             H::SelfDependency(path)
                 => format!("file {path} imports itself"),
             H::DependencyCycle()
                 => "detected a dependency cycle".to_string(),
-            
+            H::OutsideDependency()
+                => "import query leads outside of the working directory".to_string(),
+
             H::InvalidCharacterSequence(seq)
                 => format!("invalid characters '{seq}'"),
             H::ExpectedToken(want, have)
@@ -76,6 +87,8 @@ impl Header {
                 => "expected an expression".to_string(),
             H::EmptyImport()
                 => "empty import expression".to_string(),
+            H::InvalidImportQuery()
+                => "invalid import query syntax".to_string(),
         }
     }
 }

@@ -187,6 +187,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Fun => self.try_parse_fun_expression(),
 
             Token::Import => self.try_parse_import_expression(),
+            Token::Super => self.try_parse_super_expression(),
             _ => None,
         }?;
 
@@ -491,6 +492,11 @@ impl<'src, 'e> Parser<'src, 'e> {
         }
 
         Some(ast::Expr::Import(ast::Import { import_kw, queries }))
+    }
+
+    fn try_parse_super_expression(&mut self) -> Option<ast::Expr> {
+        self.try_expect_token(Token::Super)
+            .map(|token| ast::Expr::Super(ast::Lexeme { span: token }))
     }
 
     fn parse_optional_label(&mut self) -> ast::Label {

@@ -67,6 +67,7 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
             walk_expr(&e.value, nodes);
         }
         E::Import(..) => {}
+        E::Super(..) => {}
     }
 }
 
@@ -78,24 +79,24 @@ fn walk_branch<'a>(branch: &'a Branch, nodes: &mut Vec<&'a Expr>) {
             for item in &b.body {
                 walk_expr(item, nodes);
             }
-        },
+        }
         B::While(b) => {
             walk_expr(&b.guard, nodes);
             for item in &b.body {
                 walk_expr(item, nodes);
             }
-        },
+        }
         B::Match(b) => {
             walk_expr(&b.scrutinee, nodes);
             for case in &b.cases {
                 walk_expr(&case.pattern, nodes);
                 walk_expr(&case.value, nodes);
             }
-        },
+        }
         B::Fallback(b) => {
             for item in &b.body {
                 walk_expr(item, nodes);
             }
-        },
+        }
     }
 }
