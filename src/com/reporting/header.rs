@@ -1,7 +1,7 @@
 use crate::com::Token;
 
 pub enum Header {
-    Internal(String),
+    #[allow(dead_code)] Internal(String),
 
     CompilerNoInput(),
     CompilerNoSuchPath(String),
@@ -10,6 +10,7 @@ pub enum Header {
 
     UnstagedDependency(String),
     NoSuchDependency(String),
+    DependencyCycle(),
 
     InvalidCharacterSequence(String),
     ExpectedToken(Token, Token),
@@ -31,6 +32,7 @@ impl Header {
 
             H::UnstagedDependency(..) => "unstaged_dependency",
             H::NoSuchDependency(..) => "no_such_dependency",
+            H::DependencyCycle(..) => "dependency_cycle",
 
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
             H::ExpectedToken(..) => "expected_token",
@@ -59,6 +61,8 @@ impl Header {
                 => format!("file dependency '{path}' is unstaged"),
             H::NoSuchDependency(path)
                 => format!("file dependency '{path}' does not exist"),
+            H::DependencyCycle()
+                => "detected a dependency cycle".to_string(),
             
             H::InvalidCharacterSequence(seq)
                 => format!("invalid characters '{seq}'"),

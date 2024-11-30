@@ -4,7 +4,7 @@ use std::{collections::HashMap, path::Path};
 use crate::com::{
     ast,
     compiler::{Files, Parsed},
-    reporting::{Header, Label, Report},
+    reporting::{Header, Label, Note, Report},
 };
 
 pub type DepGraph = DiGraphMap<usize, ()>;
@@ -51,17 +51,19 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
 
                     if let Some(&dep_id) = files_by_path.get(&dep_path_display) {
                         graph.add_edge(id, dep_id, ());
-                    } else {
-                        let rep = match dep_path.exists() {
-                            true => Report::error(Header::UnstagedDependency(dep_path_display)),
-                            false => Report::error(Header::NoSuchDependency(dep_path_display)),
-                        }
-                        .with_secondary_label(
-                            Label::ImportedInFile(path.display().to_string()),
-                            query.span().wrap(id),
-                        );
-                        reports.push(rep);
+                        continue;
                     }
+
+                    let rep = match dep_path.exists() {
+                        true => Report::error(Header::UnstagedDependency(dep_path_display.clone()))
+                            .with_note(Note::ConsiderStage(dep_path_display)),
+                        false => Report::error(Header::NoSuchDependency(dep_path_display)),
+                    }
+                    .with_primary_label(
+                        Label::ImportedInFile(path.display().to_string()),
+                        query.span().wrap(id),
+                    );
+                    reports.push(rep);
                 }
             }
         }
@@ -77,9 +79,12 @@ pub fn sort_dependencies<T>(
 ) -> Vec<Vec<usize>> {
     let post = algo::tarjan_scc(graph);
     for scc in &post {
-        println!("->");
-        for &id in scc.iter() {
-            println!("  -> [{id}] {}", files.0[id].0.name());
+        if scc.len() > 1 {
+            reports.push(Report::error(Header::DependencyCycle()).with_note(
+                Note::CyclicDependencies(
+                    scc.iter().map(|&i| files.0[i].0.name().clone()).collect(),
+                ),
+            ));
         }
     }
     post

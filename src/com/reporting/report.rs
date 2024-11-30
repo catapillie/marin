@@ -1,4 +1,4 @@
-use super::{Header, Label};
+use super::{Header, Label, Note};
 use crate::com::loc::Loc;
 use codespan_reporting::diagnostic::{self, Diagnostic, LabelStyle, Severity};
 
@@ -6,6 +6,7 @@ pub struct Report {
     pub header: Header,
     pub severity: diagnostic::Severity,
     pub labels: Vec<(Label, Loc, diagnostic::LabelStyle)>,
+    pub notes: Vec<Note>,
 }
 
 impl Report {
@@ -14,6 +15,7 @@ impl Report {
             header,
             severity: Severity::Error,
             labels: Vec::new(),
+            notes: Vec::new(),
         }
     }
 
@@ -24,6 +26,11 @@ impl Report {
 
     pub fn with_secondary_label(mut self, label: Label, loc: Loc) -> Self {
         self.labels.push((label, loc, LabelStyle::Secondary));
+        self
+    }
+
+    pub fn with_note(mut self, note: Note) -> Self {
+        self.notes.push(note);
         self
     }
 
@@ -40,6 +47,7 @@ impl Report {
                         L::new(*style, loc.file, loc.span).with_message(label.msg())
                     })
                     .collect(),
-            );
+            )
+            .with_notes(self.notes.iter().map(Note::msg).collect());
     }
 }
