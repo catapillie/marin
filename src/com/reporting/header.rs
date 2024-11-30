@@ -21,6 +21,7 @@ pub enum Header {
     ExpectedExpression(),
     EmptyImport(),
     InvalidImportQuery(),
+    RedundantSuper(),
 }
 
 impl Header {
@@ -47,6 +48,7 @@ impl Header {
             H::ExpectedExpression(..) => "expected_expression",
             H::EmptyImport(..) => "empty_import",
             H::InvalidImportQuery(..) => "invalid_import_query",
+            H::RedundantSuper(..) => "redundant_super",
         }
     }
 
@@ -89,6 +91,8 @@ impl Header {
                 => "empty import expression".to_string(),
             H::InvalidImportQuery()
                 => "invalid import query syntax".to_string(),
+            H::RedundantSuper()
+                => "redundant use of the 'super' path".to_string(),
         }
     }
 }

@@ -38,7 +38,25 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         }
 
         for (query, span) in queries {
-            if matches!(query.0.last(), Some(Part::Super)) {
+            if query.0.len() > 2 {
+                for i in 1..(query.0.len() - 1) {
+                    let curr = &query.0[i];
+                    let prev = &query.0[i - 1];
+
+                    match (prev, curr) {
+                        (Part::Dir(_, prev_span), Part::Super(curr_span)) => {
+                            let loc = Span::combine(*prev_span, *curr_span).wrap(file_id);
+                            reports.push(
+                                Report::warning(Header::RedundantSuper())
+                                    .with_primary_label(Label::RedundantImportPath, loc),
+                            );
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+
+            if matches!(query.0.last(), Some(Part::Super(_))) {
                 reports.push(
                     Report::error(Header::InvalidDependencyPath())
                         .with_primary_label(Label::TrailingSuper, span.wrap(file_id)),
@@ -103,8 +121,8 @@ fn navigate_query(from: impl AsRef<Path>, query: &Query) -> Option<PathBuf> {
     let mut path = from.as_ref().to_path_buf();
     for part in &query.0 {
         match part {
-            Part::Dir(name) => path.push(name),
-            Part::Super => {
+            Part::Dir(name, _) => path.push(name),
+            Part::Super(_) => {
                 if !path.pop() {
                     return None;
                 }
@@ -117,8 +135,8 @@ fn navigate_query(from: impl AsRef<Path>, query: &Query) -> Option<PathBuf> {
 
 #[derive(Debug)]
 enum Part {
-    Dir(String),
-    Super,
+    Dir(String, Span),
+    Super(Span),
 }
 
 #[derive(Debug)]
@@ -161,8 +179,8 @@ fn process_import_query(expr: &ast::Expr, source: &str) -> Option<Query> {
 
 fn process_query_accessor(expr: &ast::Expr, source: &str) -> Option<Part> {
     match expr {
-        ast::Expr::Var(lex) => Some(Part::Dir(lex.span.lexeme(source).to_string())),
-        ast::Expr::Super(..) => Some(Part::Super),
+        ast::Expr::Var(lex) => Some(Part::Dir(lex.span.lexeme(source).to_string(), lex.span)),
+        ast::Expr::Super(lex) => Some(Part::Super(lex.span)),
         _ => None,
     }
 }

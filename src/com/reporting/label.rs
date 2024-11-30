@@ -4,6 +4,7 @@ pub enum Label {
     ImportedInFile(String),
     ImportedInItself(String),
     TrailingSuper,
+    RedundantImportPath,
 }
 
 impl Label {
@@ -21,6 +22,8 @@ impl Label {
                 => format!("{path} is imported it itself"),
             L::TrailingSuper
                 => "import queries cannot end with 'super'".to_string(),
+            L::RedundantImportPath
+                => "this part of the import query is redundant".to_string(),
         }
     }
 }
