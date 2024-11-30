@@ -19,6 +19,15 @@ impl Report {
         }
     }
 
+    pub fn warning(header: Header) -> Self {
+        Self {
+            header,
+            severity: Severity::Warning,
+            labels: Vec::new(),
+            notes: Vec::new(),
+        }
+    }
+
     pub fn with_primary_label(mut self, label: Label, loc: Loc) -> Self {
         self.labels.push((label, loc, LabelStyle::Primary));
         self

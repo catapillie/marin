@@ -10,6 +10,7 @@ pub enum Header {
 
     UnstagedDependency(String),
     NoSuchDependency(String),
+    SelfDependency(String),
     DependencyCycle(),
 
     InvalidCharacterSequence(String),
@@ -32,6 +33,7 @@ impl Header {
 
             H::UnstagedDependency(..) => "unstaged_dependency",
             H::NoSuchDependency(..) => "no_such_dependency",
+            H::SelfDependency(..) => "self_dependency",
             H::DependencyCycle(..) => "dependency_cycle",
 
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
@@ -61,6 +63,8 @@ impl Header {
                 => format!("file dependency '{path}' is unstaged"),
             H::NoSuchDependency(path)
                 => format!("file dependency '{path}' does not exist"),
+            H::SelfDependency(path)
+                => format!("file {path} imports itself"),
             H::DependencyCycle()
                 => "detected a dependency cycle".to_string(),
             

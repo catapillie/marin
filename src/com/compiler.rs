@@ -1,5 +1,7 @@
 use super::{
-    ast, reporting::{Header, Report}, sem, Checker, Parser
+    ast,
+    reporting::{Header, Report},
+    sem, Checker, Parser,
 };
 use codespan_reporting::{
     files::{self, SimpleFile},
@@ -196,21 +198,31 @@ impl Compiler<Parsed> {
 
     pub fn check(mut self) -> Compiler<()> {
         let deps = sem::build_dependency_graph(&self.files, &mut self.reports);
-        sem::sort_dependencies(&deps, &self.files, &mut self.reports);
+        let order = sem::sort_dependencies(&deps, &self.files, &mut self.reports);
 
-        let mut reports = Vec::new();
-        let checked_files = self
+        let mut files = self
             .files
             .0
             .into_iter()
-            .enumerate()
-            .map(|(id, (f, ast))| {
-                Self::check_file(&f, id, &ast.0, &mut reports);
-                (f, ())
-            })
-            .collect();
+            .map(Option::Some)
+            .collect::<Vec<_>>();
+        let mut checked = Vec::new();
+        checked.resize_with(files.len(), || None);
+
+        let mut reports = Vec::new();
+        for scc in order {
+            for id in scc {
+                let (file, Parsed(ast)) = files[id].take().unwrap();
+                let name = file.name();
+                eprintln!("--> checking {} ...", name);
+
+                Self::check_file(&file, id, &ast, &mut reports);
+                checked[id] = Some((file, ()))
+            }
+        }
         self.reports.append(&mut reports);
 
+        let checked_files = checked.into_iter().map(Option::unwrap).collect();
         Compiler {
             reports: self.reports,
             files: Files(checked_files),

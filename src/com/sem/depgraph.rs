@@ -19,6 +19,9 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         .collect::<HashMap<_, _>>();
 
     for (id, (f, Parsed(ast::File(ast)))) in files.0.iter().enumerate() {
+        // ensure reflexive connectivity
+        graph.add_edge(id, id, ());
+
         let source = f.source();
         let path = Path::new(f.name());
         for expr in ast {
@@ -50,6 +53,16 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                     let dep_path = Path::new(&dep_path_display);
 
                     if let Some(&dep_id) = files_by_path.get(&dep_path_display) {
+                        if dep_id == id {
+                            reports.push(
+                                Report::warning(Header::SelfDependency(dep_path_display.clone()))
+                                    .with_primary_label(
+                                        Label::ImportedInItself(dep_path_display),
+                                        query.span().wrap(id),
+                                    ),
+                            );
+                        }
+
                         graph.add_edge(id, dep_id, ());
                         continue;
                     }
