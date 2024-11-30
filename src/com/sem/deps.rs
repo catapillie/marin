@@ -1,5 +1,8 @@
 use petgraph::{algo, prelude::DiGraphMap};
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use crate::com::{
     ast,
@@ -37,6 +40,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
             }
         }
 
+        let mut import_spans = HashMap::<_, Span>::new();
         for (query, span) in queries {
             if query.0.len() > 2 {
                 for i in 1..(query.0.len() - 1) {
@@ -107,9 +111,18 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                         span.wrap(file_id),
                     ),
                 );
-                continue;
+            } else if let Some(first_span) = import_spans.get(&dep_id) {
+                reports.push(
+                    Report::warning(Header::FileReimported(short_dep_path.display().to_string()))
+                        .with_primary_label(Label::Empty, span.wrap(file_id))
+                        .with_secondary_label(
+                            Label::FirstImportHere(short_dep_path.display().to_string()),
+                            first_span.wrap(file_id),
+                        ),
+                );
             }
 
+            import_spans.entry(dep_id).or_insert(span);
             graph.add_edge(file_id, dep_id, ());
         }
     }

@@ -22,6 +22,7 @@ pub enum Header {
     EmptyImport(),
     InvalidImportQuery(),
     RedundantSuper(),
+    FileReimported(String),
 }
 
 impl Header {
@@ -49,6 +50,7 @@ impl Header {
             H::EmptyImport(..) => "empty_import",
             H::InvalidImportQuery(..) => "invalid_import_query",
             H::RedundantSuper(..) => "redundant_super",
+            H::FileReimported(..) => "file_reimported",
         }
     }
 
@@ -93,6 +95,8 @@ impl Header {
                 => "invalid import query syntax".to_string(),
             H::RedundantSuper()
                 => "redundant use of the 'super' path".to_string(),
+            H::FileReimported(path)
+                => format!("file {path} is imported again"),
         }
     }
 }
