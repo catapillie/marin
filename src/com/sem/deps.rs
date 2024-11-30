@@ -150,16 +150,19 @@ fn process_import(
 
 fn process_import_query(expr: &ast::Expr, source: &str) -> Option<Query> {
     match expr {
-        ast::Expr::Var(lex) => {
-            let lexeme = lex.span.lexeme(source).to_string();
-            Some(Query(vec![Part::Dir(lexeme)]))
-        }
-        ast::Expr::Super(..) => Some(Query(vec![Part::Super])),
         ast::Expr::Access(access) => {
             let mut q = process_import_query(&access.accessed, source)?;
-            q.0.push(Part::Dir(access.name.lexeme(source).to_string()));
+            q.0.push(process_query_accessor(&access.accessor, source)?);
             Some(q)
         }
+        _ => Some(Query(vec![process_query_accessor(expr, source)?])),
+    }
+}
+
+fn process_query_accessor(expr: &ast::Expr, source: &str) -> Option<Part> {
+    match expr {
+        ast::Expr::Var(lex) => Some(Part::Dir(lex.span.lexeme(source).to_string())),
+        ast::Expr::Super(..) => Some(Part::Super),
         _ => None,
     }
 }

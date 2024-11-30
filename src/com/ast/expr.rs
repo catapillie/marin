@@ -146,8 +146,8 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub struct Access {
     pub dot: Span,
-    pub name: Span,
     pub accessed: Box<Expr>,
+    pub accessor: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -208,7 +208,7 @@ impl Expr {
                 item_spans(&e.args),
                 e.right_paren,
             ]),
-            Expr::Access(e) => mix_spans([e.accessed.span(), e.dot, e.name]),
+            Expr::Access(e) => mix_spans([e.accessed.span(), e.dot, e.accessor.span()]),
             Expr::Let(e) => mix_spans([
                 e.let_kw,
                 e.pattern.span(),

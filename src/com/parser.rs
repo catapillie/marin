@@ -207,10 +207,10 @@ impl<'src, 'e> Parser<'src, 'e> {
 
             self.skip_newlines();
             if let Some(dot) = self.try_expect_token(Token::Dot) {
-                let name = self.expect_token(Token::Ident);
+                let accessor = self.expect_accessor();
                 expr = ast::Expr::Access(ast::Access {
                     dot,
-                    name,
+                    accessor: Box::new(accessor),
                     accessed: Box::new(expr),
                 });
                 continue;
@@ -220,6 +220,27 @@ impl<'src, 'e> Parser<'src, 'e> {
         }
 
         Some(expr)
+    }
+
+    fn expect_accessor(&mut self) -> ast::Expr {
+        let accessor = match self.peek() {
+            Token::Ident => self.try_parse_var_expression(),
+            Token::Super => self.try_parse_super_expression(),
+            _ => None,
+        };
+
+        match accessor {
+            Some(accessor) => accessor,
+            None => {
+                self.reports.push(
+                    Report::error(Header::ExpectedExpression())
+                        .with_primary_label(Label::Empty, self.loc_here()),
+                );
+                ast::Expr::Missing(ast::Lexeme {
+                    span: self.span_here(),
+                })
+            }
+        }
     }
 
     fn try_parse_int_expression(&mut self) -> Option<ast::Expr> {
