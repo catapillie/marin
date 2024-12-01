@@ -1,11 +1,9 @@
-use super::{
-    entity::{Entity, EntityID},
-    scope::Scope,
-};
+use super::{Entity, EntityID};
 use crate::com::{
     ast::{self},
     ir,
     reporting::{Header, Label, Report},
+    scope::Scope,
 };
 
 pub struct Checker<'src, 'e> {
@@ -47,10 +45,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         &self.entities[id.0]
     }
 
-    pub fn check_file(&mut self, ast: &ast::File) {
-        for expr in &ast.0 {
-            self.check_statement(expr);
-        }
+    pub fn check_file(&mut self, ast: &ast::File) -> ir::File {
+        let stmts = ast.0.iter().map(|e| self.check_statement(e)).collect();
+        ir::File { stmts }
     }
 
     fn check_statement(&mut self, e: &ast::Expr) -> ir::Stmt {

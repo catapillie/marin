@@ -1,5 +1,5 @@
 use super::{
-    ast,
+    ast, ir,
     reporting::{Header, Report},
     sem, Checker, Parser,
 };
@@ -22,6 +22,7 @@ pub struct Compiler<Stage> {
 pub struct Staged(PathBuf);
 pub struct Source;
 pub struct Parsed(pub ast::File);
+pub struct Checked(pub ir::File);
 
 // compiler initialization
 pub fn init() -> Compiler<Staged> {
@@ -32,6 +33,10 @@ pub fn init() -> Compiler<Staged> {
 }
 
 impl<T> Compiler<T> {
+    pub fn file_contents(&self) -> Box<[&T]> {
+        self.files.0.iter().map(|(_, _, t)| t).collect()
+    }
+
     pub fn emit_reports(&self, color: ColorChoice, config: &Config) -> Result<(), files::Error> {
         let writer = StandardStream::stderr(color);
         for report in &self.reports {
@@ -138,12 +143,12 @@ impl Compiler<Source> {
 }
 
 impl Compiler<Parsed> {
-    fn check_file(file: &File, id: usize, ast: &ast::File, reports: &mut Vec<Report>) {
+    fn check_file(file: &File, id: usize, ast: &ast::File, reports: &mut Vec<Report>) -> ir::File {
         let mut checker = Checker::new(file.source(), id, reports);
-        checker.check_file(ast);
+        checker.check_file(ast)
     }
 
-    pub fn check(mut self) -> Compiler<()> {
+    pub fn check(mut self) -> Compiler<Checked> {
         let deps = sem::build_dependency_graph(&self.files, &mut self.reports);
         let order = sem::sort_dependencies(&deps, &self.files, &mut self.reports);
 
@@ -163,8 +168,8 @@ impl Compiler<Parsed> {
                 let name = file.name();
                 eprintln!("--> checking {} ...", name);
 
-                Self::check_file(&file, id, &ast, &mut reports);
-                checked[id] = Some((file, path, ()))
+                let ir = Self::check_file(&file, id, &ast, &mut reports);
+                checked[id] = Some((file, path, Checked(ir)))
             }
         }
         self.reports.append(&mut reports);

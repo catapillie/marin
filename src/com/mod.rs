@@ -1,17 +1,21 @@
 mod ast;
+mod eval;
 mod ir;
-mod loc;
 mod sem;
 
-mod reporting;
+mod loc;
+mod scope;
 
 mod compiler;
 mod parser;
+mod reporting;
 mod token;
 
 mod file_tree;
 
 pub use compiler::init;
+
+pub use eval::{Error, Value, Walker};
 pub use parser::Parser;
 pub use sem::Checker;
 pub use token::Token;

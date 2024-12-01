@@ -8,10 +8,10 @@ pub enum Expr {
     Float(f64),
     String(String),
     Bool(bool),
+    Var(EntityID),
     Tuple(Box<[Expr]>),
     Array(Box<[Expr]>),
     Block(Box<[Stmt]>, Box<Expr>),
-    Var(EntityID),
 }
 
 impl Expr {

@@ -16,4 +16,18 @@ fn main() {
     compiler
         .emit_reports(color, &config)
         .expect("failed to emit reports");
+
+    let contents = compiler.file_contents();
+    if contents.is_empty() {
+        return;
+    } else if contents.len() > 1 {
+        eprintln!("TODO: evaluation with multiple files");
+        return;
+    }
+
+    let file_ir = &contents[0].0;
+    let mut walker = com::Walker::new();
+    if let Err(e) = walker.eval_file(file_ir) {
+        eprintln!("error: {e:?}")
+    }
 }
