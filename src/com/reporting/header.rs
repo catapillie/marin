@@ -23,6 +23,9 @@ pub enum Header {
     InvalidImportQuery(),
     RedundantSuper(),
     FileReimported(String),
+    InvalidInteger(),
+    InvalidFloat(),
+    InvalidExpression(),
 }
 
 impl Header {
@@ -51,6 +54,9 @@ impl Header {
             H::InvalidImportQuery(..) => "invalid_import_query",
             H::RedundantSuper(..) => "redundant_super",
             H::FileReimported(..) => "file_reimported",
+            H::InvalidInteger(..) => "invalid_integer",
+            H::InvalidFloat(..) => "invalid_float",
+            H::InvalidExpression(..) => "invalid_expression",
         }
     }
 
@@ -97,6 +103,12 @@ impl Header {
                 => "redundant use of the 'super' path".to_string(),
             H::FileReimported(path)
                 => format!("file {path} is imported again"),
+            H::InvalidInteger()
+                => "invalid integer literal".to_string(),
+            H::InvalidFloat()
+                => "invalid float literal".to_string(),
+            H::InvalidExpression()
+                => "invalid expression".to_string(),
         }
     }
 }
