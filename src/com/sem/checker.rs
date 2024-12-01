@@ -1,4 +1,7 @@
-use super::Scope;
+use super::{
+    entity::{Entity, EntityID},
+    scope::Scope,
+};
 use crate::com::{
     ast::{self},
     ir,
@@ -10,7 +13,8 @@ pub struct Checker<'src, 'e> {
     file: usize,
     reports: &'e mut Vec<Report>,
 
-    scope: Scope<'src, ()>,
+    scope: Scope<'src, EntityID>,
+    entities: Vec<Entity>,
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -21,6 +25,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             reports,
 
             scope: Scope::root(),
+            entities: Vec::new(),
         }
     }
 
@@ -32,9 +37,19 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.scope.close();
     }
 
+    fn add_entity(&mut self, entity: Entity) -> EntityID {
+        let id = self.entities.len();
+        self.entities.push(entity);
+        EntityID(id)
+    }
+
+    fn get_entity(&self, id: EntityID) -> &Entity {
+        &self.entities[id.0]
+    }
+
     pub fn check_file(&mut self, ast: &ast::File) {
         for expr in &ast.0 {
-            self.check_expression(expr);
+            self.check_statement(expr);
         }
     }
 
@@ -56,7 +71,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::String(e) => self.check_string(e),
             E::True(e) => self.check_bool(e, true),
             E::False(e) => self.check_bool(e, false),
-            E::Var(..) => todo!(),
+            E::Var(e) => self.check_var(e),
             E::Tuple(e) => self.check_tuple(e),
             E::Array(e) => self.check_array(e),
             E::Block(e) => self.check_block(e),
@@ -118,6 +133,27 @@ impl<'src, 'e> Checker<'src, 'e> {
         ir::Expr::Bool(b)
     }
 
+    fn check_var(&mut self, e: &ast::Lexeme) -> ir::Expr {
+        let name = e.span.lexeme(self.source);
+        let Some(&id) = self.scope.search(name) else {
+            self.reports.push(
+                Report::error(Header::UnknownVariable(name.to_string()))
+                    .with_primary_label(Label::Empty, e.span.wrap(self.file)),
+            );
+            return ir::Expr::Missing;
+        };
+
+        let Entity::Variable = self.get_entity(id) else {
+            self.reports.push(
+                Report::error(Header::NotVariable(name.to_string()))
+                    .with_primary_label(Label::Empty, e.span.wrap(self.file)),
+            );
+            return ir::Expr::Missing;
+        };
+
+        ir::Expr::Var(id)
+    }
+
     fn check_tuple(&mut self, e: &ast::Tuple) -> ir::Expr {
         if e.items.len() == 1 {
             return self.check_expression(&e.items[0]);
@@ -134,9 +170,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         let mut iter = e.items.iter().peekable();
         let mut stmts = Vec::with_capacity(e.items.len());
         let mut last = None;
-        
+
         self.open_scope();
-        
+
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
             if iter.peek().is_none() {

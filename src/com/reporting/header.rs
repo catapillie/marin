@@ -26,6 +26,8 @@ pub enum Header {
     InvalidInteger(),
     InvalidFloat(),
     InvalidExpression(),
+    UnknownVariable(String),
+    NotVariable(String),
 }
 
 impl Header {
@@ -57,6 +59,8 @@ impl Header {
             H::InvalidInteger(..) => "invalid_integer",
             H::InvalidFloat(..) => "invalid_float",
             H::InvalidExpression(..) => "invalid_expression",
+            H::UnknownVariable(..) => "unknown_variable",
+            H::NotVariable(..) => "not_variable",
         }
     }
 
@@ -109,6 +113,10 @@ impl Header {
                 => "invalid float literal".to_string(),
             H::InvalidExpression()
                 => "invalid expression".to_string(),
+            H::UnknownVariable(name)
+                => format!("unknown variable '{name}' in the current scope"),
+            H::NotVariable(name)
+                => format!("identifier '{name}' does not refer to a variable in the current scope"),
         }
     }
 }

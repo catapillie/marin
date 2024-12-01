@@ -1,4 +1,5 @@
 use super::Stmt;
+use crate::com::sem::EntityID;
 
 #[derive(Debug)]
 pub enum Expr {
@@ -10,6 +11,7 @@ pub enum Expr {
     Tuple(Box<[Expr]>),
     Array(Box<[Expr]>),
     Block(Box<[Stmt]>, Box<Expr>),
+    Var(EntityID),
 }
 
 impl Expr {
