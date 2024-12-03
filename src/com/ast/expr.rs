@@ -172,6 +172,130 @@ pub struct Import {
     pub queries: Box<[Expr]>,
 }
 
+impl Tuple {
+    pub fn span(&self) -> Span {
+        mix_spans([self.left_paren, item_spans(&self.items), self.right_paren])
+    }
+}
+
+impl Array {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.left_bracket,
+            item_spans(&self.items),
+            self.right_bracket,
+        ])
+    }
+}
+
+impl Spread {
+    pub fn span(&self) -> Span {
+        mix_spans([self.spread, self.name.unwrap_or(Span::default())])
+    }
+}
+
+impl Block {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.do_kw,
+            self.label.span(),
+            item_spans(&self.items),
+            self.end_kw,
+        ])
+    }
+}
+
+impl Loop {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.loop_kw,
+            self.label.span(),
+            item_spans(&self.items),
+            self.end_kw,
+        ])
+    }
+}
+
+impl Conditional {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.first_branch.span(),
+            mix_spans(
+                self
+                    .else_branches
+                    .iter()
+                    .map(|(else_kw, branch)| mix_spans([*else_kw, branch.span()])),
+            ),
+            self.end_kw,
+        ])
+    }
+}
+
+impl Break {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.break_kw,
+            self.label.span(),
+            self
+                .expr
+                .as_ref()
+                .map(|e| e.span())
+                .unwrap_or(Span::default()),
+        ])
+    }
+}
+
+impl Skip {
+    pub fn span(&self) -> Span {
+        mix_spans([self.skip_kw, self.label.span()])
+    }
+}
+
+impl Call {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.callee.span(),
+            self.left_paren,
+            item_spans(&self.args),
+            self.right_paren,
+        ])
+    }
+}
+
+impl Access {
+    pub fn span(&self) -> Span {
+        mix_spans([self.accessed.span(), self.dot, self.accessor.span()])
+    }
+}
+
+impl Let {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.let_kw,
+            self.pattern.span(),
+            self.assign.unwrap_or(Span::default()),
+            self.value.span(),
+        ])
+    }
+}
+
+impl Fun {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.fun_kw,
+            self.signature.span(),
+            self.maps.unwrap_or(Span::default()),
+            self.value.span(),
+        ])
+    }
+}
+
+impl Import {
+    pub fn span(&self) -> Span {
+        mix_spans([self.import_kw, item_spans(&self.queries)])
+    }
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -182,46 +306,19 @@ impl Expr {
             Expr::True(e) => e.span,
             Expr::False(e) => e.span,
             Expr::Var(e) => e.span,
-            Expr::Tuple(e) => mix_spans([e.left_paren, item_spans(&e.items), e.right_paren]),
-            Expr::Array(e) => mix_spans([e.left_bracket, item_spans(&e.items), e.right_bracket]),
-            Expr::Spread(e) => mix_spans([e.spread, e.name.unwrap_or(Span::default())]),
-            Expr::Block(e) => mix_spans([e.do_kw, e.label.span(), item_spans(&e.items), e.end_kw]),
-            Expr::Loop(e) => mix_spans([e.loop_kw, e.label.span(), item_spans(&e.items), e.end_kw]),
-            Expr::Conditional(e) => mix_spans([
-                e.first_branch.span(),
-                mix_spans(
-                    e.else_branches
-                        .iter()
-                        .map(|(else_kw, branch)| mix_spans([*else_kw, branch.span()])),
-                ),
-                e.end_kw,
-            ]),
-            Expr::Break(e) => mix_spans([
-                e.break_kw,
-                e.label.span(),
-                e.expr.as_ref().map(|e| e.span()).unwrap_or(Span::default()),
-            ]),
-            Expr::Skip(e) => mix_spans([e.skip_kw, e.label.span()]),
-            Expr::Call(e) => mix_spans([
-                e.callee.span(),
-                e.left_paren,
-                item_spans(&e.args),
-                e.right_paren,
-            ]),
-            Expr::Access(e) => mix_spans([e.accessed.span(), e.dot, e.accessor.span()]),
-            Expr::Let(e) => mix_spans([
-                e.let_kw,
-                e.pattern.span(),
-                e.assign.unwrap_or(Span::default()),
-                e.value.span(),
-            ]),
-            Expr::Fun(e) => mix_spans([
-                e.fun_kw,
-                e.signature.span(),
-                e.maps.unwrap_or(Span::default()),
-                e.value.span(),
-            ]),
-            Expr::Import(e) => mix_spans([e.import_kw, item_spans(&e.queries)]),
+            Expr::Tuple(e) => e.span(),
+            Expr::Array(e) => e.span(),
+            Expr::Spread(e) => e.span(),
+            Expr::Block(e) => e.span(),
+            Expr::Loop(e) => e.span(),
+            Expr::Conditional(e) => e.span(),
+            Expr::Break(e) => e.span(),
+            Expr::Skip(e) => e.span(),
+            Expr::Call(e) => e.span(),
+            Expr::Access(e) => e.span(),
+            Expr::Let(e) => e.span(),
+            Expr::Fun(e) => e.span(),
+            Expr::Import(e) => e.span(),
             Expr::Super(e) => e.span,
         }
     }

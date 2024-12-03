@@ -1,5 +1,5 @@
 use super::{Error, Value};
-use crate::com::{ir, scope::Scope, sem::EntityID};
+use crate::com::{ir, scope::Scope};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -24,7 +24,7 @@ impl<'a> Walker<'a> {
     pub fn eval_statement(&mut self, stmt: &ir::Stmt) -> Result<()> {
         use ir::Stmt as S;
         match stmt {
-            S::Expr(e) => {
+            S::Expr(e, _) => {
                 let value = self.eval_expression(e)?;
                 eprintln!("{value:?}");
                 Ok(())
@@ -48,7 +48,7 @@ impl<'a> Walker<'a> {
         }
     }
 
-    fn eval_var(&self, id: EntityID) -> Result<Value> {
+    fn eval_var(&self, _: ir::EntityID) -> Result<Value> {
         todo!()
     }
 

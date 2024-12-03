@@ -1,7 +1,6 @@
-use super::{Entity, EntityID};
 use crate::com::{
-    ast::{self},
-    ir,
+    ast, ir,
+    loc::Span,
     reporting::{Header, Label, Report},
     scope::Scope,
 };
@@ -11,8 +10,9 @@ pub struct Checker<'src, 'e> {
     file: usize,
     reports: &'e mut Vec<Report>,
 
-    scope: Scope<'src, EntityID>,
-    entities: Vec<Entity>,
+    scope: Scope<'src, ir::EntityID>,
+    entities: Vec<ir::Entity>,
+    types: Vec<ir::TypeNode>,
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -24,6 +24,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
             scope: Scope::root(),
             entities: Vec::new(),
+            types: Vec::new(),
         }
     }
 
@@ -35,13 +36,31 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.scope.close();
     }
 
-    fn add_entity(&mut self, entity: Entity) -> EntityID {
-        let id = self.entities.len();
-        self.entities.push(entity);
-        EntityID(id)
+    fn create_type(&mut self, ty: ir::Type, span: Option<Span>) -> ir::TypeID {
+        let id = ir::TypeID(self.types.len());
+        self.types.push(ir::TypeNode {
+            parent: id,
+            ty,
+            loc: span.map(|s| s.wrap(self.file)),
+        });
+        id
     }
 
-    fn get_entity(&self, id: EntityID) -> &Entity {
+    fn create_fresh_type(&mut self, span: Option<Span>) -> ir::TypeID {
+        self.create_type(ir::Type::Var, span)
+    }
+
+    fn unify(&mut self, left: ir::TypeID, right: ir::TypeID) {
+        println!("    {left:?} = {right:?}");
+    }
+
+    // fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
+    //     let id = self.entities.len();
+    //     self.entities.push(entity);
+    //     ir::EntityID(id)
+    // }
+
+    fn get_entity(&self, id: ir::EntityID) -> &ir::Entity {
         &self.entities[id.0]
     }
 
@@ -55,14 +74,24 @@ impl<'src, 'e> Checker<'src, 'e> {
         match e {
             E::Let(..) => todo!(),
             E::Import(..) => todo!(),
-            _ => ir::Stmt::Expr(self.check_expression(e)),
+            _ => {
+                let (expr, ty) = self.check_expression(e);
+                ir::Stmt::Expr(expr, ty)
+            }
         }
     }
 
-    fn check_expression(&mut self, e: &ast::Expr) -> ir::Expr {
+    fn check_expression_list<'a>(
+        &mut self,
+        iter: impl IntoIterator<Item = &'a ast::Expr>,
+    ) -> (Vec<ir::Expr>, Vec<ir::TypeID>) {
+        iter.into_iter().map(|e| self.check_expression(e)).unzip()
+    }
+
+    fn check_expression(&mut self, e: &ast::Expr) -> ir::CheckedExpr {
         use ast::Expr as E;
         match e {
-            E::Missing(e) => self.check_missing(e),
+            E::Missing(_) => self.check_missing(),
             E::Int(e) => self.check_int(e),
             E::Float(e) => self.check_float(e),
             E::String(e) => self.check_string(e),
@@ -84,86 +113,117 @@ impl<'src, 'e> Checker<'src, 'e> {
                     Report::error(Header::InvalidExpression())
                         .with_primary_label(Label::Empty, e.span().wrap(self.file)),
                 );
-                ir::Expr::Missing
+                self.check_missing()
             }
         }
     }
 
-    fn check_missing(&mut self, _: &ast::Lexeme) -> ir::Expr {
-        ir::Expr::Missing
+    fn check_missing(&mut self) -> ir::CheckedExpr {
+        (ir::Expr::Missing, self.create_fresh_type(None))
     }
 
-    fn check_int(&mut self, e: &ast::Lexeme) -> ir::Expr {
+    fn check_int(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         let lexeme = e.span.lexeme(self.source);
         match lexeme.parse::<i64>() {
-            Ok(n) => ir::Expr::Int(n),
+            Ok(n) => (
+                ir::Expr::Int(n),
+                self.create_type(ir::Type::Int, Some(e.span)),
+            ),
             Err(_) => {
                 self.reports.push(
                     Report::error(Header::InvalidInteger())
                         .with_primary_label(Label::Empty, e.span.wrap(self.file)),
                 );
-                ir::Expr::Missing
+                (
+                    ir::Expr::Missing,
+                    self.create_type(ir::Type::Int, Some(e.span)),
+                )
             }
         }
     }
 
-    fn check_float(&mut self, e: &ast::Lexeme) -> ir::Expr {
+    fn check_float(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         let lexeme = e.span.lexeme(self.source);
         match lexeme.parse::<f64>() {
-            Ok(f) => ir::Expr::Float(f),
+            Ok(f) => (
+                ir::Expr::Float(f),
+                self.create_type(ir::Type::Float, Some(e.span)),
+            ),
             Err(_) => {
                 self.reports.push(
                     Report::error(Header::InvalidFloat())
                         .with_primary_label(Label::Empty, e.span.wrap(self.file)),
                 );
-                ir::Expr::Missing
+                (
+                    ir::Expr::Missing,
+                    self.create_type(ir::Type::Float, Some(e.span)),
+                )
             }
         }
     }
 
-    fn check_string(&mut self, e: &ast::Lexeme) -> ir::Expr {
+    fn check_string(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         let lit = &self.source[(e.span.start + 1)..(e.span.end - 1)];
-        ir::Expr::String(lit.to_string())
+        (
+            ir::Expr::String(lit.to_string()),
+            self.create_type(ir::Type::String, Some(e.span)),
+        )
     }
 
-    fn check_bool(&mut self, _: &ast::Lexeme, b: bool) -> ir::Expr {
-        ir::Expr::Bool(b)
+    fn check_bool(&mut self, e: &ast::Lexeme, b: bool) -> ir::CheckedExpr {
+        (
+            ir::Expr::Bool(b),
+            self.create_type(ir::Type::Bool, Some(e.span)),
+        )
     }
 
-    fn check_var(&mut self, e: &ast::Lexeme) -> ir::Expr {
+    fn check_var(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         let name = e.span.lexeme(self.source);
         let Some(&id) = self.scope.search(name) else {
             self.reports.push(
                 Report::error(Header::UnknownVariable(name.to_string()))
                     .with_primary_label(Label::Empty, e.span.wrap(self.file)),
             );
-            return ir::Expr::Missing;
+            return self.check_missing();
         };
 
-        let Entity::Variable = self.get_entity(id) else {
+        let ir::Entity::Variable(var) = self.get_entity(id) else {
             self.reports.push(
                 Report::error(Header::NotVariable(name.to_string()))
                     .with_primary_label(Label::Empty, e.span.wrap(self.file)),
             );
-            return ir::Expr::Missing;
+            return self.check_missing();
         };
 
-        ir::Expr::Var(id)
+        (ir::Expr::Var(id), var.ty)
     }
 
-    fn check_tuple(&mut self, e: &ast::Tuple) -> ir::Expr {
+    fn check_tuple(&mut self, e: &ast::Tuple) -> ir::CheckedExpr {
         if e.items.len() == 1 {
             return self.check_expression(&e.items[0]);
         }
 
-        ir::Expr::Tuple(e.items.iter().map(|e| self.check_expression(e)).collect())
+        let (items, item_types) = self.check_expression_list(&e.items);
+        (
+            ir::Expr::Tuple(items.into()),
+            self.create_type(ir::Type::Tuple(item_types.into()), Some(e.span())),
+        )
     }
 
-    fn check_array(&mut self, e: &ast::Array) -> ir::Expr {
-        ir::Expr::Array(e.items.iter().map(|e| self.check_expression(e)).collect())
+    fn check_array(&mut self, e: &ast::Array) -> ir::CheckedExpr {
+        let array_item_type = self.create_fresh_type(None);
+        let (items, item_types) = self.check_expression_list(&e.items);
+        for item_type in item_types {
+            self.unify(item_type, array_item_type);
+        }
+
+        (
+            ir::Expr::Array(items.into()),
+            self.create_type(ir::Type::Array(array_item_type), Some(e.span())),
+        )
     }
 
-    fn check_block(&mut self, e: &ast::Block) -> ir::Expr {
+    fn check_block(&mut self, e: &ast::Block) -> ir::CheckedExpr {
         let mut iter = e.items.iter().peekable();
         let mut stmts = Vec::with_capacity(e.items.len());
         let mut last = None;
@@ -173,8 +233,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
             if iter.peek().is_none() {
-                if let ir::Stmt::Expr(e) = s {
-                    last = Some(e)
+                if let ir::Stmt::Expr(e, ty) = s {
+                    last = Some((e, ty))
                 }
                 continue;
             }
@@ -183,7 +243,10 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         self.close_scope();
 
-        let last = last.unwrap_or(ir::Expr::unit());
-        ir::Expr::Block(stmts.into(), Box::new(last))
+        let (last, last_type) = last.unwrap_or((
+            ir::Expr::unit(),
+            self.create_type(ir::Type::unit(), Some(e.span())),
+        ));
+        (ir::Expr::Block(stmts.into(), Box::new(last)), last_type)
     }
 }

@@ -1,5 +1,6 @@
-use super::Stmt;
-use crate::com::sem::EntityID;
+use super::{EntityID, Stmt, TypeID};
+
+pub type CheckedExpr = (Expr, TypeID);
 
 #[derive(Debug)]
 pub enum Expr {
