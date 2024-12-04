@@ -1,5 +1,6 @@
 use crate::com::{
-    ast, ir,
+    ast,
+    ir::{self, TypeID},
     loc::Span,
     reporting::{Header, Label, Report},
     scope::Scope,
@@ -50,8 +51,50 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.create_type(ir::Type::Var, span)
     }
 
+    fn get_type_repr(&mut self, id: ir::TypeID) -> TypeID {
+        if self.types[id.0].parent == id {
+            return id;
+        }
+
+        let r = self.get_type_repr(self.types[id.0].parent);
+        self.types[id.0].parent = r;
+        r
+    }
+
+    fn join_type_repr(&mut self, left: ir::TypeID, right: ir::TypeID) {
+        self.types[left.0].parent = right;
+    }
+
+    fn get_type_string(&mut self, id: ir::TypeID) -> ir::TypeString {
+        use ir::Type as T;
+        use ir::TypeString as S;
+        let repr = self.get_type_repr(id).0;
+        match self.types[repr].ty.clone() {
+            T::Var => S::Name(format!("X{repr}")),
+            T::Int => S::Int,
+            T::Float => S::Float,
+            T::Bool => S::Bool,
+            T::String => S::String,
+            T::Tuple(items) => S::Tuple(
+                items
+                    .iter()
+                    .map(|item| self.get_type_string(*item))
+                    .collect(),
+            ),
+            T::Array(item) => S::Array(Box::new(self.get_type_string(item))),
+            T::Lambda(args, ret) => S::Lambda(
+                args.iter().map(|arg| self.get_type_string(*arg)).collect(),
+                Box::new(self.get_type_string(ret)),
+            ),
+        }
+    }
+
     fn unify(&mut self, left: ir::TypeID, right: ir::TypeID) {
-        println!("    {left:?} = {right:?}");
+        println!(
+            "    {} = {}",
+            self.get_type_string(left),
+            self.get_type_string(right)
+        );
     }
 
     // fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {

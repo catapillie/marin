@@ -1,7 +1,7 @@
 use crate::com::loc::Loc;
 use std::fmt::Display;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeID(pub usize);
 
 pub struct TypeNode {
@@ -29,26 +29,26 @@ impl Type {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeRepr {
+pub enum TypeString {
     Name(String),
     Int,
     Float,
     Bool,
     String,
-    Tuple(Box<[TypeRepr]>),
-    Array(Box<TypeRepr>),
-    Lambda(Box<[TypeRepr]>, Box<TypeRepr>),
+    Tuple(Box<[TypeString]>),
+    Array(Box<TypeString>),
+    Lambda(Box<[TypeString]>, Box<TypeString>),
 }
 
-impl TypeRepr {
+impl TypeString {
     fn fmt_paren(&self, paren: bool, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeRepr::Name(name) => write!(f, "{name}"),
-            TypeRepr::Int => write!(f, "int"),
-            TypeRepr::Float => write!(f, "float"),
-            TypeRepr::Bool => write!(f, "bool"),
-            TypeRepr::String => write!(f, "string"),
-            TypeRepr::Tuple(items) => {
+            TypeString::Name(name) => write!(f, "{name}"),
+            TypeString::Int => write!(f, "int"),
+            TypeString::Float => write!(f, "float"),
+            TypeString::Bool => write!(f, "bool"),
+            TypeString::String => write!(f, "string"),
+            TypeString::Tuple(items) => {
                 write!(f, "(")?;
                 let mut iter = items.iter().peekable();
                 while let Some(item) = iter.next() {
@@ -60,12 +60,12 @@ impl TypeRepr {
                 write!(f, ")")?;
                 Ok(())
             }
-            TypeRepr::Array(item) => {
+            TypeString::Array(item) => {
                 write!(f, "[]")?;
                 item.fmt_paren(true, f)?;
                 Ok(())
             }
-            TypeRepr::Lambda(args, ret) => {
+            TypeString::Lambda(args, ret) => {
                 if paren {
                     write!(f, "(")?;
                 }
@@ -88,7 +88,7 @@ impl TypeRepr {
     }
 }
 
-impl Display for TypeRepr {
+impl Display for TypeString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt_paren(false, f)
     }

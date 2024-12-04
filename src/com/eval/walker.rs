@@ -26,7 +26,7 @@ impl<'a> Walker<'a> {
         match stmt {
             S::Expr(e, _) => {
                 let value = self.eval_expression(e)?;
-                eprintln!("{value:?}");
+                eprintln!("{value}");
                 Ok(())
             }
             S::Let => todo!(),
