@@ -1,3 +1,4 @@
+use super::provenance::Provenance;
 use crate::com::{
     ast,
     ir::{self, TypeID},
@@ -85,7 +86,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    fn unify(&mut self, left: ir::TypeID, right: ir::TypeID) {
+    fn unify(&mut self, left: ir::TypeID, right: ir::TypeID, provenances: &[Provenance]) {
         let repr_left = self.get_type_repr(left);
         let repr_right = self.get_type_repr(right);
 
@@ -120,23 +121,23 @@ impl<'src, 'e> Checker<'src, 'e> {
             (T::Tuple(left_items), T::Tuple(right_items)) => {
                 if left_items.len() == right_items.len() {
                     for (&left_item, &right_item) in left_items.iter().zip(right_items.iter()) {
-                        self.unify(left_item, right_item);
+                        self.unify(left_item, right_item, provenances);
                     }
                     return;
                 }
             }
 
             (T::Array(left_item), T::Array(right_item)) => {
-                self.unify(left_item, right_item);
+                self.unify(left_item, right_item, provenances);
                 return;
             }
 
             (T::Lambda(left_args, left_ret), T::Lambda(right_args, right_ret)) => {
                 if left_args.len() == right_args.len() {
                     for (&left_arg, &right_arg) in left_args.iter().zip(right_args.iter()) {
-                        self.unify(right_arg, left_arg);
+                        self.unify(right_arg, left_arg, provenances);
                     }
-                    self.unify(left_ret, right_ret);
+                    self.unify(left_ret, right_ret, provenances);
                     return;
                 }
             }
@@ -167,6 +168,11 @@ impl<'src, 'e> Checker<'src, 'e> {
             Some(loc) => report.with_primary_label(Label::Type(right_string.clone()), loc),
             None => report,
         };
+
+        let mut report = report;
+        for prov in provenances {
+            report = prov.apply(report)
+        }
 
         self.reports.push(report);
     }
@@ -354,8 +360,10 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn check_array(&mut self, e: &ast::Array) -> ir::CheckedExpr {
         let array_item_type = self.create_fresh_type(None);
         let (items, item_types) = self.check_expression_list(&e.items);
+
+        let provenances = &[Provenance::ArrayItems(e.span().wrap(self.file))];
         for item_type in item_types {
-            self.unify(item_type, array_item_type);
+            self.unify(item_type, array_item_type, provenances);
         }
 
         (

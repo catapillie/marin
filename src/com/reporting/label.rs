@@ -9,6 +9,7 @@ pub enum Label {
     RedundantImportPath,
     FirstImportHere(String),
     Type(TypeString),
+    ArrayItemTypes,
 }
 
 impl Label {
@@ -32,6 +33,8 @@ impl Label {
                 => format!("first import of {path} here"),
             L::Type(ty)
                 => ty.to_string(),
+            L::ArrayItemTypes
+                => "all items in an array must be of the same type".to_string(),
         }
     }
 }
