@@ -1,7 +1,7 @@
 use super::provenance::Provenance;
 use crate::com::{
     ast,
-    ir::{self, TypeID},
+    ir::{self, LabelID, TypeID},
     loc::Span,
     reporting::{Header, Label, Report},
     scope::Scope,
@@ -13,7 +13,10 @@ pub struct Checker<'src, 'e> {
     reports: &'e mut Vec<Report>,
 
     scope: Scope<'src, ir::EntityID>,
+    label_scope: Scope<'src, ir::LabelID>,
+
     entities: Vec<ir::Entity>,
+    labels: Vec<ir::Label>,
     types: Vec<ir::TypeNode>,
 }
 
@@ -25,17 +28,22 @@ impl<'src, 'e> Checker<'src, 'e> {
             reports,
 
             scope: Scope::root(),
+            label_scope: Scope::root(),
+
             entities: Vec::new(),
+            labels: Vec::new(),
             types: Vec::new(),
         }
     }
 
-    fn open_scope(&mut self) {
+    fn open_scope(&mut self, blocking: bool) {
         self.scope.open(false);
+        self.label_scope.open(blocking);
     }
 
     fn close_scope(&mut self) {
         self.scope.close();
+        self.label_scope.close();
     }
 
     fn create_type(&mut self, ty: ir::Type, span: Option<Span>) -> ir::TypeID {
@@ -201,14 +209,24 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    // fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
-    //     let id = self.entities.len();
-    //     self.entities.push(entity);
-    //     ir::EntityID(id)
-    // }
+    fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
+        let id = self.entities.len();
+        self.entities.push(entity);
+        ir::EntityID(id)
+    }
 
     fn get_entity(&self, id: ir::EntityID) -> &ir::Entity {
         &self.entities[id.0]
+    }
+
+    fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
+        let id = self.entities.len();
+        self.labels.push(label);
+        ir::LabelID(id)
+    }
+
+    fn get_label(&self, id: ir::LabelID) -> &ir::Label {
+        &self.labels[id.0]
     }
 
     pub fn check_file(&mut self, ast: &ast::File) -> ir::File {
@@ -250,7 +268,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Block(e) => self.check_block(e),
             E::Loop(..) => todo!(),
             E::Conditional(..) => todo!(),
-            E::Break(..) => todo!(),
+            E::Break(e) => self.check_break(e),
             E::Skip(..) => todo!(),
             E::Call(..) => todo!(),
             E::Access(..) => todo!(),
@@ -377,7 +395,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         let mut stmts = Vec::with_capacity(e.items.len());
         let mut last = None;
 
-        self.open_scope();
+        self.open_scope(false);
+        let label_id = self.check_label_definition(&e.label, false);
 
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
@@ -396,6 +415,92 @@ impl<'src, 'e> Checker<'src, 'e> {
             ir::Expr::unit(),
             self.create_type(ir::Type::unit(), Some(e.span())),
         ));
+
+        let label_info = self.get_label(label_id);
+        let provenances = &[Provenance::LabelValues(
+            label_info.loc,
+            label_info.name.clone(),
+        )];
+        self.unify(last_type, label_info.ty, provenances);
+
         (ir::Expr::Block(stmts.into(), Box::new(last)), last_type)
+    }
+
+    fn check_break(&mut self, e: &ast::Break) -> ir::CheckedExpr {
+        let (value, ty) = e
+            .expr
+            .as_ref()
+            .map(|val| {
+                let (e, t) = self.check_expression(val);
+                (Some(e), t)
+            })
+            .unwrap_or((None, self.create_type(ir::Type::unit(), Some(e.span()))));
+
+        let label_name = self.check_label_name(&e.label);
+        let Some(label_id) = self.find_label_by_name(label_name) else {
+            let name = label_name.map(str::to_string);
+            self.reports.push(
+                Report::error(Header::InvalidBreak(name.clone()))
+                    .with_primary_label(Label::NoBreakpointFound(name), e.span().wrap(self.file)),
+            );
+            return self.check_missing();
+        };
+        let label_info = self.get_label(label_id);
+
+        let provenances = &[Provenance::LabelValues(
+            label_info.loc,
+            label_info.name.clone(),
+        )];
+        self.unify(ty, label_info.ty, provenances);
+
+        (
+            ir::Expr::Break(value.map(Box::new), label_id),
+            self.create_fresh_type(Some(e.span())),
+        )
+    }
+
+    fn check_label_definition(&mut self, l: &ast::Label, skippable: bool) -> ir::LabelID {
+        let name = self.check_label_name(l);
+        let ty = self.create_fresh_type(None);
+        let id = self.add_label(ir::Label {
+            name: name.map(str::to_string),
+            ty,
+            skippable,
+            loc: l.span().wrap(self.file),
+        });
+        self.label_scope.insert(name.unwrap_or(""), id);
+        id
+    }
+
+    fn check_label_name(&mut self, l: &ast::Label) -> Option<&'src str> {
+        use ast::Expr as E;
+        use ast::Label as L;
+        match l {
+            L::Empty(_) => None,
+            L::Named(label) => match &*label.name_expr {
+                E::Int(e) | E::Var(e) => Some(e.span.lexeme(self.source)),
+                E::String(e) => Some(&self.source[(e.span.start + 1)..(e.span.end - 1)]),
+                _ => {
+                    self.reports.push(
+                        Report::error(Header::InvalidLabel())
+                            .with_primary_label(Label::Empty, l.span().wrap(self.file)),
+                    );
+                    None
+                }
+            },
+        }
+    }
+
+    fn find_label_by_name(&mut self, label_name: Option<&str>) -> Option<ir::LabelID> {
+        self.label_scope
+            .find(|&id| {
+                let name = &self.get_label(id).name;
+                match (&label_name, name) {
+                    (Some(query), Some(found)) => query == found,
+                    (None, _) => true,
+                    _ => false,
+                }
+            })
+            .copied()
     }
 }

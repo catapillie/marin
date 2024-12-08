@@ -10,6 +10,8 @@ pub enum Label {
     FirstImportHere(String),
     Type(TypeString),
     ArrayItemTypes,
+    LabelValueTypes(Option<String>),
+    NoBreakpointFound(Option<String>),
 }
 
 impl Label {
@@ -35,6 +37,14 @@ impl Label {
                 => ty.to_string(),
             L::ArrayItemTypes
                 => "all items in an array must be of the same type".to_string(),
+            L::LabelValueTypes(Some(name))
+                => format!("all values returned by label '{name}' must be of the same type"),
+            L::LabelValueTypes(None)
+                => "all values at this point must be of the same type".to_string(),
+            L::NoBreakpointFound(None)
+                => "there are no control flow structures to break out of in this scope".to_string(),
+            L::NoBreakpointFound(Some(name))
+                => format!("there are no control flow structures with label '{name}' to break out of in this scope"),
         }
     }
 }

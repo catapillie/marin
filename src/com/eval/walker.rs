@@ -45,6 +45,7 @@ impl<'a> Walker<'a> {
             E::Tuple(items) => self.eval_tuple(items),
             E::Array(items) => self.eval_array(items),
             E::Block(stmts, expr) => self.eval_block(stmts, expr),
+            E::Break(_, _) => todo!(),
         }
     }
 

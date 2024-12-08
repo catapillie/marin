@@ -43,6 +43,19 @@ impl<'a, T> Scope<'a, T> {
         }
     }
 
+    pub fn find<P>(&self, predicate: P) -> Option<&T>
+    where
+        P: Fn(&T) -> bool,
+    {
+        match self.bindings.values().find(|t| predicate(t)) {
+            Some(value) => Some(value),
+            None => match &self.parent {
+                Some(parent) if !self.blocking => parent.find(predicate),
+                _ => None,
+            },
+        }
+    }
+
     pub fn insert(&mut self, key: &'a str, val: T) -> Option<T> {
         self.bindings.insert(key, val)
     }

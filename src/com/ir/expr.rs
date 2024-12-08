@@ -1,4 +1,4 @@
-use super::{EntityID, Stmt, TypeID};
+use super::{EntityID, LabelID, Stmt, TypeID};
 
 pub type CheckedExpr = (Expr, TypeID);
 
@@ -13,6 +13,7 @@ pub enum Expr {
     Tuple(Box<[Expr]>),
     Array(Box<[Expr]>),
     Block(Box<[Stmt]>, Box<Expr>),
+    Break(Option<Box<Expr>>, LabelID),
 }
 
 impl Expr {

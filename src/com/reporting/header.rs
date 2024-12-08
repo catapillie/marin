@@ -26,6 +26,8 @@ pub enum Header {
     InvalidInteger(),
     InvalidFloat(),
     InvalidExpression(),
+    InvalidLabel(),
+    InvalidBreak(Option<String>),
     UnknownVariable(String),
     NotVariable(String),
     TypeMismatch(TypeString, TypeString),
@@ -60,6 +62,8 @@ impl Header {
             H::InvalidInteger(..) => "invalid_integer",
             H::InvalidFloat(..) => "invalid_float",
             H::InvalidExpression(..) => "invalid_expression",
+            H::InvalidLabel(..) => "invalid_label",
+            H::InvalidBreak(..) => "invalid_break",
             H::UnknownVariable(..) => "unknown_variable",
             H::NotVariable(..) => "not_variable",
             H::TypeMismatch(..) => "type_mismatch",
@@ -114,7 +118,13 @@ impl Header {
             H::InvalidFloat()
                 => "invalid float literal".to_string(),
             H::InvalidExpression()
-                => "invalid expression".to_string(),
+                => "invalid expression syntax".to_string(),
+            H::InvalidLabel()
+                => "invalid label syntax".to_string(),
+            H::InvalidBreak(None)
+                => "invalid break".to_string(),
+            H::InvalidBreak(Some(name))
+                => format!("invalid break to label '{name}'"),
             H::UnknownVariable(name)
                 => format!("unknown variable '{name}' in the current scope"),
             H::NotVariable(name)
