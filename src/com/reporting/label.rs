@@ -1,3 +1,5 @@
+use crate::com::ir::TypeString;
+
 pub enum Label {
     Empty,
     ExpectedImportQuery,
@@ -6,6 +8,7 @@ pub enum Label {
     TrailingSuper,
     RedundantImportPath,
     FirstImportHere(String),
+    Type(TypeString),
 }
 
 impl Label {
@@ -27,6 +30,8 @@ impl Label {
                 => "this part of the import query is redundant".to_string(),
             L::FirstImportHere(path)
                 => format!("first import of {path} here"),
+            L::Type(ty)
+                => ty.to_string(),
         }
     }
 }

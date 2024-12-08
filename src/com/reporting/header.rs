@@ -1,4 +1,4 @@
-use crate::com::Token;
+use crate::com::{ir::TypeString, Token};
 
 pub enum Header {
     #[allow(dead_code)]
@@ -28,6 +28,7 @@ pub enum Header {
     InvalidExpression(),
     UnknownVariable(String),
     NotVariable(String),
+    TypeMismatch(TypeString, TypeString),
 }
 
 impl Header {
@@ -61,6 +62,7 @@ impl Header {
             H::InvalidExpression(..) => "invalid_expression",
             H::UnknownVariable(..) => "unknown_variable",
             H::NotVariable(..) => "not_variable",
+            H::TypeMismatch(..) => "type_mismatch",
         }
     }
 
@@ -117,6 +119,8 @@ impl Header {
                 => format!("unknown variable '{name}' in the current scope"),
             H::NotVariable(name)
                 => format!("identifier '{name}' does not refer to a variable in the current scope"),
+            H::TypeMismatch(left, right)
+                => format!("type mismatch between {left} and {right}"),
         }
     }
 }

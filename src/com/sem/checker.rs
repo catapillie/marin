@@ -65,6 +65,112 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.types[left.0].parent = right;
     }
 
+    fn occurs_in_type(&mut self, left: ir::TypeID, right: ir::TypeID) -> bool {
+        let left = self.get_type_repr(left);
+        let right = self.get_type_repr(right);
+
+        use ir::Type as T;
+        match self.types[right.0].ty.clone() {
+            T::Var => left == right,
+            T::Int => false,
+            T::Float => false,
+            T::Bool => false,
+            T::String => false,
+            T::Tuple(items) => items.iter().any(|&item| self.occurs_in_type(left, item)),
+            T::Array(item) => self.occurs_in_type(left, item),
+            T::Lambda(args, ret) => {
+                args.iter().any(|&arg| self.occurs_in_type(left, arg))
+                    || self.occurs_in_type(left, ret)
+            }
+        }
+    }
+
+    fn unify(&mut self, left: ir::TypeID, right: ir::TypeID) {
+        let repr_left = self.get_type_repr(left);
+        let repr_right = self.get_type_repr(right);
+
+        let left = &self.types[repr_left.0];
+        let right = &self.types[repr_right.0];
+
+        use ir::Type as T;
+        match (left.ty.clone(), right.ty.clone()) {
+            (T::Var, T::Var) => {
+                self.join_type_repr(repr_left, repr_right);
+                return;
+            }
+
+            (_, T::Var) => {
+                if !self.occurs_in_type(repr_left, repr_right) {
+                    self.join_type_repr(repr_right, repr_left);
+                    return;
+                }
+            }
+            (T::Var, _) => {
+                if !self.occurs_in_type(repr_right, repr_left) {
+                    self.join_type_repr(repr_left, repr_right);
+                    return;
+                }
+            }
+
+            (T::Int, T::Int) => return,
+            (T::Float, T::Float) => return,
+            (T::String, T::String) => return,
+            (T::Bool, T::Bool) => return,
+
+            (T::Tuple(left_items), T::Tuple(right_items)) => {
+                if left_items.len() == right_items.len() {
+                    for (&left_item, &right_item) in left_items.iter().zip(right_items.iter()) {
+                        self.unify(left_item, right_item);
+                    }
+                    return;
+                }
+            }
+
+            (T::Array(left_item), T::Array(right_item)) => {
+                self.unify(left_item, right_item);
+                return;
+            }
+
+            (T::Lambda(left_args, left_ret), T::Lambda(right_args, right_ret)) => {
+                if left_args.len() == right_args.len() {
+                    for (&left_arg, &right_arg) in left_args.iter().zip(right_args.iter()) {
+                        self.unify(right_arg, left_arg);
+                    }
+                    self.unify(left_ret, right_ret);
+                    return;
+                }
+            }
+
+            _ => {}
+        }
+
+        let left = &self.types[repr_left.0];
+        let right = &self.types[repr_right.0];
+
+        let left_loc = left.loc;
+        let right_loc = right.loc;
+
+        let left_string = self.get_type_string(repr_left);
+        let right_string = self.get_type_string(repr_right);
+
+        let report = Report::error(Header::TypeMismatch(
+            left_string.clone(),
+            right_string.clone(),
+        ));
+
+        let report = match left_loc {
+            Some(loc) => report.with_primary_label(Label::Type(left_string.clone()), loc),
+            None => report,
+        };
+
+        let report = match right_loc {
+            Some(loc) => report.with_primary_label(Label::Type(right_string.clone()), loc),
+            None => report,
+        };
+
+        self.reports.push(report);
+    }
+
     fn get_type_string(&mut self, id: ir::TypeID) -> ir::TypeString {
         use ir::Type as T;
         use ir::TypeString as S;
@@ -87,14 +193,6 @@ impl<'src, 'e> Checker<'src, 'e> {
                 Box::new(self.get_type_string(ret)),
             ),
         }
-    }
-
-    fn unify(&mut self, left: ir::TypeID, right: ir::TypeID) {
-        println!(
-            "    {} = {}",
-            self.get_type_string(left),
-            self.get_type_string(right)
-        );
     }
 
     // fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
