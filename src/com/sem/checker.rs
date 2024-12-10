@@ -1,8 +1,7 @@
-use std::any::Any;
-
 use super::provenance::Provenance;
 use crate::com::{
-    ast, ir,
+    ast,
+    ir::{self, TypeProvenance},
     loc::Span,
     reporting::{Header, Label, Report},
     scope::Scope,
@@ -53,12 +52,17 @@ impl<'src, 'e> Checker<'src, 'e> {
             parent: id,
             ty,
             loc: span.map(|s| s.wrap(self.file)),
+            provenances: Vec::new(),
         });
         id
     }
 
     fn create_fresh_type(&mut self, span: Option<Span>) -> ir::TypeID {
         self.create_type(ir::Type::Var, span)
+    }
+
+    fn add_type_provenance(&mut self, id: ir::TypeID, prov: TypeProvenance) {
+        self.types[id.0].provenances.push(prov)
     }
 
     fn get_type_repr(&mut self, id: ir::TypeID) -> ir::TypeID {
@@ -154,14 +158,12 @@ impl<'src, 'e> Checker<'src, 'e> {
             _ => {}
         }
 
-        let left = &self.types[repr_left.0];
-        let right = &self.types[repr_right.0];
-
-        let left_loc = left.loc;
-        let right_loc = right.loc;
-
         let left_string = self.get_type_string(repr_left);
         let right_string = self.get_type_string(repr_right);
+        let left = &self.types[repr_left.0];
+        let right = &self.types[repr_right.0];
+        let left_loc = left.loc;
+        let right_loc = right.loc;
 
         let report = Report::error(Header::TypeMismatch(
             left_string.clone(),
@@ -180,6 +182,12 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let mut report = report;
         for prov in provenances {
+            report = prov.apply(report)
+        }
+        for prov in &left.provenances {
+            report = prov.apply(report)
+        }
+        for prov in &right.provenances {
             report = prov.apply(report)
         }
 
@@ -457,8 +465,16 @@ impl<'src, 'e> Checker<'src, 'e> {
             );
             return self.check_missing();
         };
-        let label_info = self.get_label(label_id);
 
+        self.add_type_provenance(
+            ty,
+            TypeProvenance::ReturnedFromBreak(
+                e.span().wrap(self.file),
+                self.get_label(label_id).name.clone(),
+            ),
+        );
+
+        let label_info = self.get_label(label_id);
         let provenances = &[Provenance::LabelValues(
             label_info.loc,
             label_info.name.clone(),

@@ -14,7 +14,7 @@ impl Provenance {
         match self {
             Pr::ArrayItems(loc) => report.with_secondary_label(Label::ArrayItemTypes, *loc),
             Pr::LabelValues(loc, name) => {
-                report.with_secondary_label(Label::LabelValueTypes(name.clone()), *loc)
+                report.with_secondary_label(Label::ReturnValueTypes(name.clone()), *loc)
             }
         }
     }

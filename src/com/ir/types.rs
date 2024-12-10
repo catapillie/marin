@@ -1,4 +1,7 @@
-use crate::com::loc::Loc;
+use crate::com::{
+    loc::Loc,
+    reporting::{Label, Report},
+};
 use std::fmt::Display;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -8,6 +11,7 @@ pub struct TypeNode {
     pub parent: TypeID,
     pub ty: Type,
     pub loc: Option<Loc>,
+    pub provenances: Vec<TypeProvenance>,
 }
 
 #[derive(Clone)]
@@ -91,5 +95,20 @@ impl TypeString {
 impl Display for TypeString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt_paren(false, f)
+    }
+}
+
+pub enum TypeProvenance {
+    ReturnedFromBreak(Loc, Option<String>),
+}
+
+impl TypeProvenance {
+    pub fn apply(&self, report: Report) -> Report {
+        use TypeProvenance as Pr;
+        match self {
+            Pr::ReturnedFromBreak(loc, name) => {
+                report.with_secondary_label(Label::ReturnedFromBreak(name.clone()), *loc)
+            }
+        }
     }
 }
