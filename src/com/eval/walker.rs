@@ -43,6 +43,7 @@ impl<'a> Walker<'a> {
             E::Tuple(items) => self.eval_tuple(items),
             E::Array(items) => self.eval_array(items),
             E::Block(stmts, id) => self.eval_block(stmts, id.0),
+            E::Loop(stmts, id) => self.eval_loop(stmts, id.0),
             E::Break(None, id) => self.eval_break(id.0),
             E::Break(Some(value), id) => self.eval_break_with(value, id.0),
         }
@@ -81,6 +82,19 @@ impl<'a> Walker<'a> {
         }
 
         Ok(last)
+    }
+
+    fn eval_loop(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Value> {
+        loop {
+            for stmt in stmts {
+                match self.eval_statement(stmt) {
+                    Err(State::Break(id)) if label_id == id => return Ok(Value::unit()),
+                    Err(State::BreakWith(id, val)) if label_id == id => return Ok(val),
+                    Err(e) => return Err(e),
+                    Ok(_) => continue,
+                }
+            }
+        }
     }
 
     fn eval_break(&mut self, id: usize) -> Result<Value> {

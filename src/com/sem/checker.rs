@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use super::provenance::Provenance;
 use crate::com::{
     ast, ir,
@@ -265,7 +267,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Tuple(e) => self.check_tuple(e),
             E::Array(e) => self.check_array(e),
             E::Block(e) => self.check_block(e),
-            E::Loop(..) => todo!(),
+            E::Loop(e) => self.check_loop(e),
             E::Conditional(..) => todo!(),
             E::Break(e) => self.check_break(e),
             E::Skip(..) => todo!(),
@@ -417,6 +419,23 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.unify(last_type, label_info.ty, provenances);
 
         (ir::Expr::Block(stmts.into(), label_id), last_type)
+    }
+
+    fn check_loop(&mut self, e: &ast::Loop) -> ir::CheckedExpr {
+        self.open_scope(false);
+        let label_id = self.check_label_definition(&e.label, false);
+
+        let mut stmts = Vec::with_capacity(e.items.len());
+        for item in &e.items {
+            let s = self.check_statement(item);
+            stmts.push(s);
+        }
+
+        self.close_scope();
+
+        let label_info = self.get_label(label_id);
+        let loop_type = label_info.ty;
+        (ir::Expr::Loop(stmts.into(), label_id), loop_type)
     }
 
     fn check_break(&mut self, e: &ast::Break) -> ir::CheckedExpr {

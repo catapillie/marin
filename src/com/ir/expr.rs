@@ -13,6 +13,7 @@ pub enum Expr {
     Tuple(Box<[Expr]>),
     Array(Box<[Expr]>),
     Block(Box<[Stmt]>, LabelID),
+    Loop(Box<[Stmt]>, LabelID),
     Break(Option<Box<Expr>>, LabelID),
 }
 
