@@ -75,13 +75,13 @@ fn walk_branch<'a>(branch: &'a Branch, nodes: &mut Vec<&'a Expr>) {
     use Branch as B;
     match branch {
         B::If(b) => {
-            walk_expr(&b.guard, nodes);
+            walk_expr(&b.condition, nodes);
             for item in &b.body {
                 walk_expr(item, nodes);
             }
         }
         B::While(b) => {
-            walk_expr(&b.guard, nodes);
+            walk_expr(&b.condition, nodes);
             for item in &b.body {
                 walk_expr(item, nodes);
             }
@@ -93,7 +93,7 @@ fn walk_branch<'a>(branch: &'a Branch, nodes: &mut Vec<&'a Expr>) {
                 walk_expr(&case.value, nodes);
             }
         }
-        B::Fallback(b) => {
+        B::Else(b) => {
             for item in &b.body {
                 walk_expr(item, nodes);
             }

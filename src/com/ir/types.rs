@@ -100,6 +100,7 @@ impl Display for TypeString {
 
 pub enum TypeProvenance {
     ReturnedFromBreak(Loc, Option<String>),
+    NonExhaustiveConditional(crate::com::loc::Loc),
 }
 
 impl TypeProvenance {
@@ -108,6 +109,9 @@ impl TypeProvenance {
         match self {
             Pr::ReturnedFromBreak(loc, name) => {
                 report.with_secondary_label(Label::ReturnedFromBreak(name.clone()), *loc)
+            }
+            Pr::NonExhaustiveConditional(loc) => {
+                report.with_secondary_label(Label::NonExhaustiveConditionalUnit, *loc)
             }
         }
     }

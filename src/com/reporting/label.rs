@@ -13,6 +13,11 @@ pub enum Label {
     ReturnValueTypes(Option<String>),
     ReturnedFromBreak(Option<String>),
     NoBreakpointFound(Option<String>),
+    ConditionBoolType,
+    ConditionalReturnValues,
+    NonExhaustiveConditionalUnit,
+    ExhaustiveConditionalBranches(usize),
+    UnreachableConditionalBranches(usize),
 }
 
 impl Label {
@@ -47,9 +52,23 @@ impl Label {
             L::ReturnedFromBreak(None)
                 => "this value is returned from this break expression".to_string(),
             L::ReturnedFromBreak(Some(name))
-                => format!("this value is returned from this break out of the '{name}' label"),
+                => format!("this value is returned from this break out of label '{name}'"),
             L::NoBreakpointFound(Some(name))
                 => format!("there are no control flow structures with label '{name}' to break out of in this scope"),
+            L::ConditionBoolType
+                => "condition expression must be a boolean".to_string(),
+            L::ConditionalReturnValues
+                => "all values returned by this conditional expression must be of the same type".to_string(),
+            L::NonExhaustiveConditionalUnit
+                => "non-exhaustive conditional expression returns unit".to_string(),
+            L::ExhaustiveConditionalBranches(1)
+                => "the previous conditional branch is exhaustive".to_string(),
+            L::ExhaustiveConditionalBranches(_)
+                => "the previous conditional branches are exhaustive".to_string(),
+            L::UnreachableConditionalBranches(1)
+                => "this conditional branch is never reached".to_string(),
+            L::UnreachableConditionalBranches(_)
+                => "these conditional branches are never reached".to_string(),
         }
     }
 }

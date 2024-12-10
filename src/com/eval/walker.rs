@@ -43,6 +43,7 @@ impl<'a> Walker<'a> {
             E::Tuple(items) => self.eval_tuple(items),
             E::Array(items) => self.eval_array(items),
             E::Block(stmts, id) => self.eval_block(stmts, id.0),
+            E::Conditional(branches, exhaustive) => self.eval_conditional(branches, *exhaustive),
             E::Loop(stmts, id) => self.eval_loop(stmts, id.0),
             E::Break(None, id) => self.eval_break(id.0),
             E::Break(Some(value), id) => self.eval_break_with(value, id.0),
@@ -82,6 +83,83 @@ impl<'a> Walker<'a> {
         }
 
         Ok(last)
+    }
+
+    fn eval_conditional(&mut self, branches: &[ir::Branch], is_exhaustive: bool) -> Result<Value> {
+        for branch in branches {
+            if let Some(val) = self.eval_branch(branch)? {
+                if is_exhaustive {
+                    return Ok(val);
+                } else {
+                    return Ok(Value::unit());
+                }
+            }
+        }
+
+        Err(State::Error(Error::InvalidState))
+    }
+
+    fn eval_branch(&mut self, b: &ir::Branch) -> Result<Option<Value>> {
+        use ir::Branch as B;
+        match b {
+            B::If(condition, stmts, label_id) => self.eval_if(condition, stmts, label_id.0),
+            B::While(condition, stmts, label_id) => self.eval_while(condition, stmts, label_id.0),
+            B::Else(stmts, label_id) => self.eval_else(stmts, label_id.0),
+        }
+    }
+
+    fn eval_if(
+        &mut self,
+        condition: &ir::Expr,
+        stmts: &[ir::Stmt],
+        label_id: usize,
+    ) -> Result<Option<Value>> {
+        match self.eval_expression(condition)? {
+            Value::Bool(true) => {}
+            Value::Bool(false) => return Ok(None),
+            _ => return Err(State::Error(Error::NonBooleanCondition)),
+        };
+
+        let mut last = Value::unit();
+        for stmt in stmts {
+            match self.eval_statement(stmt) {
+                Err(State::Break(id)) if label_id == id => return Ok(Some(Value::unit())),
+                Err(State::BreakWith(id, val)) if label_id == id => return Ok(Some(val)),
+                Err(e) => return Err(e),
+                Ok(Some(val)) => last = val,
+                Ok(_) => continue,
+            }
+        }
+
+        Ok(Some(last))
+    }
+
+    fn eval_while(
+        &mut self,
+        condition: &ir::Expr,
+        stmts: &[ir::Stmt],
+        label_id: usize,
+    ) -> Result<Option<Value>> {
+        loop {
+            match self.eval_expression(condition)? {
+                Value::Bool(true) => {}
+                Value::Bool(false) => return Ok(None),
+                _ => return Err(State::Error(Error::NonBooleanCondition)),
+            };
+
+            for stmt in stmts {
+                match self.eval_statement(stmt) {
+                    Err(State::Break(id)) if label_id == id => return Ok(Some(Value::unit())),
+                    Err(State::BreakWith(id, val)) if label_id == id => return Ok(Some(val)),
+                    Err(e) => return Err(e),
+                    Ok(_) => continue,
+                }
+            }
+        }
+    }
+
+    fn eval_else(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Option<Value>> {
+        self.eval_block(stmts, label_id).map(Some)
     }
 
     fn eval_loop(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Value> {

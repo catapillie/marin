@@ -367,7 +367,7 @@ impl<'src, 'e> Parser<'src, 'e> {
         let label = self.parse_optional_label();
         let body = self.parse_newline_separated_items();
 
-        ast::Branch::Fallback(ast::FallbackBranch {
+        ast::Branch::Else(ast::ElseBranch {
             label: Box::new(label),
             body,
         })
@@ -376,7 +376,7 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_if_branch(&mut self) -> Option<ast::Branch> {
         let if_kw = self.try_expect_token(Token::If)?;
         let label = self.parse_optional_label();
-        let guard = self.expect_expression();
+        let condition = self.expect_expression();
         let then_kw = self.expect_token(Token::Then);
         let body = self.parse_newline_separated_items();
 
@@ -384,7 +384,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             if_kw,
             then_kw,
             label: Box::new(label),
-            guard: Box::new(guard),
+            condition: Box::new(condition),
             body,
         }))
     }
@@ -392,7 +392,7 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_while_branch(&mut self) -> Option<ast::Branch> {
         let while_kw = self.try_expect_token(Token::While)?;
         let label = self.parse_optional_label();
-        let guard = self.expect_expression();
+        let condition = self.expect_expression();
         let do_kw = self.expect_token(Token::Do);
         let body = self.parse_newline_separated_items();
 
@@ -400,7 +400,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             while_kw,
             do_kw,
             label: Box::new(label),
-            guard: Box::new(guard),
+            condition: Box::new(condition),
             body,
         }))
     }

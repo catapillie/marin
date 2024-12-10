@@ -276,7 +276,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Array(e) => self.check_array(e),
             E::Block(e) => self.check_block(e),
             E::Loop(e) => self.check_loop(e),
-            E::Conditional(..) => todo!(),
+            E::Conditional(e) => self.check_conditional(e),
             E::Break(e) => self.check_break(e),
             E::Skip(..) => todo!(),
             E::Call(..) => todo!(),
@@ -399,13 +399,18 @@ impl<'src, 'e> Checker<'src, 'e> {
         )
     }
 
-    fn check_block(&mut self, e: &ast::Block) -> ir::CheckedExpr {
-        let mut iter = e.items.iter().peekable();
-        let mut stmts = Vec::with_capacity(e.items.len());
-        let mut last_type = self.create_type(ir::Type::unit(), Some(e.span()));
+    fn check_expression_block(
+        &mut self,
+        label: &ast::Label,
+        items: &[ast::Expr],
+        span: Span,
+    ) -> (Box<[ir::Stmt]>, ir::LabelID, ir::TypeID) {
+        let mut iter = items.iter().peekable();
+        let mut stmts = Vec::with_capacity(items.len());
+        let mut last_type = self.create_type(ir::Type::unit(), Some(span));
 
         self.open_scope(false);
-        let label_id = self.check_label_definition(&e.label, false);
+        let label_id = self.check_label_definition(label, false);
 
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
@@ -426,24 +431,152 @@ impl<'src, 'e> Checker<'src, 'e> {
         )];
         self.unify(last_type, label_info.ty, provenances);
 
-        (ir::Expr::Block(stmts.into(), label_id), last_type)
+        (stmts.into(), label_id, last_type)
     }
 
-    fn check_loop(&mut self, e: &ast::Loop) -> ir::CheckedExpr {
+    fn check_statement_block(
+        &mut self,
+        label: &ast::Label,
+        items: &[ast::Expr],
+    ) -> (Box<[ir::Stmt]>, ir::LabelID, ir::TypeID) {
         self.open_scope(false);
-        let label_id = self.check_label_definition(&e.label, false);
+        let label_id = self.check_label_definition(label, false);
 
-        let mut stmts = Vec::with_capacity(e.items.len());
-        for item in &e.items {
+        let mut stmts = Vec::with_capacity(items.len());
+        for item in items {
             let s = self.check_statement(item);
             stmts.push(s);
         }
 
         self.close_scope();
 
-        let label_info = self.get_label(label_id);
-        let loop_type = label_info.ty;
-        (ir::Expr::Loop(stmts.into(), label_id), loop_type)
+        (stmts.into(), label_id, self.get_label(label_id).ty)
+    }
+
+    fn check_block(&mut self, e: &ast::Block) -> ir::CheckedExpr {
+        let (stmts, label_id, last_type) =
+            self.check_expression_block(&e.label, &e.items, e.span());
+        (ir::Expr::Block(stmts, label_id), last_type)
+    }
+
+    fn check_loop(&mut self, e: &ast::Loop) -> ir::CheckedExpr {
+        let (stmts, label_id, loop_type) = self.check_statement_block(&e.label, &e.items);
+        (ir::Expr::Loop(stmts, label_id), loop_type)
+    }
+
+    fn check_conditional(&mut self, e: &ast::Conditional) -> ir::CheckedExpr {
+        let mut branches = Vec::with_capacity(e.else_branches.len() + 1);
+        let mut branch_types = Vec::with_capacity(e.else_branches.len() + 1);
+        let (first_branch, first_branch_type, mut is_exhaustive) =
+            self.check_branch(&e.first_branch);
+        branches.push(first_branch);
+        branch_types.push(first_branch_type);
+
+        let mut exhaustive_branches_span = e.first_branch.span();
+        let mut exhaustive_branch_count = 0;
+        let mut unreachable_branches_span = None;
+        let mut unreachable_branch_count = 0;
+        for (else_tok, else_branch) in &e.else_branches {
+            let branch_span = Span::combine(*else_tok, else_branch.span());
+            let (branch, else_branch_type, is_else_exhaustive) = self.check_branch(else_branch);
+            branch_types.push(else_branch_type);
+
+            if !is_exhaustive {
+                branches.push(branch);
+                exhaustive_branches_span = Span::combine(exhaustive_branches_span, branch_span);
+                exhaustive_branch_count += 1;
+                is_exhaustive |= is_else_exhaustive;
+            } else {
+                unreachable_branch_count += 1;
+                unreachable_branches_span = match unreachable_branches_span {
+                    Some(sp) => Some(Span::combine(sp, branch_span)),
+                    None => Some(branch_span),
+                }
+            }
+        }
+
+        if let Some(branches_span) = unreachable_branches_span {
+            self.reports.push(
+                Report::warning(Header::UnreachableConditionalBranches(
+                    unreachable_branch_count,
+                ))
+                .with_primary_label(
+                    Label::UnreachableConditionalBranches(unreachable_branch_count),
+                    branches_span.wrap(self.file),
+                )
+                .with_secondary_label(
+                    Label::ExhaustiveConditionalBranches(exhaustive_branch_count),
+                    exhaustive_branches_span.wrap(self.file),
+                ),
+            );
+        }
+
+        let result_type = if is_exhaustive {
+            let result_type = self.create_fresh_type(Some(e.span()));
+            let provenances = &[Provenance::ConditionalReturnValues(
+                e.span().wrap(self.file),
+            )];
+            for branch_type in branch_types {
+                self.unify(branch_type, result_type, provenances);
+            }
+            result_type
+        } else {
+            let unit_type = self.create_type(ir::Type::unit(), Some(e.span()));
+            self.add_type_provenance(
+                unit_type,
+                TypeProvenance::NonExhaustiveConditional(e.span().wrap(self.file)),
+            );
+            unit_type
+        };
+
+        (
+            ir::Expr::Conditional(branches.into(), is_exhaustive),
+            result_type,
+        )
+    }
+
+    // returns (branch_type, is_exhaustive)
+    fn check_branch(&mut self, b: &ast::Branch) -> (ir::Branch, ir::TypeID, bool) {
+        use ast::Branch as B;
+        let span = b.span();
+        match b {
+            B::If(b) => self.check_if(b, span),
+            B::While(b) => self.check_while(b, span),
+            B::Match(_) => todo!(),
+            B::Else(b) => self.check_else(b, span),
+        }
+    }
+
+    fn check_if(&mut self, b: &ast::IfBranch, span: Span) -> (ir::Branch, ir::TypeID, bool) {
+        let (condition, condition_type) = self.check_expression(&b.condition);
+        let bool_type = self.create_type(ir::Type::Bool, None);
+        let provenances = &[Provenance::ConditionalBoolType(
+            b.condition.span().wrap(self.file),
+        )];
+        self.unify(condition_type, bool_type, provenances);
+
+        let (stmts, label_id, branch_type) = self.check_expression_block(&b.label, &b.body, span);
+        let branch = ir::Branch::If(Box::new(condition), stmts, label_id);
+        (branch, branch_type, false)
+    }
+
+    fn check_while(&mut self, b: &ast::WhileBranch, _: Span) -> (ir::Branch, ir::TypeID, bool) {
+        let (condition, condition_type) = self.check_expression(&b.condition);
+        let bool_type = self.create_type(ir::Type::Bool, None);
+        let provenances = &[Provenance::ConditionalBoolType(
+            b.condition.span().wrap(self.file),
+        )];
+        self.unify(condition_type, bool_type, provenances);
+
+        let (stmts, label_id, branch_type) = self.check_statement_block(&b.label, &b.body);
+        let branch = ir::Branch::While(Box::new(condition), stmts, label_id);
+        (branch, branch_type, false)
+    }
+
+    fn check_else(&mut self, b: &ast::ElseBranch, span: Span) -> (ir::Branch, ir::TypeID, bool) {
+        let (stmts, label_id, branch_type) = self.check_expression_block(&b.label, &b.body, span);
+        let branch = ir::Branch::Else(stmts, label_id);
+        (branch, branch_type, true)
     }
 
     fn check_break(&mut self, e: &ast::Break) -> ir::CheckedExpr {

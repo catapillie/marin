@@ -79,7 +79,7 @@ pub enum Branch {
     If(IfBranch),
     While(WhileBranch),
     Match(MatchBranch),
-    Fallback(FallbackBranch),
+    Else(ElseBranch),
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +87,7 @@ pub struct IfBranch {
     pub if_kw: Span,
     pub then_kw: Span,
     pub label: Box<Label>,
-    pub guard: Box<Expr>,
+    pub condition: Box<Expr>,
     pub body: Box<[Expr]>,
 }
 
@@ -96,7 +96,7 @@ pub struct WhileBranch {
     pub while_kw: Span,
     pub do_kw: Span,
     pub label: Box<Label>,
-    pub guard: Box<Expr>,
+    pub condition: Box<Expr>,
     pub body: Box<[Expr]>,
 }
 
@@ -117,7 +117,7 @@ pub struct MatchCase {
 }
 
 #[derive(Debug, Clone)]
-pub struct FallbackBranch {
+pub struct ElseBranch {
     pub label: Box<Label>,
     pub body: Box<[Expr]>,
 }
@@ -325,14 +325,14 @@ impl Branch {
             Branch::If(b) => mix_spans([
                 b.if_kw,
                 b.label.span(),
-                b.guard.span(),
+                b.condition.span(),
                 b.then_kw,
                 item_spans(&b.body),
             ]),
             Branch::While(b) => mix_spans([
                 b.while_kw,
                 b.label.span(),
-                b.guard.span(),
+                b.condition.span(),
                 b.do_kw,
                 item_spans(&b.body),
             ]),
@@ -347,7 +347,7 @@ impl Branch {
                     })),
                 ])
             }
-            Branch::Fallback(b) => mix_spans([b.label.span(), item_spans(&b.body)]),
+            Branch::Else(b) => mix_spans([b.label.span(), item_spans(&b.body)]),
         }
     }
 }
