@@ -12,7 +12,7 @@ pub enum Expr {
     Var(EntityID),
     Tuple(Box<[Expr]>),
     Array(Box<[Expr]>),
-    Block(Box<[Stmt]>, Box<Expr>),
+    Block(Box<[Stmt]>, LabelID),
     Break(Option<Box<Expr>>, LabelID),
 }
 

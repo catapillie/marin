@@ -190,7 +190,7 @@ impl Array {
 
 impl Spread {
     pub fn span(&self) -> Span {
-        mix_spans([self.spread, self.name.unwrap_or(Span::default())])
+        mix_spans([self.spread, self.name.unwrap_or_default()])
     }
 }
 
@@ -221,8 +221,7 @@ impl Conditional {
         mix_spans([
             self.first_branch.span(),
             mix_spans(
-                self
-                    .else_branches
+                self.else_branches
                     .iter()
                     .map(|(else_kw, branch)| mix_spans([*else_kw, branch.span()])),
             ),
@@ -236,11 +235,7 @@ impl Break {
         mix_spans([
             self.break_kw,
             self.label.span(),
-            self
-                .expr
-                .as_ref()
-                .map(|e| e.span())
-                .unwrap_or(Span::default()),
+            self.expr.as_ref().map(|e| e.span()).unwrap_or_default(),
         ])
     }
 }
@@ -273,7 +268,7 @@ impl Let {
         mix_spans([
             self.let_kw,
             self.pattern.span(),
-            self.assign.unwrap_or(Span::default()),
+            self.assign.unwrap_or_default(),
             self.value.span(),
         ])
     }
@@ -284,7 +279,7 @@ impl Fun {
         mix_spans([
             self.fun_kw,
             self.signature.span(),
-            self.maps.unwrap_or(Span::default()),
+            self.maps.unwrap_or_default(),
             self.value.span(),
         ])
     }

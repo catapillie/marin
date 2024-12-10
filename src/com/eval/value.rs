@@ -10,6 +10,12 @@ pub enum Value {
     Array(Box<[Value]>),
 }
 
+impl Value {
+    pub fn unit()-> Self {
+        Self::Tuple(Box::new([]))
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Value as V;

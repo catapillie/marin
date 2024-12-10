@@ -1,7 +1,7 @@
 use super::{Error, Value};
 use crate::com::{ir, scope::Scope};
 
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, State>;
 
 pub struct Walker<'a> {
     variables: Scope<'a, Value>,
@@ -14,21 +14,19 @@ impl<'a> Walker<'a> {
         }
     }
 
-    pub fn eval_file(&mut self, ir: &ir::File) -> Result<()> {
+    pub fn eval_file(&mut self, ir: &ir::File) -> std::result::Result<(), Error> {
         for stmt in &ir.stmts {
-            self.eval_statement(stmt)?;
+            if let Some(e) = self.eval_statement(stmt)? {
+                println!("{e}")
+            }
         }
         Ok(())
     }
 
-    pub fn eval_statement(&mut self, stmt: &ir::Stmt) -> Result<()> {
+    fn eval_statement(&mut self, stmt: &ir::Stmt) -> Result<Option<Value>> {
         use ir::Stmt as S;
         match stmt {
-            S::Expr(e, _) => {
-                let value = self.eval_expression(e)?;
-                eprintln!("{value}");
-                Ok(())
-            }
+            S::Expr(e, _) => self.eval_expression(e).map(Some),
             S::Let => todo!(),
         }
     }
@@ -36,7 +34,7 @@ impl<'a> Walker<'a> {
     fn eval_expression(&mut self, e: &ir::Expr) -> Result<Value> {
         use ir::Expr as E;
         match e {
-            E::Missing => Err(Error::Missing),
+            E::Missing => Err(State::Error(Error::Missing)),
             E::Int(n) => Ok(Value::Int(*n)),
             E::Float(f) => Ok(Value::Float(*f)),
             E::String(s) => Ok(Value::String(s.clone())),
@@ -44,8 +42,9 @@ impl<'a> Walker<'a> {
             E::Var(id) => self.eval_var(*id),
             E::Tuple(items) => self.eval_tuple(items),
             E::Array(items) => self.eval_array(items),
-            E::Block(stmts, expr) => self.eval_block(stmts, expr),
-            E::Break(_, _) => todo!(),
+            E::Block(stmts, id) => self.eval_block(stmts, id.0),
+            E::Break(None, id) => self.eval_break(id.0),
+            E::Break(Some(value), id) => self.eval_break_with(value, id.0),
         }
     }
 
@@ -69,10 +68,42 @@ impl<'a> Walker<'a> {
         Ok(Value::Array(values.into()))
     }
 
-    fn eval_block(&mut self, stmts: &[ir::Stmt], expr: &ir::Expr) -> Result<Value> {
+    fn eval_block(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Value> {
+        let mut last = Value::unit();
         for stmt in stmts {
-            self.eval_statement(stmt)?;
+            match self.eval_statement(stmt) {
+                Err(State::Break(id)) if label_id == id => return Ok(Value::unit()),
+                Err(State::BreakWith(id, val)) if label_id == id => return Ok(val),
+                Err(e) => return Err(e),
+                Ok(Some(val)) => last = val,
+                Ok(_) => continue,
+            }
         }
-        self.eval_expression(expr)
+
+        Ok(last)
+    }
+
+    fn eval_break(&mut self, id: usize) -> Result<Value> {
+        Err(State::Break(id))
+    }
+
+    fn eval_break_with(&mut self, value: &ir::Expr, id: usize) -> Result<Value> {
+        Err(State::BreakWith(id, self.eval_expression(value)?))
+    }
+}
+
+#[derive(Debug)]
+enum State {
+    Error(Error),
+    Break(usize),
+    BreakWith(usize, Value),
+}
+
+impl From<State> for Error {
+    fn from(state: State) -> Self {
+        match state {
+            State::Error(error) => error,
+            _ => Error::InvalidState,
+        }
     }
 }

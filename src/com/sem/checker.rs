@@ -1,7 +1,6 @@
 use super::provenance::Provenance;
 use crate::com::{
-    ast,
-    ir::{self, LabelID, TypeID},
+    ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
     scope::Scope,
@@ -60,7 +59,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.create_type(ir::Type::Var, span)
     }
 
-    fn get_type_repr(&mut self, id: ir::TypeID) -> TypeID {
+    fn get_type_repr(&mut self, id: ir::TypeID) -> ir::TypeID {
         if self.types[id.0].parent == id {
             return id;
         }
@@ -220,7 +219,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
-        let id = self.entities.len();
+        let id = self.labels.len();
         self.labels.push(label);
         ir::LabelID(id)
     }
@@ -393,7 +392,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn check_block(&mut self, e: &ast::Block) -> ir::CheckedExpr {
         let mut iter = e.items.iter().peekable();
         let mut stmts = Vec::with_capacity(e.items.len());
-        let mut last = None;
+        let mut last_type = self.create_type(ir::Type::unit(), Some(e.span()));
 
         self.open_scope(false);
         let label_id = self.check_label_definition(&e.label, false);
@@ -401,20 +400,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
             if iter.peek().is_none() {
-                if let ir::Stmt::Expr(e, ty) = s {
-                    last = Some((e, ty))
+                if let ir::Stmt::Expr(_, ty) = &s {
+                    last_type = *ty;
                 }
-                continue;
             }
             stmts.push(s);
         }
 
         self.close_scope();
-
-        let (last, last_type) = last.unwrap_or((
-            ir::Expr::unit(),
-            self.create_type(ir::Type::unit(), Some(e.span())),
-        ));
 
         let label_info = self.get_label(label_id);
         let provenances = &[Provenance::LabelValues(
@@ -423,7 +416,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         )];
         self.unify(last_type, label_info.ty, provenances);
 
-        (ir::Expr::Block(stmts.into(), Box::new(last)), last_type)
+        (ir::Expr::Block(stmts.into(), label_id), last_type)
     }
 
     fn check_break(&mut self, e: &ast::Break) -> ir::CheckedExpr {
