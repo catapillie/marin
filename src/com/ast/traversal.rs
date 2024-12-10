@@ -34,11 +34,6 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
                 walk_expr(item, nodes);
             }
         }
-        E::Loop(e) => {
-            for item in &e.items {
-                walk_expr(item, nodes);
-            }
-        }
         E::Conditional(e) => {
             walk_branch(&e.first_branch, nodes);
             for (_, branch) in &e.else_branches {
@@ -82,6 +77,11 @@ fn walk_branch<'a>(branch: &'a Branch, nodes: &mut Vec<&'a Expr>) {
         }
         B::While(b) => {
             walk_expr(&b.condition, nodes);
+            for item in &b.body {
+                walk_expr(item, nodes);
+            }
+        }
+        B::Loop(b) => {
             for item in &b.body {
                 walk_expr(item, nodes);
             }

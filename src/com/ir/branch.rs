@@ -4,5 +4,6 @@ use super::{Expr, LabelID, Stmt};
 pub enum Branch {
     If(Box<Expr>, Box<[Stmt]>, LabelID),
     While(Box<Expr>, Box<[Stmt]>, LabelID),
+    Loop(Box<[Stmt]>, LabelID),
     Else(Box<[Stmt]>, LabelID),
 }

@@ -275,10 +275,9 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Tuple(e) => self.check_tuple(e),
             E::Array(e) => self.check_array(e),
             E::Block(e) => self.check_block(e),
-            E::Loop(e) => self.check_loop(e),
             E::Conditional(e) => self.check_conditional(e),
             E::Break(e) => self.check_break(e),
-            E::Skip(..) => todo!(),
+            E::Skip(e) => self.check_skip(e),
             E::Call(..) => todo!(),
             E::Access(..) => todo!(),
             E::Fun(..) => todo!(),
@@ -438,9 +437,10 @@ impl<'src, 'e> Checker<'src, 'e> {
         &mut self,
         label: &ast::Label,
         items: &[ast::Expr],
+        skippable: bool,
     ) -> (Box<[ir::Stmt]>, ir::LabelID, ir::TypeID) {
         self.open_scope(false);
-        let label_id = self.check_label_definition(label, false);
+        let label_id = self.check_label_definition(label, skippable);
 
         let mut stmts = Vec::with_capacity(items.len());
         for item in items {
@@ -457,11 +457,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         let (stmts, label_id, last_type) =
             self.check_expression_block(&e.label, &e.items, e.span());
         (ir::Expr::Block(stmts, label_id), last_type)
-    }
-
-    fn check_loop(&mut self, e: &ast::Loop) -> ir::CheckedExpr {
-        let (stmts, label_id, loop_type) = self.check_statement_block(&e.label, &e.items);
-        (ir::Expr::Loop(stmts, label_id), loop_type)
     }
 
     fn check_conditional(&mut self, e: &ast::Conditional) -> ir::CheckedExpr {
@@ -542,6 +537,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match b {
             B::If(b) => self.check_if(b, span),
             B::While(b) => self.check_while(b, span),
+            B::Loop(b) => self.check_loop(b, span),
             B::Match(_) => todo!(),
             B::Else(b) => self.check_else(b, span),
         }
@@ -568,9 +564,15 @@ impl<'src, 'e> Checker<'src, 'e> {
         )];
         self.unify(condition_type, bool_type, provenances);
 
-        let (stmts, label_id, branch_type) = self.check_statement_block(&b.label, &b.body);
+        let (stmts, label_id, branch_type) = self.check_statement_block(&b.label, &b.body, true);
         let branch = ir::Branch::While(Box::new(condition), stmts, label_id);
         (branch, branch_type, false)
+    }
+
+    fn check_loop(&mut self, e: &ast::LoopBranch, _: Span) -> (ir::Branch, ir::TypeID, bool) {
+        let (stmts, label_id, loop_type) = self.check_statement_block(&e.label, &e.body, true);
+        let branch = ir::Branch::Loop(stmts, label_id);
+        (branch, loop_type, true)
     }
 
     fn check_else(&mut self, b: &ast::ElseBranch, span: Span) -> (ir::Branch, ir::TypeID, bool) {
@@ -590,7 +592,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             .unwrap_or((None, self.create_type(ir::Type::unit(), Some(e.span()))));
 
         let label_name = self.check_label_name(&e.label);
-        let Some(label_id) = self.find_label_by_name(label_name) else {
+        let Some(label_id) = self.find_label_by_name(label_name, false) else {
             let name = label_name.map(str::to_string);
             self.reports.push(
                 Report::error(Header::InvalidBreak(name.clone()))
@@ -616,6 +618,35 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         (
             ir::Expr::Break(value.map(Box::new), label_id),
+            self.create_fresh_type(Some(e.span())),
+        )
+    }
+
+    fn check_skip(&mut self, e: &ast::Skip) -> ir::CheckedExpr {
+        let label_name = self.check_label_name(&e.label);
+        let Some(label_id) = self.find_label_by_name(label_name, true) else {
+            let name = label_name.map(str::to_string);
+            self.reports.push(
+                Report::error(Header::InvalidSkip(name.clone()))
+                    .with_primary_label(Label::NoSkippointFound(name), e.span().wrap(self.file)),
+            );
+            return self.check_missing();
+        };
+
+        if !self.get_label(label_id).skippable {
+            let name = label_name.map(str::to_string);
+            self.reports.push(
+                Report::error(Header::InvalidSkip(name.clone()))
+                    .with_primary_label(Label::Empty, e.span().wrap(self.file))
+                    .with_secondary_label(
+                        Label::UnskippableLabel(name),
+                        self.get_label(label_id).loc,
+                    ),
+            );
+        };
+
+        (
+            ir::Expr::Skip(label_id),
             self.create_fresh_type(Some(e.span())),
         )
     }
@@ -652,13 +683,17 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    fn find_label_by_name(&mut self, label_name: Option<&str>) -> Option<ir::LabelID> {
+    fn find_label_by_name(
+        &mut self,
+        label_name: Option<&str>,
+        skippable: bool,
+    ) -> Option<ir::LabelID> {
         self.label_scope
             .find(|&id| {
-                let name = &self.get_label(id).name;
-                match (&label_name, name) {
+                let info = &self.get_label(id);
+                match (&label_name, &info.name) {
                     (Some(query), Some(found)) => query == found,
-                    (None, _) => true,
+                    (None, _) => !skippable || info.skippable,
                     _ => false,
                 }
             })

@@ -14,7 +14,6 @@ pub enum Expr {
     Array(Array),
     Spread(Spread),
     Block(Block),
-    Loop(Loop),
     Conditional(Conditional),
     Break(Break),
     Skip(Skip),
@@ -58,14 +57,6 @@ pub struct Block {
     pub label: Box<Label>,
     pub items: Box<[Expr]>,
 }
-#[derive(Debug, Clone)]
-
-pub struct Loop {
-    pub loop_kw: Span,
-    pub end_kw: Span,
-    pub label: Box<Label>,
-    pub items: Box<[Expr]>,
-}
 
 #[derive(Debug, Clone)]
 pub struct Conditional {
@@ -78,6 +69,7 @@ pub struct Conditional {
 pub enum Branch {
     If(IfBranch),
     While(WhileBranch),
+    Loop(LoopBranch),
     Match(MatchBranch),
     Else(ElseBranch),
 }
@@ -97,6 +89,13 @@ pub struct WhileBranch {
     pub do_kw: Span,
     pub label: Box<Label>,
     pub condition: Box<Expr>,
+    pub body: Box<[Expr]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoopBranch {
+    pub loop_kw: Span,
+    pub label: Box<Label>,
     pub body: Box<[Expr]>,
 }
 
@@ -205,17 +204,6 @@ impl Block {
     }
 }
 
-impl Loop {
-    pub fn span(&self) -> Span {
-        mix_spans([
-            self.loop_kw,
-            self.label.span(),
-            item_spans(&self.items),
-            self.end_kw,
-        ])
-    }
-}
-
 impl Conditional {
     pub fn span(&self) -> Span {
         mix_spans([
@@ -305,7 +293,6 @@ impl Expr {
             Expr::Array(e) => e.span(),
             Expr::Spread(e) => e.span(),
             Expr::Block(e) => e.span(),
-            Expr::Loop(e) => e.span(),
             Expr::Conditional(e) => e.span(),
             Expr::Break(e) => e.span(),
             Expr::Skip(e) => e.span(),
@@ -336,6 +323,7 @@ impl Branch {
                 b.do_kw,
                 item_spans(&b.body),
             ]),
+            Branch::Loop(b) => mix_spans([b.loop_kw, b.label.span(), item_spans(&b.body)]),
             Branch::Match(b) => {
                 mix_spans([
                     b.match_kw,

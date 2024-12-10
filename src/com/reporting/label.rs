@@ -13,6 +13,8 @@ pub enum Label {
     ReturnValueTypes(Option<String>),
     ReturnedFromBreak(Option<String>),
     NoBreakpointFound(Option<String>),
+    NoSkippointFound(Option<String>),
+    UnskippableLabel(Option<String>),
     ConditionBoolType,
     ConditionalReturnValues,
     NonExhaustiveConditionalUnit,
@@ -47,14 +49,22 @@ impl Label {
                 => format!("all values returned by label '{name}' must be of the same type"),
             L::ReturnValueTypes(None)
                 => "all values returned at this point must be of the same type".to_string(),
-            L::NoBreakpointFound(None)
-                => "there are no control flow structures to break out of in this scope".to_string(),
             L::ReturnedFromBreak(None)
                 => "this value is returned from this break expression".to_string(),
             L::ReturnedFromBreak(Some(name))
                 => format!("this value is returned from this break out of label '{name}'"),
+            L::NoBreakpointFound(None)
+                => "there are no control flow structures to break out of in this scope".to_string(),
             L::NoBreakpointFound(Some(name))
                 => format!("there are no control flow structures with label '{name}' to break out of in this scope"),
+            L::NoSkippointFound(None)
+                => "there are no control flow structures inside which to skip".to_string(),
+            L::NoSkippointFound(Some(name))
+                => format!("there are no control flow structures with label '{name}' inside which to skip"),
+            L::UnskippableLabel(None)
+                => "cannot skip inside any current control flow structure, as none of them are loops".to_string(),
+            L::UnskippableLabel(Some(name))
+                => format!("cannot skip inside label '{name}', as it is not a loop"),
             L::ConditionBoolType
                 => "condition expression must be a boolean".to_string(),
             L::ConditionalReturnValues

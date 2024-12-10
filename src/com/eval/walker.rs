@@ -44,9 +44,9 @@ impl<'a> Walker<'a> {
             E::Array(items) => self.eval_array(items),
             E::Block(stmts, id) => self.eval_block(stmts, id.0),
             E::Conditional(branches, exhaustive) => self.eval_conditional(branches, *exhaustive),
-            E::Loop(stmts, id) => self.eval_loop(stmts, id.0),
             E::Break(None, id) => self.eval_break(id.0),
             E::Break(Some(value), id) => self.eval_break_with(value, id.0),
+            E::Skip(id) => self.eval_skip(id.0),
         }
     }
 
@@ -104,6 +104,7 @@ impl<'a> Walker<'a> {
         match b {
             B::If(condition, stmts, label_id) => self.eval_if(condition, stmts, label_id.0),
             B::While(condition, stmts, label_id) => self.eval_while(condition, stmts, label_id.0),
+            B::Loop(stmts, label_id) => self.eval_loop(stmts, label_id.0),
             B::Else(stmts, label_id) => self.eval_else(stmts, label_id.0),
         }
     }
@@ -151,6 +152,21 @@ impl<'a> Walker<'a> {
                 match self.eval_statement(stmt) {
                     Err(State::Break(id)) if label_id == id => return Ok(Some(Value::unit())),
                     Err(State::BreakWith(id, val)) if label_id == id => return Ok(Some(val)),
+                    Err(State::Skip(id)) if label_id == id => break,
+                    Err(e) => return Err(e),
+                    Ok(_) => continue,
+                }
+            }
+        }
+    }
+
+    fn eval_loop(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Option<Value>> {
+        loop {
+            for stmt in stmts {
+                match self.eval_statement(stmt) {
+                    Err(State::Break(id)) if label_id == id => return Ok(Some(Value::unit())),
+                    Err(State::BreakWith(id, val)) if label_id == id => return Ok(Some(val)),
+                    Err(State::Skip(id)) if label_id == id => break,
                     Err(e) => return Err(e),
                     Ok(_) => continue,
                 }
@@ -162,25 +178,16 @@ impl<'a> Walker<'a> {
         self.eval_block(stmts, label_id).map(Some)
     }
 
-    fn eval_loop(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Value> {
-        loop {
-            for stmt in stmts {
-                match self.eval_statement(stmt) {
-                    Err(State::Break(id)) if label_id == id => return Ok(Value::unit()),
-                    Err(State::BreakWith(id, val)) if label_id == id => return Ok(val),
-                    Err(e) => return Err(e),
-                    Ok(_) => continue,
-                }
-            }
-        }
-    }
-
     fn eval_break(&mut self, id: usize) -> Result<Value> {
         Err(State::Break(id))
     }
 
     fn eval_break_with(&mut self, value: &ir::Expr, id: usize) -> Result<Value> {
         Err(State::BreakWith(id, self.eval_expression(value)?))
+    }
+
+    fn eval_skip(&mut self, id: usize) -> Result<Value> {
+        Err(State::Skip(id))
     }
 }
 
@@ -189,6 +196,7 @@ enum State {
     Error(Error),
     Break(usize),
     BreakWith(usize, Value),
+    Skip(usize),
 }
 
 impl From<State> for Error {

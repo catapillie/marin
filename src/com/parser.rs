@@ -179,8 +179,9 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::LeftBracket => self.try_parse_array_expression(),
 
             Token::Do => self.try_parse_block_expression(),
-            Token::Loop => self.try_parse_loop_expression(),
-            Token::If | Token::While | Token::Match => self.try_parse_conditional_expression(),
+            Token::If | Token::While | Token::Loop | Token::Match => {
+                self.try_parse_conditional_expression()
+            }
             Token::Break => self.try_parse_break_expression(),
             Token::Skip => self.try_parse_skip_expression(),
             Token::Let => self.try_parse_let_expression(),
@@ -318,20 +319,6 @@ impl<'src, 'e> Parser<'src, 'e> {
         }))
     }
 
-    fn try_parse_loop_expression(&mut self) -> Option<ast::Expr> {
-        let loop_kw = self.try_expect_token(Token::Loop)?;
-        let label = self.parse_optional_label();
-        let items = self.parse_newline_separated_items();
-        let end_kw = self.expect_token(Token::End);
-
-        Some(ast::Expr::Loop(ast::Loop {
-            loop_kw,
-            end_kw,
-            label: Box::new(label),
-            items,
-        }))
-    }
-
     fn try_parse_conditional_expression(&mut self) -> Option<ast::Expr> {
         let first_branch = self.try_parse_non_empty_branch()?;
 
@@ -354,6 +341,7 @@ impl<'src, 'e> Parser<'src, 'e> {
         match self.peek() {
             Token::If => self.try_parse_if_branch(),
             Token::While => self.try_parse_while_branch(),
+            Token::Loop => self.try_parse_loop_branch(),
             Token::Match => self.try_parse_match_branch(),
             _ => None,
         }
@@ -402,6 +390,18 @@ impl<'src, 'e> Parser<'src, 'e> {
             label: Box::new(label),
             condition: Box::new(condition),
             body,
+        }))
+    }
+
+    fn try_parse_loop_branch(&mut self) -> Option<ast::Branch> {
+        let loop_kw = self.try_expect_token(Token::Loop)?;
+        let label = self.parse_optional_label();
+        let items = self.parse_newline_separated_items();
+
+        Some(ast::Branch::Loop(ast::LoopBranch {
+            loop_kw,
+            label: Box::new(label),
+            body: items,
         }))
     }
 
@@ -492,8 +492,6 @@ impl<'src, 'e> Parser<'src, 'e> {
         if let Some(e) = self.try_parse_block_expression() {
             (None, e)
         } else if let Some(e) = self.try_parse_conditional_expression() {
-            (None, e)
-        } else if let Some(e) = self.try_parse_loop_expression() {
             (None, e)
         } else {
             (Some(self.expect_token(token)), self.expect_expression())

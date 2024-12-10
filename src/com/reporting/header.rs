@@ -28,6 +28,7 @@ pub enum Header {
     InvalidExpression(),
     InvalidLabel(),
     InvalidBreak(Option<String>),
+    InvalidSkip(Option<String>),
     UnknownVariable(String),
     NotVariable(String),
     TypeMismatch(TypeString, TypeString),
@@ -65,10 +66,11 @@ impl Header {
             H::InvalidExpression(..) => "invalid_expression",
             H::InvalidLabel(..) => "invalid_label",
             H::InvalidBreak(..) => "invalid_break",
+            H::InvalidSkip(..) => "invalid_skip",
             H::UnknownVariable(..) => "unknown_variable",
             H::NotVariable(..) => "not_variable",
             H::TypeMismatch(..) => "type_mismatch",
-            H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches"
+            H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
         }
     }
 
@@ -127,6 +129,10 @@ impl Header {
                 => "invalid break".to_string(),
             H::InvalidBreak(Some(name))
                 => format!("invalid break to label '{name}'"),
+            H::InvalidSkip(None)
+                => "invalid Skip".to_string(),
+            H::InvalidSkip(Some(name))
+                => format!("invalid skip in label '{name}'"),
             H::UnknownVariable(name)
                 => format!("unknown variable '{name}' in the current scope"),
             H::NotVariable(name)

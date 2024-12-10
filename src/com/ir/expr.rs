@@ -14,8 +14,8 @@ pub enum Expr {
     Array(Box<[Expr]>),
     Block(Box<[Stmt]>, LabelID),
     Conditional(Box<[Branch]>, bool),
-    Loop(Box<[Stmt]>, LabelID),
     Break(Option<Box<Expr>>, LabelID),
+    Skip(LabelID),
 }
 
 impl Expr {
