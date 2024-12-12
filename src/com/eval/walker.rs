@@ -1,17 +1,13 @@
 use super::{Error, Value};
-use crate::com::{ir, scope::Scope};
+use crate::com::ir;
 
 type Result<T> = std::result::Result<T, State>;
 
-pub struct Walker<'a> {
-    variables: Scope<'a, Value>,
-}
+pub struct Walker {}
 
-impl<'a> Walker<'a> {
+impl Walker {
     pub fn new() -> Self {
-        Self {
-            variables: Scope::root(),
-        }
+        Self {}
     }
 
     pub fn eval_file(&mut self, ir: &ir::File) -> std::result::Result<(), Error> {
@@ -27,7 +23,7 @@ impl<'a> Walker<'a> {
         use ir::Stmt as S;
         match stmt {
             S::Expr(e, _) => self.eval_expression(e).map(Some),
-            S::Let => todo!(),
+            S::Let(_, _) => todo!(),
         }
     }
 
@@ -39,7 +35,7 @@ impl<'a> Walker<'a> {
             E::Float(f) => Ok(Value::Float(*f)),
             E::String(s) => Ok(Value::String(s.clone())),
             E::Bool(b) => Ok(Value::Bool(*b)),
-            E::Var(id) => self.eval_var(*id),
+            E::Var(id) => self.eval_var(id.0),
             E::Tuple(items) => self.eval_tuple(items),
             E::Array(items) => self.eval_array(items),
             E::Block(stmts, id) => self.eval_block(stmts, id.0),
@@ -50,7 +46,7 @@ impl<'a> Walker<'a> {
         }
     }
 
-    fn eval_var(&self, _: ir::EntityID) -> Result<Value> {
+    fn eval_var(&self, id: usize) -> Result<Value> {
         todo!()
     }
 

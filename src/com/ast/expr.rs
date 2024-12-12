@@ -1,4 +1,4 @@
-use super::{item_spans, mix_spans, Label};
+use super::{mix_spans, Label};
 use crate::com::loc::Span;
 
 #[derive(Debug, Clone)]
@@ -338,4 +338,8 @@ impl Branch {
             Branch::Else(b) => mix_spans([b.label.span(), item_spans(&b.body)]),
         }
     }
+}
+
+fn item_spans(items: &[Expr]) -> Span {
+    mix_spans(items.iter().map(|e| e.span()))
 }

@@ -228,6 +228,15 @@ impl<'src, 'e> Checker<'src, 'e> {
         &self.entities[id.0]
     }
 
+    fn create_variable(&mut self, name: &'src str, ty: ir::TypeID, span: Span) -> ir::EntityID {
+        let id = self.add_entity(ir::Entity::Variable(ir::Variable {
+            ty,
+            loc: span.wrap(self.file),
+        }));
+        self.scope.insert(name, id);
+        id
+    }
+
     fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
         let id = self.labels.len();
         self.labels.push(label);
@@ -246,7 +255,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn check_statement(&mut self, e: &ast::Expr) -> ir::Stmt {
         use ast::Expr as E;
         match e {
-            E::Let(..) => todo!(),
+            E::Let(e) => self.check_let(e),
             E::Import(..) => todo!(),
             _ => {
                 let (expr, ty) = self.check_expression(e);
@@ -260,6 +269,84 @@ impl<'src, 'e> Checker<'src, 'e> {
         iter: impl IntoIterator<Item = &'a ast::Expr>,
     ) -> (Vec<ir::Expr>, Vec<ir::TypeID>) {
         iter.into_iter().map(|e| self.check_expression(e)).unzip()
+    }
+
+    fn check_let(&mut self, e: &ast::Let) -> ir::Stmt {
+        let pattern = self.check_pattern(&e.pattern);
+        let (value, ty) = self.check_expression(&e.value);
+        let (pattern, pattern_type) = self.declare_pattern(&pattern);
+        self.unify(ty, pattern_type, &[]);
+
+        ir::Stmt::Let(pattern, value)
+    }
+
+    fn check_pattern(&mut self, e: &ast::Expr) -> ast::Pattern {
+        use ast::Expr as E;
+        use ast::Pattern as P;
+        match e {
+            E::Missing(e) => P::Missing(e.span),
+            E::Var(e) => P::Binding(e.span),
+            E::Int(e) => P::Int(e.span),
+            E::Float(e) => P::Float(e.span),
+            E::String(e) => P::String(e.span),
+            E::True(e) => P::True(e.span),
+            E::False(e) => P::False(e.span),
+            E::Tuple(e) if e.items.len() == 1 => self.check_pattern(&e.items[0]),
+            E::Tuple(e) => P::Tuple(
+                e.left_paren,
+                e.right_paren,
+                e.items
+                    .iter()
+                    .map(|item| self.check_pattern(item))
+                    .collect(),
+            ),
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidPattern())
+                        .with_primary_label(Label::Empty, e.span().wrap(self.file)),
+                );
+                P::Missing(e.span())
+            }
+        }
+    }
+
+    fn declare_pattern(&mut self, p: &ast::Pattern) -> (ir::Pattern, ir::TypeID) {
+        use ast::Pattern as P;
+        use ir::Pattern as I;
+        let span = p.span();
+        match p {
+            P::Missing(_) => (I::Missing, self.create_fresh_type(Some(span))),
+            P::Binding(_) => {
+                let name = span.lexeme(self.source);
+                let ty = self.create_fresh_type(Some(span));
+                let id = self.create_variable(name, ty, span);
+                (I::Binding(id), ty)
+            }
+            P::Int(_) => (
+                self.read_source_int(span).map(I::Int).unwrap_or(I::Missing),
+                self.create_type(ir::Type::Int, Some(span)),
+            ),
+            P::Float(_) => (
+                self.read_source_float(span)
+                    .map(I::Float)
+                    .unwrap_or(I::Missing),
+                self.create_type(ir::Type::Float, Some(span)),
+            ),
+            P::String(_) => (
+                I::String(self.read_source_string(span).to_string()),
+                self.create_type(ir::Type::Float, Some(span)),
+            ),
+            P::True(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
+            P::False(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
+            P::Tuple(_, _, items) => {
+                let (items, item_types): (Vec<_>, Vec<_>) =
+                    items.iter().map(|item| self.declare_pattern(item)).unzip();
+                (
+                    I::Tuple(items.into()),
+                    self.create_type(ir::Type::Tuple(item_types.into()), Some(span)),
+                )
+            }
+        }
     }
 
     fn check_expression(&mut self, e: &ast::Expr) -> ir::CheckedExpr {
@@ -295,50 +382,57 @@ impl<'src, 'e> Checker<'src, 'e> {
         (ir::Expr::Missing, self.create_fresh_type(None))
     }
 
-    fn check_int(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
-        let lexeme = e.span.lexeme(self.source);
-        match lexeme.parse::<i64>() {
-            Ok(n) => (
-                ir::Expr::Int(n),
-                self.create_type(ir::Type::Int, Some(e.span)),
-            ),
+    fn read_source_int(&mut self, span: Span) -> Option<i64> {
+        match span.lexeme(self.source).parse() {
+            Ok(n) => Some(n),
             Err(_) => {
                 self.reports.push(
                     Report::error(Header::InvalidInteger())
-                        .with_primary_label(Label::Empty, e.span.wrap(self.file)),
+                        .with_primary_label(Label::Empty, span.wrap(self.file)),
                 );
-                (
-                    ir::Expr::Missing,
-                    self.create_type(ir::Type::Int, Some(e.span)),
-                )
+                None
+            }
+        }
+    }
+
+    fn check_int(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
+        (
+            self.read_source_int(e.span)
+                .map(ir::Expr::Int)
+                .unwrap_or(ir::Expr::Missing),
+            self.create_type(ir::Type::Int, Some(e.span)),
+        )
+    }
+
+    fn read_source_float(&mut self, span: Span) -> Option<f64> {
+        match span.lexeme(self.source).parse() {
+            Ok(n) => Some(n),
+            Err(_) => {
+                self.reports.push(
+                    Report::error(Header::InvalidFloat())
+                        .with_primary_label(Label::Empty, span.wrap(self.file)),
+                );
+                None
             }
         }
     }
 
     fn check_float(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
-        let lexeme = e.span.lexeme(self.source);
-        match lexeme.parse::<f64>() {
-            Ok(f) => (
-                ir::Expr::Float(f),
-                self.create_type(ir::Type::Float, Some(e.span)),
-            ),
-            Err(_) => {
-                self.reports.push(
-                    Report::error(Header::InvalidFloat())
-                        .with_primary_label(Label::Empty, e.span.wrap(self.file)),
-                );
-                (
-                    ir::Expr::Missing,
-                    self.create_type(ir::Type::Float, Some(e.span)),
-                )
-            }
-        }
+        (
+            self.read_source_float(e.span)
+                .map(ir::Expr::Float)
+                .unwrap_or(ir::Expr::Missing),
+            self.create_type(ir::Type::Float, Some(e.span)),
+        )
+    }
+
+    fn read_source_string(&self, span: Span) -> &'src str {
+        &self.source[(span.start + 1)..(span.end - 1)]
     }
 
     fn check_string(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
-        let lit = &self.source[(e.span.start + 1)..(e.span.end - 1)];
         (
-            ir::Expr::String(lit.to_string()),
+            ir::Expr::String(self.read_source_string(e.span).to_string()),
             self.create_type(ir::Type::String, Some(e.span)),
         )
     }

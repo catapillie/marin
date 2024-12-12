@@ -26,6 +26,7 @@ pub enum Header {
     InvalidInteger(),
     InvalidFloat(),
     InvalidExpression(),
+    InvalidPattern(),
     InvalidLabel(),
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
@@ -64,6 +65,7 @@ impl Header {
             H::InvalidInteger(..) => "invalid_integer",
             H::InvalidFloat(..) => "invalid_float",
             H::InvalidExpression(..) => "invalid_expression",
+            H::InvalidPattern(..) => "invalid_pattern",
             H::InvalidLabel(..) => "invalid_label",
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
@@ -123,6 +125,8 @@ impl Header {
                 => "invalid float literal".to_string(),
             H::InvalidExpression()
                 => "invalid expression syntax".to_string(),
+            H::InvalidPattern()
+                => "invalid pattern syntax".to_string(),
             H::InvalidLabel()
                 => "invalid label syntax".to_string(),
             H::InvalidBreak(None)
