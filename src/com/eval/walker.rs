@@ -1,13 +1,19 @@
+use std::collections::HashMap;
+
 use super::{Error, Value};
 use crate::com::ir;
 
 type Result<T> = std::result::Result<T, State>;
 
-pub struct Walker {}
+pub struct Walker {
+    variables: HashMap<usize, Value>,
+}
 
 impl Walker {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            variables: HashMap::new(),
+        }
     }
 
     pub fn eval_file(&mut self, ir: &ir::File) -> std::result::Result<(), Error> {
@@ -23,7 +29,44 @@ impl Walker {
         use ir::Stmt as S;
         match stmt {
             S::Expr(e, _) => self.eval_expression(e).map(Some),
-            S::Let(_, _) => todo!(),
+            S::Let(pattern, value) => {
+                self.eval_let(pattern, value)?;
+                Ok(None)
+            }
+        }
+    }
+
+    fn eval_let(&mut self, p: &ir::Pattern, e: &ir::Expr) -> Result<()> {
+        let value = self.eval_expression(e)?;
+        self.deconstruct(p, value)?;
+        Ok(())
+    }
+
+    fn deconstruct(&mut self, p: &ir::Pattern, v: Value) -> Result<()> {
+        use ir::Pattern as P;
+        use Value as V;
+        match (p, v) {
+            (P::Missing, _) => Err(State::Error(Error::Missing)),
+
+            (P::Binding(id), v) => {
+                self.variables.insert(id.0, v);
+                Ok(())
+            }
+
+            (P::Int(_), V::Int(_)) => Ok(()),
+            (P::Float(_), V::Float(_)) => Ok(()),
+            (P::String(_), V::String(_)) => Ok(()),
+            (P::Bool(_), V::Bool(_)) => Ok(()),
+
+            (P::Tuple(left_items), V::Tuple(right_items))
+                if left_items.len() == right_items.len() =>
+            {
+                for (left, right) in left_items.iter().zip(right_items) {
+                    self.deconstruct(left, right)?;
+                }
+                Ok(())
+            }
+            _ => Err(State::Error(Error::PatternMismatch)),
         }
     }
 
@@ -47,7 +90,10 @@ impl Walker {
     }
 
     fn eval_var(&self, id: usize) -> Result<Value> {
-        todo!()
+        self.variables
+            .get(&id)
+            .cloned()
+            .ok_or(State::Error(Error::UnknownVariable))
     }
 
     fn eval_tuple(&mut self, items: &[ir::Expr]) -> Result<Value> {
