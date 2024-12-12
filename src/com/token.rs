@@ -23,7 +23,7 @@ pub enum Token {
 
     #[token("=>")]
     Maps,
-    #[token(":=")]
+    #[token("=")]
     Assign,
     #[token(",")]
     Comma,
@@ -91,7 +91,7 @@ impl Display for Token {
             Token::RightChev => write!(f, "'>'"),
 
             Token::Maps => write!(f, "'=>'"),
-            Token::Assign => write!(f, "':='"),
+            Token::Assign => write!(f, "'='"),
             Token::Comma => write!(f, "','"),
             Token::Spread => write!(f, "'..'"),
             Token::Dot => write!(f, "'.'"),
