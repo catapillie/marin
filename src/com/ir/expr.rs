@@ -2,7 +2,7 @@ use super::{Branch, EntityID, LabelID, Signature, Stmt, TypeID};
 
 pub type CheckedExpr = (Expr, TypeID);
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Expr {
     Missing,
     Int(i64),

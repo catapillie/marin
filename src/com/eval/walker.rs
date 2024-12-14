@@ -3,20 +3,20 @@ use std::collections::HashMap;
 use super::{Error, Value};
 use crate::com::ir;
 
-type Result<T> = std::result::Result<T, State>;
+type Result<'a, T> = std::result::Result<T, State<'a>>;
 
-pub struct Walker {
-    variables: HashMap<usize, Value>,
+pub struct Walker<'a> {
+    variables: HashMap<usize, Value<'a>>,
 }
 
-impl Walker {
+impl<'a> Walker<'a> {
     pub fn new() -> Self {
         Self {
             variables: HashMap::new(),
         }
     }
 
-    pub fn eval_file(&mut self, ir: &ir::File) -> std::result::Result<(), Error> {
+    pub fn eval_file(&mut self, ir: &'a ir::File) -> std::result::Result<(), Error> {
         for stmt in &ir.stmts {
             if let Some(e) = self.eval_statement(stmt)? {
                 println!("{e}")
@@ -25,7 +25,7 @@ impl Walker {
         Ok(())
     }
 
-    fn eval_statement(&mut self, stmt: &ir::Stmt) -> Result<Option<Value>> {
+    fn eval_statement(&mut self, stmt: &'a ir::Stmt) -> Result<'a, Option<Value<'a>>> {
         use ir::Stmt as S;
         match stmt {
             S::Expr(e, _) => self.eval_expression(e).map(Some),
@@ -36,13 +36,13 @@ impl Walker {
         }
     }
 
-    fn eval_let(&mut self, p: &ir::Pattern, e: &ir::Expr) -> Result<()> {
+    fn eval_let(&mut self, p: &'a ir::Pattern, e: &'a ir::Expr) -> Result<'a, ()> {
         let value = self.eval_expression(e)?;
         self.deconstruct(p, value)?;
         Ok(())
     }
 
-    fn deconstruct(&mut self, p: &ir::Pattern, v: Value) -> Result<()> {
+    fn deconstruct(&mut self, p: &'a ir::Pattern, v: Value<'a>) -> Result<'a, ()> {
         use ir::Pattern as P;
         use Value as V;
         match (p, v) {
@@ -70,7 +70,7 @@ impl Walker {
         }
     }
 
-    fn eval_expression(&mut self, e: &ir::Expr) -> Result<Value> {
+    fn eval_expression(&mut self, e: &'a ir::Expr) -> Result<'a, Value<'a>> {
         use ir::Expr as E;
         match e {
             E::Missing => Err(State::Error(Error::Missing)),
@@ -90,14 +90,14 @@ impl Walker {
         }
     }
 
-    fn eval_var(&self, id: usize) -> Result<Value> {
+    fn eval_var(&self, id: usize) -> Result<'a, Value<'a>> {
         self.variables
             .get(&id)
             .cloned()
             .ok_or(State::Error(Error::UnknownVariable))
     }
 
-    fn eval_tuple(&mut self, items: &[ir::Expr]) -> Result<Value> {
+    fn eval_tuple(&mut self, items: &'a [ir::Expr]) -> Result<'a, Value<'a>> {
         let mut values = Vec::with_capacity(items.len());
         for item in items {
             values.push(self.eval_expression(item)?);
@@ -105,7 +105,7 @@ impl Walker {
         Ok(Value::Tuple(values.into()))
     }
 
-    fn eval_array(&mut self, items: &[ir::Expr]) -> Result<Value> {
+    fn eval_array(&mut self, items: &'a [ir::Expr]) -> Result<'a, Value<'a>> {
         let mut values = Vec::with_capacity(items.len());
         for item in items {
             values.push(self.eval_expression(item)?);
@@ -113,7 +113,7 @@ impl Walker {
         Ok(Value::Array(values.into()))
     }
 
-    fn eval_block(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Value> {
+    fn eval_block(&mut self, stmts: &'a [ir::Stmt], label_id: usize) -> Result<'a, Value<'a>> {
         let mut last = Value::unit();
         for stmt in stmts {
             match self.eval_statement(stmt) {
@@ -128,7 +128,11 @@ impl Walker {
         Ok(last)
     }
 
-    fn eval_conditional(&mut self, branches: &[ir::Branch], is_exhaustive: bool) -> Result<Value> {
+    fn eval_conditional(
+        &mut self,
+        branches: &'a [ir::Branch],
+        is_exhaustive: bool,
+    ) -> Result<'a, Value<'a>> {
         for branch in branches {
             if let Some(val) = self.eval_branch(branch)? {
                 if is_exhaustive {
@@ -142,7 +146,7 @@ impl Walker {
         Err(State::Error(Error::InvalidState))
     }
 
-    fn eval_branch(&mut self, b: &ir::Branch) -> Result<Option<Value>> {
+    fn eval_branch(&mut self, b: &'a ir::Branch) -> Result<'a, Option<Value<'a>>> {
         use ir::Branch as B;
         match b {
             B::If(condition, stmts, label_id) => self.eval_if(condition, stmts, label_id.0),
@@ -154,10 +158,10 @@ impl Walker {
 
     fn eval_if(
         &mut self,
-        condition: &ir::Expr,
-        stmts: &[ir::Stmt],
+        condition: &'a ir::Expr,
+        stmts: &'a [ir::Stmt],
         label_id: usize,
-    ) -> Result<Option<Value>> {
+    ) -> Result<'a, Option<Value<'a>>> {
         match self.eval_expression(condition)? {
             Value::Bool(true) => {}
             Value::Bool(false) => return Ok(None),
@@ -180,10 +184,10 @@ impl Walker {
 
     fn eval_while(
         &mut self,
-        condition: &ir::Expr,
-        stmts: &[ir::Stmt],
+        condition: &'a ir::Expr,
+        stmts: &'a [ir::Stmt],
         label_id: usize,
-    ) -> Result<Option<Value>> {
+    ) -> Result<'a, Option<Value<'a>>> {
         loop {
             match self.eval_expression(condition)? {
                 Value::Bool(true) => {}
@@ -203,7 +207,11 @@ impl Walker {
         }
     }
 
-    fn eval_loop(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Option<Value>> {
+    fn eval_loop(
+        &mut self,
+        stmts: &'a [ir::Stmt],
+        label_id: usize,
+    ) -> Result<'a, Option<Value<'a>>> {
         loop {
             for stmt in stmts {
                 match self.eval_statement(stmt) {
@@ -217,39 +225,40 @@ impl Walker {
         }
     }
 
-    fn eval_else(&mut self, stmts: &[ir::Stmt], label_id: usize) -> Result<Option<Value>> {
+    fn eval_else(
+        &mut self,
+        stmts: &'a [ir::Stmt],
+        label_id: usize,
+    ) -> Result<'a, Option<Value<'a>>> {
         self.eval_block(stmts, label_id).map(Some)
     }
 
-    fn eval_break(&mut self, id: usize) -> Result<Value> {
+    fn eval_break(&mut self, id: usize) -> Result<'a, Value<'a>> {
         Err(State::Break(id))
     }
 
-    fn eval_break_with(&mut self, value: &ir::Expr, id: usize) -> Result<Value> {
+    fn eval_break_with(&mut self, value: &'a ir::Expr, id: usize) -> Result<'a, Value<'a>> {
         Err(State::BreakWith(id, self.eval_expression(value)?))
     }
 
-    fn eval_skip(&mut self, id: usize) -> Result<Value> {
+    fn eval_skip(&mut self, id: usize) -> Result<'a, Value<'a>> {
         Err(State::Skip(id))
     }
 
-    fn eval_fun(&self, sig: &ir::Signature, value: &ir::Expr) -> Result<Value> {
-        Ok(Value::Lambda(
-            Box::new(sig.clone()),
-            Box::new(value.clone()),
-        ))
+    fn eval_fun(&self, sig: &'a ir::Signature, value: &'a ir::Expr) -> Result<'a, Value<'a>> {
+        Ok(Value::Lambda(sig, value))
     }
 }
 
 #[derive(Debug)]
-enum State {
+enum State<'a> {
     Error(Error),
     Break(usize),
-    BreakWith(usize, Value),
+    BreakWith(usize, Value<'a>),
     Skip(usize),
 }
 
-impl From<State> for Error {
+impl<'a> From<State<'a>> for Error {
     fn from(state: State) -> Self {
         match state {
             State::Error(error) => error,

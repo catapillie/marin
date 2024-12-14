@@ -2,23 +2,23 @@ use crate::com::ir;
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
-pub enum Value {
+pub enum Value<'a> {
     Int(i64),
     Float(f64),
     String(String),
     Bool(bool),
-    Tuple(Box<[Value]>),
-    Array(Box<[Value]>),
-    Lambda(Box<ir::Signature>, Box<ir::Expr>),
+    Tuple(Box<[Value<'a>]>),
+    Array(Box<[Value<'a>]>),
+    Lambda(&'a ir::Signature, &'a ir::Expr),
 }
 
-impl Value {
+impl<'a> Value<'a> {
     pub fn unit() -> Self {
         Self::Tuple(Box::new([]))
     }
 }
 
-impl Display for Value {
+impl<'a> Display for Value<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Value as V;
         match self {
