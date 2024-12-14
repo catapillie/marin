@@ -42,7 +42,7 @@ impl<'a> Walker<'a> {
         Ok(())
     }
 
-    fn deconstruct(&mut self, p: &'a ir::Pattern, v: Value<'a>) -> Result<'a, ()> {
+    fn deconstruct(&mut self, p: &'a ir::Pattern, v: Value<'a>) -> Result<'a, bool> {
         use ir::Pattern as P;
         use Value as V;
         match (p, v) {
@@ -50,13 +50,13 @@ impl<'a> Walker<'a> {
 
             (P::Binding(id), v) => {
                 self.variables.insert(id.0, v);
-                Ok(())
+                Ok(true)
             }
 
-            (P::Int(_), V::Int(_)) => Ok(()),
-            (P::Float(_), V::Float(_)) => Ok(()),
-            (P::String(_), V::String(_)) => Ok(()),
-            (P::Bool(_), V::Bool(_)) => Ok(()),
+            (P::Int(a), V::Int(b)) => Ok(*a == b),
+            (P::Float(a), V::Float(b)) => Ok(*a == b),
+            (P::String(a), V::String(b)) => Ok(a == &b),
+            (P::Bool(a), V::Bool(b)) => Ok(*a == b),
 
             (P::Tuple(left_items), V::Tuple(right_items))
                 if left_items.len() == right_items.len() =>
@@ -64,7 +64,7 @@ impl<'a> Walker<'a> {
                 for (left, right) in left_items.iter().zip(right_items) {
                     self.deconstruct(left, right)?;
                 }
-                Ok(())
+                Ok(true)
             }
             _ => Err(State::Error(Error::PatternMismatch)),
         }
