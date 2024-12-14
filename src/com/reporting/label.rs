@@ -21,6 +21,7 @@ pub enum Label {
     ExhaustiveConditionalBranches(usize),
     UnreachableConditionalBranches(usize),
     VariableDefinition(String),
+    NamelessSignature,
 }
 
 impl Label {
@@ -82,6 +83,8 @@ impl Label {
                 => "these conditional branches are never reached".to_string(),
             L::VariableDefinition(name)
                 => format!("variable '{name}' is defined here"),
+            L::NamelessSignature
+                => "function signature has no name".to_string(),
         }
     }
 }

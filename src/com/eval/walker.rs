@@ -28,6 +28,7 @@ impl<'a> Walker<'a> {
     fn eval_statement(&mut self, stmt: &'a ir::Stmt) -> Result<'a, Option<Value<'a>>> {
         use ir::Stmt as S;
         match stmt {
+            S::Missing => Err(State::Error(Error::InvalidState)),
             S::Expr(e, _) => self.eval_expression(e).map(Some),
             S::Let(pattern, value) => {
                 self.eval_let(pattern, value)?;

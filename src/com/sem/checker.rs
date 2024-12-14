@@ -294,12 +294,48 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn check_let(&mut self, e: &ast::Let) -> ir::Stmt {
-        let pattern = self.check_pattern(&e.pattern);
-        let (value, ty) = self.check_expression(&e.value);
-        let (pattern, pattern_type) = self.declare_pattern(&pattern);
-        self.unify(ty, pattern_type, &[]);
+        let lhs = self.check_pattern_or_signature(&e.pattern);
+        match lhs {
+            Either::Left(pattern) => {
+                let (value, ty) = self.check_expression(&e.value);
+                let (pattern, pattern_type) = self.declare_pattern(&pattern);
 
-        ir::Stmt::Let(pattern, value)
+                self.unify(ty, pattern_type, &[]);
+
+                ir::Stmt::Let(pattern, value)
+            }
+            Either::Right(signature) => {
+                self.open_scope(true);
+
+                let name = self.signature_name(&signature);
+                let (sig, sig_type, ret_type, rec_id) = self.declare_signature(&signature);
+                self.set_type_span(sig_type, e.pattern.span());
+                self.set_type_span(ret_type, e.value.span());
+
+                let (val, val_type) = self.check_expression(&e.value);
+                self.unify(val_type, ret_type, &[]);
+
+                self.close_scope();
+
+                let Some((name, name_span)) = name else {
+                    if !matches!(signature, ast::Signature::Missing) {
+                        self.reports.push(
+                            Report::error(Header::InvalidSignature()).with_primary_label(
+                                Label::NamelessSignature,
+                                e.pattern.span().wrap(self.file),
+                            ),
+                        );
+                    }
+                    return ir::Stmt::Missing;
+                };
+
+                let id = self.create_variable(name, sig_type, name_span);
+                let pattern = ir::Pattern::Binding(id);
+                let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
+
+                ir::Stmt::Let(pattern, lambda)
+            }
+        }
     }
 
     fn check_pattern_or_signature(
@@ -418,6 +454,14 @@ impl<'src, 'e> Checker<'src, 'e> {
                     self.create_type(ir::Type::Tuple(item_types.into()), Some(span)),
                 )
             }
+        }
+    }
+
+    fn signature_name(&self, s: &ast::Signature) -> Option<(&'src str, Span)> {
+        use ast::Signature as S;
+        match s {
+            S::Name(span, _) => Some((span.lexeme(self.source), *span)),
+            _ => None,
         }
     }
 
