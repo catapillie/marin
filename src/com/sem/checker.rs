@@ -1,5 +1,3 @@
-use either::Either;
-
 use super::provenance::Provenance;
 use crate::com::{
     ast,
@@ -8,6 +6,8 @@ use crate::com::{
     reporting::{Header, Label, Report},
     scope::Scope,
 };
+use either::Either;
+use std::collections::{HashMap, HashSet};
 
 pub struct Checker<'src, 'e> {
     source: &'src str,
@@ -55,6 +55,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             ty,
             loc: span.map(|s| s.wrap(self.file)),
             provenances: Vec::new(),
+            depth: self.scope.depth(),
         });
         id
     }
@@ -216,12 +217,103 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.reports.push(report);
     }
 
-    fn get_type_string(&mut self, id: ir::TypeID) -> ir::TypeString {
+    fn collect_type_variables(&mut self, ty: ir::TypeID, ids: &mut HashSet<ir::TypeID>) {
+        let id = self.get_type_repr(ty);
+        let node = &self.types[id.0];
+
+        use ir::Type as T;
+        match node.ty.clone() {
+            T::Var => {
+                if node.depth >= self.scope.depth() {
+                    ids.insert(id);
+                }
+            }
+            T::Int => {}
+            T::Float => {}
+            T::Bool => {}
+            T::String => {}
+            T::Tuple(items) => {
+                for item in items {
+                    self.collect_type_variables(item, ids);
+                }
+            }
+            T::Array(item) => self.collect_type_variables(item, ids),
+            T::Lambda(args, ret) => {
+                for arg in args {
+                    self.collect_type_variables(arg, ids);
+                }
+                self.collect_type_variables(ret, ids);
+            }
+        }
+    }
+
+    fn generalize_type(&mut self, ty: ir::TypeID) -> ir::Scheme {
+        let mut scheme = ir::Scheme::mono(ty);
+        self.collect_type_variables(ty, &mut scheme.forall);
+        scheme
+    }
+
+    fn instantiate_scheme(&mut self, scheme: ir::Scheme) -> ir::TypeID {
+        let sub = scheme
+            .forall
+            .into_iter()
+            .map(|id| (id, self.create_fresh_type(None)))
+            .collect();
+        self.apply_type_substitution(scheme.uninstantiated, &sub)
+    }
+
+    fn apply_type_substitution(
+        &mut self,
+        ty: ir::TypeID,
+        sub: &HashMap<ir::TypeID, ir::TypeID>,
+    ) -> ir::TypeID {
+        let ty = self.get_type_repr(ty);
+
+        use ir::Type as T;
+        match self.types[ty.0].ty.clone() {
+            T::Var => match sub.get(&ty) {
+                Some(new_ty) => *new_ty,
+                None => ty,
+            },
+            T::Int => ty,
+            T::Float => ty,
+            T::Bool => ty,
+            T::String => ty,
+            T::Tuple(items) => {
+                let new_items = items
+                    .iter()
+                    .map(|item| self.apply_type_substitution(*item, sub))
+                    .collect();
+                self.create_type(T::Tuple(new_items), None)
+            }
+            T::Array(item) => {
+                let new_item = self.apply_type_substitution(item, sub);
+                self.create_type(T::Array(new_item), None)
+            }
+            T::Lambda(args, ret) => {
+                let new_args = args
+                    .iter()
+                    .map(|arg| self.apply_type_substitution(*arg, sub))
+                    .collect();
+                let new_ret = self.apply_type_substitution(ret, sub);
+                self.create_type(T::Lambda(new_args, new_ret), None)
+            }
+        }
+    }
+
+    fn get_type_string_map(
+        &mut self,
+        id: ir::TypeID,
+        name_map: &HashMap<ir::TypeID, String>,
+    ) -> ir::TypeString {
         use ir::Type as T;
         use ir::TypeString as S;
-        let repr = self.get_type_repr(id).0;
-        match self.types[repr].ty.clone() {
-            T::Var => S::Name(format!("X{repr}")),
+        let repr = self.get_type_repr(id);
+        match self.types[repr.0].ty.clone() {
+            T::Var => match name_map.get(&repr) {
+                Some(name) => S::Name(name.clone()),
+                None => S::Name(format!("X{}", repr.0)),
+            },
             T::Int => S::Int,
             T::Float => S::Float,
             T::Bool => S::Bool,
@@ -229,16 +321,54 @@ impl<'src, 'e> Checker<'src, 'e> {
             T::Tuple(items) => S::Tuple(
                 items
                     .iter()
-                    .map(|item| self.get_type_string(*item))
+                    .map(|item| self.get_type_string_map(*item, name_map))
                     .collect(),
             ),
-            T::Array(item) => S::Array(Box::new(self.get_type_string(item))),
+            T::Array(item) => S::Array(Box::new(self.get_type_string_map(item, name_map))),
             T::Lambda(args, ret) => S::Lambda(
-                args.iter().map(|arg| self.get_type_string(*arg)).collect(),
-                Box::new(self.get_type_string(ret)),
+                args.iter()
+                    .map(|arg| self.get_type_string_map(*arg, name_map))
+                    .collect(),
+                Box::new(self.get_type_string_map(ret, name_map)),
             ),
         }
     }
+
+    fn get_type_string(&mut self, id: ir::TypeID) -> ir::TypeString {
+        self.get_type_string_map(id, &HashMap::new())
+    }
+
+    // fn get_scheme_string(&mut self, scheme: &ir::Scheme) -> ir::SchemeString {
+    //     const NAMES: &str = "abcdefghijklmnopqrstuvwxyz";
+    //     let name_map = scheme
+    //         .forall
+    //         .iter()
+    //         .enumerate()
+    //         .map(|(n, id)| {
+    //             let (r, d) = (n % NAMES.len(), n / NAMES.len());
+    //             let c = NAMES.as_bytes()[r] as char;
+    //             (
+    //                 *id,
+    //                 match d {
+    //                     0 => c.to_string(),
+    //                     _ => format!("{c}{d}"),
+    //                 },
+    //             )
+    //         })
+    //         .collect();
+
+    //     let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map);
+    //     let forall = scheme
+    //         .forall
+    //         .iter()
+    //         .map(|id| name_map.get(id).unwrap().clone())
+    //         .collect();
+
+    //     ir::SchemeString {
+    //         uninstantiated,
+    //         forall,
+    //     }
+    // }
 
     fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
         let id = self.entities.len();
@@ -250,13 +380,39 @@ impl<'src, 'e> Checker<'src, 'e> {
         &self.entities[id.0]
     }
 
-    fn create_variable(&mut self, name: &'src str, ty: ir::TypeID, span: Span) -> ir::EntityID {
+    fn create_variable_poly(
+        &mut self,
+        name: &'src str,
+        scheme: ir::Scheme,
+        span: Span,
+    ) -> ir::EntityID {
         let id = self.add_entity(ir::Entity::Variable(ir::Variable {
-            ty,
+            scheme,
             loc: span.wrap(self.file),
         }));
         self.scope.insert(name, id);
         id
+    }
+
+    fn create_variable_mono(
+        &mut self,
+        name: &'src str,
+        ty: ir::TypeID,
+        span: Span,
+    ) -> ir::EntityID {
+        self.create_variable_poly(name, ir::Scheme::mono(ty), span)
+    }
+
+    fn get_variable(&self, id: ir::EntityID) -> &ir::Variable {
+        match &self.entities[id.0] {
+            ir::Entity::Variable(v) => v,
+        }
+    }
+
+    fn get_variable_mut(&mut self, id: ir::EntityID) -> &mut ir::Variable {
+        match &mut self.entities[id.0] {
+            ir::Entity::Variable(v) => v,
+        }
     }
 
     fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
@@ -302,6 +458,13 @@ impl<'src, 'e> Checker<'src, 'e> {
 
                 self.unify(ty, pattern_type, &[]);
 
+                let bindings = pattern.get_binding_ids();
+                for var_id in bindings {
+                    let ty = self.get_variable(var_id).scheme.uninstantiated;
+                    let scheme = self.generalize_type(ty);
+                    self.get_variable_mut(var_id).scheme = scheme.clone();
+                }
+
                 ir::Stmt::Let(pattern, value)
             }
             Either::Right(signature) => {
@@ -329,7 +492,8 @@ impl<'src, 'e> Checker<'src, 'e> {
                     return ir::Stmt::Missing;
                 };
 
-                let id = self.create_variable(name, sig_type, name_span);
+                let scheme = self.generalize_type(sig_type);
+                let id = self.create_variable_poly(name, scheme, name_span);
                 let pattern = ir::Pattern::Binding(id);
                 let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
 
@@ -427,7 +591,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             P::Binding(_) => {
                 let name = span.lexeme(self.source);
                 let ty = self.create_fresh_type(Some(span));
-                let id = self.create_variable(name, ty, span);
+                let id = self.create_variable_mono(name, ty, span);
                 (I::Binding(id), ty)
             }
             P::Int(_) => (
@@ -482,7 +646,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             S::Name(span, next) => {
                 let (sig, sig_type, ret_type, _) = self.declare_signature(next);
                 let name = span.lexeme(self.source);
-                let id = self.create_variable(name, sig_type, *span);
+                let id = self.create_variable_mono(name, sig_type, *span);
                 (sig, sig_type, ret_type, Some(id))
             }
             S::Args(patterns, next) => {
@@ -618,7 +782,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let loc = var.loc;
-        let ty = self.clone_type_repr(var.ty);
+        let instantiated = self.instantiate_scheme(var.scheme.clone());
+        let ty = self.clone_type_repr(instantiated);
         self.set_type_span(ty, e.span);
         self.add_type_provenance(
             ty,

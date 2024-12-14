@@ -2,16 +2,32 @@ use crate::com::{
     loc::Loc,
     reporting::{Label, Report},
 };
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TypeID(pub usize);
 
 pub struct TypeNode {
     pub parent: TypeID,
     pub ty: Type,
     pub loc: Option<Loc>,
+    pub depth: usize,
     pub provenances: Vec<TypeProvenance>,
+}
+
+#[derive(Clone)]
+pub struct Scheme {
+    pub forall: HashSet<TypeID>,
+    pub uninstantiated: TypeID,
+}
+
+impl Scheme {
+    pub fn mono(ty: TypeID) -> Self {
+        Self {
+            forall: HashSet::new(),
+            uninstantiated: ty,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -95,6 +111,28 @@ impl TypeString {
 impl Display for TypeString {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.fmt_paren(false, f)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemeString {
+    pub forall: Box<[String]>,
+    pub uninstantiated: TypeString,
+}
+
+impl Display for SchemeString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.forall.is_empty() {
+            return self.uninstantiated.fmt(f);
+        }
+
+        write!(f, "forall")?;
+        for x in &self.forall {
+            write!(f, " {x}")?;
+        }
+        write!(f, ", {}", self.uninstantiated)?;
+
+        Ok(())
     }
 }
 

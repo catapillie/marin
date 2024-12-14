@@ -5,14 +5,16 @@ pub struct Scope<'a, T> {
     parent: Option<Box<Scope<'a, T>>>,
     bindings: HashMap<&'a str, T>,
     blocking: bool,
+    depth: usize,
 }
 
 impl<'a, T> Scope<'a, T> {
-    fn new(blocking: bool) -> Self {
+    fn new(blocking: bool, depth: usize) -> Self {
         Self {
             parent: None,
             bindings: HashMap::new(),
             blocking,
+            depth,
         }
     }
 
@@ -21,11 +23,16 @@ impl<'a, T> Scope<'a, T> {
             parent: None,
             bindings: HashMap::new(),
             blocking: false,
+            depth: 0,
         }
     }
 
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+
     pub fn open(&mut self, blocking: bool) {
-        let parent = mem::replace(self, Self::new(blocking));
+        let parent = mem::replace(self, Self::new(blocking, self.depth + 1));
         self.parent = Some(Box::new(parent))
     }
 
