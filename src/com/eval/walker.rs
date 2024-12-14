@@ -86,6 +86,7 @@ impl Walker {
             E::Break(None, id) => self.eval_break(id.0),
             E::Break(Some(value), id) => self.eval_break_with(value, id.0),
             E::Skip(id) => self.eval_skip(id.0),
+            E::Fun(sig, value) => self.eval_fun(sig, value),
         }
     }
 
@@ -230,6 +231,13 @@ impl Walker {
 
     fn eval_skip(&mut self, id: usize) -> Result<Value> {
         Err(State::Skip(id))
+    }
+
+    fn eval_fun(&self, sig: &ir::Signature, value: &ir::Expr) -> Result<Value> {
+        Ok(Value::Lambda(
+            Box::new(sig.clone()),
+            Box::new(value.clone()),
+        ))
     }
 }
 

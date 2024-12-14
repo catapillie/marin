@@ -65,6 +65,10 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.types[id.0].provenances.push(prov)
     }
 
+    fn set_type_span(&mut self, id: ir::TypeID, span: Span) {
+        self.types[id.0].loc = Some(span.wrap(self.file))
+    }
+
     fn get_type_repr(&mut self, id: ir::TypeID) -> ir::TypeID {
         if self.types[id.0].parent == id {
             return id;
@@ -114,13 +118,13 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
 
             (_, T::Var) => {
-                if !self.occurs_in_type(repr_left, repr_right) {
+                if !self.occurs_in_type(repr_right, repr_left) {
                     self.join_type_repr(repr_right, repr_left);
                     return;
                 }
             }
             (T::Var, _) => {
-                if !self.occurs_in_type(repr_right, repr_left) {
+                if !self.occurs_in_type(repr_left, repr_right) {
                     self.join_type_repr(repr_left, repr_right);
                     return;
                 }
@@ -310,6 +314,77 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    fn check_signature(&mut self, mut e: &ast::Expr) -> ast::Signature {
+        use ast::Signature as S;
+        let mut signature = S::Empty;
+        loop {
+            use ast::Expr as E;
+            match e {
+                E::Var(lex) if !matches!(signature, S::Empty) => {
+                    return S::Name(lex.span, Box::new(signature));
+                }
+                E::Tuple(tuple) => {
+                    return S::Args(
+                        tuple
+                            .items
+                            .iter()
+                            .map(|arg| self.check_pattern(arg))
+                            .collect(),
+                        Box::new(signature),
+                    );
+                }
+                E::Call(call) => {
+                    let patterns = call
+                        .args
+                        .iter()
+                        .map(|arg| self.check_pattern(arg))
+                        .collect();
+                    e = &call.callee;
+                    signature = S::Args(patterns, Box::new(signature));
+                }
+                _ => {
+                    self.reports.push(
+                        Report::error(Header::InvalidSignature())
+                            .with_primary_label(Label::Empty, e.span().wrap(self.file)),
+                    );
+                    return S::Missing;
+                }
+            }
+        }
+    }
+
+    fn declare_signature(&mut self, s: &ast::Signature) -> (ir::Signature, ir::TypeID, ir::TypeID) {
+        use ast::Signature as S;
+        use ir::Signature as I;
+        match s {
+            S::Missing => (
+                I::Missing,
+                self.create_fresh_type(None),
+                self.create_fresh_type(None),
+            ),
+            S::Name(span, next) => {
+                let (sig, sig_type, ret_type) = self.declare_signature(next);
+                let name = span.lexeme(self.source);
+                self.create_variable(name, sig_type, *span);
+                (sig, sig_type, ret_type)
+            }
+            S::Args(patterns, next) => {
+                let (sig, sig_type, ret_type) = self.declare_signature(next);
+                let (arg_patterns, arg_types): (Vec<_>, Vec<_>) =
+                    patterns.iter().map(|arg| self.declare_pattern(arg)).unzip();
+                (
+                    I::Args(arg_patterns.into(), Box::new(sig)),
+                    self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),
+                    ret_type,
+                )
+            }
+            S::Empty => {
+                let ret_type = self.create_fresh_type(None);
+                (I::Done, ret_type, ret_type)
+            }
+        }
+    }
+
     fn declare_pattern(&mut self, p: &ast::Pattern) -> (ir::Pattern, ir::TypeID) {
         use ast::Pattern as P;
         use ir::Pattern as I;
@@ -367,7 +442,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Skip(e) => self.check_skip(e),
             E::Call(..) => todo!(),
             E::Access(..) => todo!(),
-            E::Fun(..) => todo!(),
+            E::Fun(e) => self.check_fun(e),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidExpression())
@@ -743,6 +818,24 @@ impl<'src, 'e> Checker<'src, 'e> {
             ir::Expr::Skip(label_id),
             self.create_fresh_type(Some(e.span())),
         )
+    }
+
+    fn check_fun(&mut self, e: &ast::Fun) -> ir::CheckedExpr {
+        let signature = self.check_signature(&e.signature);
+
+        self.open_scope(true);
+
+        let (sig, sig_type, ret_type) = self.declare_signature(&signature);
+        let sig_span = Span::combine(e.fun_kw, e.signature.span());
+        self.set_type_span(sig_type, sig_span);
+        self.set_type_span(ret_type, e.value.span());
+
+        let (val, val_type) = self.check_expression(&e.value);
+        self.unify(val_type, ret_type, &[]);
+
+        self.close_scope();
+
+        (ir::Expr::Fun(Box::new(sig), Box::new(val)), sig_type)
     }
 
     fn check_label_definition(&mut self, l: &ast::Label, skippable: bool) -> ir::LabelID {

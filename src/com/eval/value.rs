@@ -1,3 +1,4 @@
+use crate::com::ir;
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
@@ -8,10 +9,11 @@ pub enum Value {
     Bool(bool),
     Tuple(Box<[Value]>),
     Array(Box<[Value]>),
+    Lambda(Box<ir::Signature>, Box<ir::Expr>),
 }
 
 impl Value {
-    pub fn unit()-> Self {
+    pub fn unit() -> Self {
         Self::Tuple(Box::new([]))
     }
 }
@@ -35,7 +37,7 @@ impl Display for Value {
                 }
                 write!(f, ")")?;
                 Ok(())
-            },
+            }
             V::Array(items) => {
                 write!(f, "[")?;
                 let mut iter = items.iter().peekable();
@@ -47,7 +49,8 @@ impl Display for Value {
                 }
                 write!(f, "]")?;
                 Ok(())
-            },
+            }
+            V::Lambda(..) => write!(f, "<fun>"),
         }
     }
 }

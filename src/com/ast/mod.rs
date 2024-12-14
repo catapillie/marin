@@ -1,12 +1,14 @@
 mod expr;
 mod label;
-mod traversal;
 mod pattern;
+mod signature;
+mod traversal;
 
 pub use expr::*;
 pub use label::*;
-pub use traversal::*;
 pub use pattern::*;
+pub use signature::*;
+pub use traversal::*;
 
 pub struct File(pub Box<[Expr]>);
 

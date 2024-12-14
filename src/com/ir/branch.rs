@@ -1,6 +1,6 @@
 use super::{Expr, LabelID, Stmt};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Branch {
     If(Box<Expr>, Box<[Stmt]>, LabelID),
     While(Box<Expr>, Box<[Stmt]>, LabelID),
