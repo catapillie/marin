@@ -5,4 +5,6 @@ pub enum Error {
     NonBooleanCondition,
     PatternMismatch,
     UnknownVariable,
+    InvalidFunction,
+    InvalidArgCount,
 }

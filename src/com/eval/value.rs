@@ -9,7 +9,11 @@ pub enum Value<'a> {
     Bool(bool),
     Tuple(Box<[Value<'a>]>),
     Array(Box<[Value<'a>]>),
-    Lambda(&'a ir::Signature, &'a ir::Expr),
+    Lambda(
+        Vec<(&'a ir::Pattern, Value<'a>)>,
+        &'a ir::Signature,
+        &'a ir::Expr,
+    ),
 }
 
 impl<'a> Value<'a> {

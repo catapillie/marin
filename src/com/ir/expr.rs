@@ -17,6 +17,7 @@ pub enum Expr {
     Break(Option<Box<Expr>>, LabelID),
     Skip(LabelID),
     Fun(Box<Signature>, Box<Expr>),
+    Call(Box<Expr>, Box<[Expr]>),
 }
 
 impl Expr {

@@ -440,7 +440,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Conditional(e) => self.check_conditional(e),
             E::Break(e) => self.check_break(e),
             E::Skip(e) => self.check_skip(e),
-            E::Call(..) => todo!(),
+            E::Call(e) => self.check_call(e),
             E::Access(..) => todo!(),
             E::Fun(e) => self.check_fun(e),
             _ => {
@@ -818,6 +818,21 @@ impl<'src, 'e> Checker<'src, 'e> {
             ir::Expr::Skip(label_id),
             self.create_fresh_type(Some(e.span())),
         )
+    }
+
+    fn check_call(&mut self, e: &ast::Call) -> ir::CheckedExpr {
+        let (callee, callee_type) = self.check_expression(&e.callee);
+        let (args, arg_types): (Vec<_>, Vec<_>) =
+            e.args.iter().map(|arg| self.check_expression(arg)).unzip();
+
+        let ret_type = self.create_fresh_type(Some(e.span()));
+        let sig_type = self.create_type(
+            ir::Type::Lambda(arg_types.into(), ret_type),
+            Some(e.callee.span()),
+        );
+        self.unify(callee_type, sig_type, &[]);
+
+        (ir::Expr::Call(Box::new(callee), args.into()), ret_type)
     }
 
     fn check_fun(&mut self, e: &ast::Fun) -> ir::CheckedExpr {
