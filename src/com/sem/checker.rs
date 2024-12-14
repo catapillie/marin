@@ -69,6 +69,22 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.types[id.0].loc = Some(span.wrap(self.file))
     }
 
+    fn clone_type_repr(&mut self, ty: ir::TypeID) -> ir::TypeID {
+        let ty = self.get_type_repr(ty);
+
+        let loc = self.types[ty.0].loc;
+        let provenances = self.types[ty.0].provenances.clone();
+
+        let new_ty = self.create_type(self.types[ty.0].ty.clone(), None);
+        let new_node = &mut self.types[new_ty.0];
+
+        new_node.loc = loc;
+        new_node.provenances = provenances;
+        self.unify(ty, new_ty, &[]); // should never fail
+
+        new_ty
+    }
+
     fn get_type_repr(&mut self, id: ir::TypeID) -> ir::TypeID {
         if self.types[id.0].parent == id {
             return id;
@@ -537,7 +553,15 @@ impl<'src, 'e> Checker<'src, 'e> {
             return self.check_missing();
         };
 
-        (ir::Expr::Var(id), var.ty)
+        let loc = var.loc;
+        let ty = self.clone_type_repr(var.ty);
+        self.set_type_span(ty, e.span);
+        self.add_type_provenance(
+            ty,
+            TypeProvenance::VariableDefinition(loc, name.to_string()),
+        );
+
+        (ir::Expr::Var(id), ty)
     }
 
     fn check_tuple(&mut self, e: &ast::Tuple) -> ir::CheckedExpr {

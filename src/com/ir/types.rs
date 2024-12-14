@@ -98,9 +98,11 @@ impl Display for TypeString {
     }
 }
 
+#[derive(Clone)]
 pub enum TypeProvenance {
     ReturnedFromBreak(Loc, Option<String>),
-    NonExhaustiveConditional(crate::com::loc::Loc),
+    NonExhaustiveConditional(Loc),
+    VariableDefinition(Loc, String),
 }
 
 impl TypeProvenance {
@@ -112,6 +114,9 @@ impl TypeProvenance {
             }
             Pr::NonExhaustiveConditional(loc) => {
                 report.with_secondary_label(Label::NonExhaustiveConditionalUnit, *loc)
+            }
+            Pr::VariableDefinition(loc, name) => {
+                report.with_secondary_label(Label::VariableDefinition(name.clone()), *loc)
             }
         }
     }

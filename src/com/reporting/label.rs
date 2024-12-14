@@ -20,6 +20,7 @@ pub enum Label {
     NonExhaustiveConditionalUnit,
     ExhaustiveConditionalBranches(usize),
     UnreachableConditionalBranches(usize),
+    VariableDefinition(String),
 }
 
 impl Label {
@@ -79,6 +80,8 @@ impl Label {
                 => "this conditional branch is never reached".to_string(),
             L::UnreachableConditionalBranches(_)
                 => "these conditional branches are never reached".to_string(),
+            L::VariableDefinition(name)
+                => format!("variable '{name}' is defined here"),
         }
     }
 }
