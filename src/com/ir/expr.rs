@@ -16,12 +16,6 @@ pub enum Expr {
     Conditional(Box<[Branch]>, bool),
     Break(Option<Box<Expr>>, LabelID),
     Skip(LabelID),
-    Fun(Box<Signature>, Box<Expr>),
+    Fun(Option<EntityID>, Box<Signature>, Box<Expr>),
     Call(Box<Expr>, Box<[Expr]>),
-}
-
-impl Expr {
-    pub fn unit() -> Self {
-        Self::Tuple(Box::new([]))
-    }
 }

@@ -6,7 +6,6 @@ pub struct EntityID(pub usize);
 
 pub enum Entity {
     Variable(Variable),
-    Type,
 }
 
 pub struct Variable {

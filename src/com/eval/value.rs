@@ -13,6 +13,7 @@ pub enum Value<'a> {
         Vec<(&'a ir::Pattern, Value<'a>)>,
         &'a ir::Signature,
         &'a ir::Expr,
+        Option<ir::EntityID>,
     ),
 }
 

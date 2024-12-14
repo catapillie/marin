@@ -1,3 +1,5 @@
+use either::Either;
+
 use super::provenance::Provenance;
 use crate::com::{
     ast,
@@ -300,6 +302,17 @@ impl<'src, 'e> Checker<'src, 'e> {
         ir::Stmt::Let(pattern, value)
     }
 
+    fn check_pattern_or_signature(
+        &mut self,
+        e: &ast::Expr,
+    ) -> Either<ast::Pattern, ast::Signature> {
+        use ast::Expr as E;
+        match e {
+            E::Call(..) => Either::Right(self.check_signature(e)),
+            _ => Either::Left(self.check_pattern(e)),
+        }
+    }
+
     fn check_pattern(&mut self, e: &ast::Expr) -> ast::Pattern {
         use ast::Expr as E;
         use ast::Pattern as P;
@@ -369,38 +382,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    fn declare_signature(&mut self, s: &ast::Signature) -> (ir::Signature, ir::TypeID, ir::TypeID) {
-        use ast::Signature as S;
-        use ir::Signature as I;
-        match s {
-            S::Missing => (
-                I::Missing,
-                self.create_fresh_type(None),
-                self.create_fresh_type(None),
-            ),
-            S::Name(span, next) => {
-                let (sig, sig_type, ret_type) = self.declare_signature(next);
-                let name = span.lexeme(self.source);
-                self.create_variable(name, sig_type, *span);
-                (sig, sig_type, ret_type)
-            }
-            S::Args(patterns, next) => {
-                let (sig, sig_type, ret_type) = self.declare_signature(next);
-                let (arg_patterns, arg_types): (Vec<_>, Vec<_>) =
-                    patterns.iter().map(|arg| self.declare_pattern(arg)).unzip();
-                (
-                    I::Args(arg_patterns.into(), Box::new(sig)),
-                    self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),
-                    ret_type,
-                )
-            }
-            S::Empty => {
-                let ret_type = self.create_fresh_type(None);
-                (I::Done, ret_type, ret_type)
-            }
-        }
-    }
-
     fn declare_pattern(&mut self, p: &ast::Pattern) -> (ir::Pattern, ir::TypeID) {
         use ast::Pattern as P;
         use ir::Pattern as I;
@@ -436,6 +417,44 @@ impl<'src, 'e> Checker<'src, 'e> {
                     I::Tuple(items.into()),
                     self.create_type(ir::Type::Tuple(item_types.into()), Some(span)),
                 )
+            }
+        }
+    }
+
+    // (signature, sig_type, ret_type, recursive_binding)
+    fn declare_signature(
+        &mut self,
+        s: &ast::Signature,
+    ) -> (ir::Signature, ir::TypeID, ir::TypeID, Option<ir::EntityID>) {
+        use ast::Signature as S;
+        use ir::Signature as I;
+        match s {
+            S::Missing => (
+                I::Missing,
+                self.create_fresh_type(None),
+                self.create_fresh_type(None),
+                None,
+            ),
+            S::Name(span, next) => {
+                let (sig, sig_type, ret_type, _) = self.declare_signature(next);
+                let name = span.lexeme(self.source);
+                let id = self.create_variable(name, sig_type, *span);
+                (sig, sig_type, ret_type, Some(id))
+            }
+            S::Args(patterns, next) => {
+                let (sig, sig_type, ret_type, _) = self.declare_signature(next);
+                let (arg_patterns, arg_types): (Vec<_>, Vec<_>) =
+                    patterns.iter().map(|arg| self.declare_pattern(arg)).unzip();
+                (
+                    I::Args(arg_patterns.into(), Box::new(sig)),
+                    self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),
+                    ret_type,
+                    None,
+                )
+            }
+            S::Empty => {
+                let ret_type = self.create_fresh_type(None);
+                (I::Done, ret_type, ret_type, None)
             }
         }
     }
@@ -545,6 +564,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             return self.check_missing();
         };
 
+        #[allow(irrefutable_let_patterns)]
         let ir::Entity::Variable(var) = self.get_entity(id) else {
             self.reports.push(
                 Report::error(Header::NotVariable(name.to_string()))
@@ -864,7 +884,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         self.open_scope(true);
 
-        let (sig, sig_type, ret_type) = self.declare_signature(&signature);
+        let (sig, sig_type, ret_type, id) = self.declare_signature(&signature);
         let sig_span = Span::combine(e.fun_kw, e.signature.span());
         self.set_type_span(sig_type, sig_span);
         self.set_type_span(ret_type, e.value.span());
@@ -874,7 +894,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         self.close_scope();
 
-        (ir::Expr::Fun(Box::new(sig), Box::new(val)), sig_type)
+        (ir::Expr::Fun(id, Box::new(sig), Box::new(val)), sig_type)
     }
 
     fn check_label_definition(&mut self, l: &ast::Label, skippable: bool) -> ir::LabelID {

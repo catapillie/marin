@@ -86,7 +86,7 @@ impl<'a> Walker<'a> {
             E::Break(None, id) => self.eval_break(id.0),
             E::Break(Some(value), id) => self.eval_break_with(value, id.0),
             E::Skip(id) => self.eval_skip(id.0),
-            E::Fun(sig, value) => self.eval_fun(sig, value),
+            E::Fun(rec_id, sig, value) => self.eval_fun(sig, value, *rec_id),
             E::Call(callee, args) => self.eval_call(callee, args),
         }
     }
@@ -246,17 +246,27 @@ impl<'a> Walker<'a> {
         Err(State::Skip(id))
     }
 
-    fn eval_fun(&self, sig: &'a ir::Signature, value: &'a ir::Expr) -> Result<'a, Value<'a>> {
-        Ok(Value::Lambda(Vec::new(), sig, value))
+    fn eval_fun(
+        &self,
+        sig: &'a ir::Signature,
+        value: &'a ir::Expr,
+        rec_id: Option<ir::EntityID>,
+    ) -> Result<'a, Value<'a>> {
+        Ok(Value::Lambda(Vec::new(), sig, value, rec_id))
     }
 
     fn eval_call(&mut self, callee: &'a ir::Expr, args: &'a [ir::Expr]) -> Result<'a, Value<'a>> {
         let fun = self.eval_expression(callee)?;
 
         use ir::Signature as S;
-        let Value::Lambda(mut provided, S::Args(fun_args, next_sig), value) = fun else {
+        let Value::Lambda(mut provided, sig @ S::Args(fun_args, next_sig), value, id) = fun else {
             return Err(State::Error(Error::InvalidFunction));
         };
+
+        if let Some(id) = id {
+            self.variables
+                .insert(id.0, Value::Lambda(vec![], sig, value, Some(id)));
+        }
 
         if fun_args.len() != args.len() {
             return Err(State::Error(Error::InvalidArgCount));
@@ -268,12 +278,15 @@ impl<'a> Walker<'a> {
 
         let result = match &**next_sig {
             S::Missing => return Err(State::Error(Error::InvalidFunction)),
-            S::Args(_, _) => Value::Lambda(provided, next_sig, value),
+            S::Args(_, _) => Value::Lambda(provided, next_sig, value, None),
             S::Done => {
                 for (arg_pattern, arg) in provided {
                     self.deconstruct(arg_pattern, arg)?;
                 }
-                self.eval_expression(value)?
+                match self.eval_expression(value) {
+                    Ok(val) => val,
+                    Err(s) => return Err(State::Error(s.into())),
+                }
             }
         };
 
