@@ -14,7 +14,7 @@ pub enum Label {
     ReturnedFromBreak(Option<String>),
     NoBreakpointFound(Option<String>),
     NoSkippointFound(Option<String>),
-    UnskippableLabel(Option<String>),
+    UnskippableBlock(Option<String>),
     ConditionBoolType,
     ConditionalReturnValues,
     NonExhaustiveConditionalUnit,
@@ -61,9 +61,9 @@ impl Label {
                 => "there are no control flow structures inside which to skip".to_string(),
             L::NoSkippointFound(Some(name))
                 => format!("there are no control flow structures with label '{name}' inside which to skip"),
-            L::UnskippableLabel(None)
+            L::UnskippableBlock(None)
                 => "cannot skip inside any current control flow structure, as none of them are loops".to_string(),
-            L::UnskippableLabel(Some(name))
+            L::UnskippableBlock(Some(name))
                 => format!("cannot skip inside label '{name}', as it is not a loop"),
             L::ConditionBoolType
                 => "condition expression must be a boolean".to_string(),

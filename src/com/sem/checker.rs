@@ -733,7 +733,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 Report::error(Header::InvalidSkip(name.clone()))
                     .with_primary_label(Label::Empty, e.span().wrap(self.file))
                     .with_secondary_label(
-                        Label::UnskippableLabel(name),
+                        Label::UnskippableBlock(name),
                         self.get_label(label_id).loc,
                     ),
             );
