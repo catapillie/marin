@@ -29,6 +29,20 @@ impl Pattern {
             }
         }
     }
+
+    pub fn is_irrefutable(&self) -> bool {
+        use Pattern as P;
+        match self {
+            P::Missing(_) => true,
+            P::Binding(_) => true,
+            P::Int(_) => false,
+            P::Float(_) => false,
+            P::String(_) => false,
+            P::True(_) => false,
+            P::False(_) => false,
+            P::Tuple(_, _, items) => items.iter().all(Self::is_irrefutable),
+        }
+    }
 }
 
 fn item_spans(items: &[Pattern]) -> Span {

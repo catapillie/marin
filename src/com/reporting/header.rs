@@ -35,6 +35,7 @@ pub enum Header {
     NotVariable(String),
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
+    RefutablePattern(),
 }
 
 impl Header {
@@ -75,6 +76,7 @@ impl Header {
             H::NotVariable(..) => "not_variable",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
+            H::RefutablePattern(..) => "refutable_pattern",
         }
     }
 
@@ -151,6 +153,8 @@ impl Header {
                 => "unreachable conditional branch".to_string(),
             H::UnreachableConditionalBranches(_)
                 => "unreachable conditional branches".to_string(),
+            H::RefutablePattern()
+                => "refutable pattern".to_string(),
         }
     }
 }

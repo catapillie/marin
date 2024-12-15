@@ -22,6 +22,8 @@ pub enum Label {
     UnreachableConditionalBranches(usize),
     VariableDefinition(String),
     NamelessSignature,
+    LetBindingPattern,
+    FunctionArgPattern,
 }
 
 impl Label {
@@ -85,6 +87,10 @@ impl Label {
                 => format!("variable '{name}' is defined here"),
             L::NamelessSignature
                 => "function signature has no name".to_string(),
+            L::LetBindingPattern
+                => "let-binding patterns must be irrefutable".to_string(),
+            L::FunctionArgPattern
+                => "function argument patterns must be irrefutable".to_string(),
         }
     }
 }

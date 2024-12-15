@@ -450,9 +450,21 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn check_let(&mut self, e: &ast::Let) -> ir::Stmt {
+        let binding_span = Span::combine(e.let_kw, e.pattern.span());
         let lhs = self.check_pattern_or_signature(&e.pattern);
         match lhs {
             Either::Left(pattern) => {
+                if !pattern.is_irrefutable() {
+                    self.reports.push(
+                        Report::error(Header::RefutablePattern())
+                            .with_primary_label(Label::Empty, pattern.span().wrap(self.file))
+                            .with_secondary_label(
+                                Label::LetBindingPattern,
+                                binding_span.wrap(self.file),
+                            ),
+                    );
+                }
+
                 let (value, ty) = self.check_expression(&e.value);
                 let (pattern, pattern_type) = self.declare_pattern(&pattern);
 
@@ -468,6 +480,22 @@ impl<'src, 'e> Checker<'src, 'e> {
                 ir::Stmt::Let(pattern, value)
             }
             Either::Right(signature) => {
+                for arg_pattern in signature.arg_patterns() {
+                    if !arg_pattern.is_irrefutable() {
+                        self.reports.push(
+                            Report::error(Header::RefutablePattern())
+                                .with_primary_label(
+                                    Label::Empty,
+                                    arg_pattern.span().wrap(self.file),
+                                )
+                                .with_secondary_label(
+                                    Label::FunctionArgPattern,
+                                    binding_span.wrap(self.file),
+                                ),
+                        );
+                    }
+                }
+
                 self.open_scope(true);
 
                 let name = self.signature_name(&signature);
@@ -1090,11 +1118,20 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     fn check_fun(&mut self, e: &ast::Fun) -> ir::CheckedExpr {
         let signature = self.check_signature(&e.signature);
+        let sig_span = Span::combine(e.fun_kw, e.signature.span());
+        for arg_pattern in signature.arg_patterns() {
+            if !arg_pattern.is_irrefutable() {
+                self.reports.push(
+                    Report::error(Header::RefutablePattern())
+                        .with_primary_label(Label::Empty, arg_pattern.span().wrap(self.file))
+                        .with_secondary_label(Label::FunctionArgPattern, sig_span.wrap(self.file)),
+                );
+            }
+        }
 
         self.open_scope(true);
 
         let (sig, sig_type, ret_type, id) = self.declare_signature(&signature);
-        let sig_span = Span::combine(e.fun_kw, e.signature.span());
         self.set_type_span(sig_type, sig_span);
         self.set_type_span(ret_type, e.value.span());
 
