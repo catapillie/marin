@@ -184,10 +184,10 @@ impl<'src, 'e> Parser<'src, 'e> {
             }
             Token::Break => self.try_parse_break_expression(),
             Token::Skip => self.try_parse_skip_expression(),
-            Token::Let => self.try_parse_let_expression(),
             Token::Fun => self.try_parse_fun_expression(),
+            Token::Let => return self.try_parse_let_expression(),
 
-            Token::Import => self.try_parse_import_expression(),
+            Token::Import => return self.try_parse_import_expression(),
             Token::Super => self.try_parse_super_expression(),
             _ => None,
         }?;
