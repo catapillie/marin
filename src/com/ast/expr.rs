@@ -103,7 +103,6 @@ pub struct LoopBranch {
 pub struct MatchBranch {
     pub match_kw: Span,
     pub with_kw: Span,
-    pub label: Box<Label>,
     pub scrutinee: Box<Expr>,
     pub cases: Box<[MatchCase]>,
 }
@@ -327,7 +326,6 @@ impl Branch {
             Branch::Match(b) => {
                 mix_spans([
                     b.match_kw,
-                    b.label.span(),
                     b.scrutinee.span(),
                     b.with_kw,
                     mix_spans(b.cases.iter().map(|case| {

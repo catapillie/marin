@@ -407,7 +407,6 @@ impl<'src, 'e> Parser<'src, 'e> {
 
     fn try_parse_match_branch(&mut self) -> Option<ast::Branch> {
         let match_kw = self.try_expect_token(Token::Match)?;
-        let label = self.parse_optional_label();
         let scrutinee = self.expect_expression();
         let with_kw = self.expect_token(Token::With);
 
@@ -434,7 +433,6 @@ impl<'src, 'e> Parser<'src, 'e> {
         Some(ast::Branch::Match(ast::MatchBranch {
             match_kw,
             with_kw,
-            label: Box::new(label),
             scrutinee: Box::new(scrutinee),
             cases: cases.into(),
         }))

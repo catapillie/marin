@@ -62,10 +62,12 @@ impl<'a> Walker<'a> {
             (P::Tuple(left_items), V::Tuple(right_items))
                 if left_items.len() == right_items.len() =>
             {
+                let mut matched = true;
                 for (left, right) in left_items.iter().zip(right_items) {
-                    self.deconstruct(left, right)?;
+                    matched &= self.deconstruct(left, right)?;
                 }
-                Ok(true)
+
+                Ok(matched)
             }
             _ => Err(State::Error(Error::PatternMismatch)),
         }
@@ -155,6 +157,7 @@ impl<'a> Walker<'a> {
             B::While(condition, stmts, label_id) => self.eval_while(condition, stmts, label_id.0),
             B::Loop(stmts, label_id) => self.eval_loop(stmts, label_id.0),
             B::Else(stmts, label_id) => self.eval_else(stmts, label_id.0),
+            B::Match(scrutinee, cases) => self.eval_match(scrutinee, cases),
         }
     }
 
@@ -233,6 +236,20 @@ impl<'a> Walker<'a> {
         label_id: usize,
     ) -> Result<'a, Option<Value<'a>>> {
         self.eval_block(stmts, label_id).map(Some)
+    }
+
+    fn eval_match(
+        &mut self,
+        scrutinee: &'a ir::Expr,
+        cases: &'a [(ir::Pattern, ir::Expr)],
+    ) -> Result<'a, Option<Value<'a>>> {
+        let scrutinee = self.eval_expression(scrutinee)?;
+        for (pattern, value) in cases {
+            if self.deconstruct(pattern, scrutinee.clone())? {
+                return Ok(Some(self.eval_expression(value)?));
+            }
+        }
+        Ok(None)
     }
 
     fn eval_break(&mut self, id: usize) -> Result<'a, Value<'a>> {

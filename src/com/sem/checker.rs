@@ -918,7 +918,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         branch_types.push(first_branch_type);
 
         let mut exhaustive_branches_span = e.first_branch.span();
-        let mut exhaustive_branch_count = 0;
+        let mut exhaustive_branch_count = 1;
         let mut unreachable_branches_span = None;
         let mut unreachable_branch_count = 0;
         for (else_tok, else_branch) in &e.else_branches {
@@ -988,8 +988,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             B::If(b) => self.check_if(b, span),
             B::While(b) => self.check_while(b, span),
             B::Loop(b) => self.check_loop(b, span),
-            B::Match(_) => todo!(),
             B::Else(b) => self.check_else(b, span),
+            B::Match(b) => self.check_match(b, span),
         }
     }
 
@@ -1029,6 +1029,35 @@ impl<'src, 'e> Checker<'src, 'e> {
         let (stmts, label_id, branch_type) = self.check_expression_block(&b.label, &b.body, span);
         let branch = ir::Branch::Else(stmts, label_id);
         (branch, branch_type, true)
+    }
+
+    fn check_match(&mut self, b: &ast::MatchBranch, span: Span) -> (ir::Branch, ir::TypeID, bool) {
+        let result_type = self.create_fresh_type(Some(span));
+
+        let (scrut, scrut_type) = self.check_expression(&b.scrutinee);
+        let mut is_exhaustive = false;
+        let mut cases = Vec::new();
+        for case in &b.cases {
+            let pattern = self.check_pattern(&case.pattern);
+            is_exhaustive |= pattern.is_irrefutable();
+
+            self.open_scope(false);
+
+            let (pattern, pattern_type) = self.declare_pattern(&pattern);
+            self.unify(scrut_type, pattern_type, &[]);
+
+            let (val, val_type) = self.check_expression(&case.value);
+            self.unify(val_type, result_type, &[]);
+
+            self.close_scope();
+            cases.push((pattern, val));
+        }
+
+        (
+            ir::Branch::Match(Box::new(scrut), cases.into()),
+            result_type,
+            is_exhaustive,
+        )
     }
 
     fn check_break(&mut self, e: &ast::Break) -> ir::CheckedExpr {
