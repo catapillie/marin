@@ -3,7 +3,7 @@ use crate::com::{
     ast,
     ir::{self, TypeProvenance},
     loc::Span,
-    reporting::{Header, Label, Report},
+    reporting::{Header, Label, Note, Report},
     scope::Scope,
 };
 use either::Either;
@@ -435,6 +435,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match e {
             E::Let(e) => self.check_let(e),
             E::Import(..) => todo!(),
+            E::Union(e) => self.check_union(e),
             _ => {
                 let (expr, ty) = self.check_expression(e);
                 ir::Stmt::Expr(expr, ty)
@@ -530,13 +531,63 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    fn check_union(&mut self, e: &ast::Union) -> ir::Stmt {
+        use ast::Signature as S;
+        let signature = self.check_signature(&e.signature, false);
+
+        let name = self.signature_name(&signature);
+        if name.is_none() && !matches!(signature, S::Missing) {
+            self.reports.push(
+                Report::error(Header::InvalidSignature()).with_primary_label(
+                    Label::NamelessUnionSignature,
+                    e.signature.span().wrap(self.file),
+                ),
+            );
+        }
+
+        for variant in &e.variants {
+            let variant_sig = self.check_signature(variant, false);
+            if matches!(variant_sig, S::Missing) {
+                continue;
+            }
+
+            let Some((_, _)) = (match variant_sig {
+                S::Name(span, next) => match *next {
+                    S::Empty => Some((span, None)),
+                    S::Args(args, next) => match *next {
+                        S::Empty => Some((span, Some(args))),
+                        _ => None,
+                    },
+                    _ => None,
+                },
+                _ => None,
+            }) else {
+                self.reports.push(
+                    Report::error(Header::InvalidSignature())
+                        .with_primary_label(Label::Empty, variant.span().wrap(self.file))
+                        .with_secondary_label(
+                            Label::WithinUnionDefinition(name.map(|(name, _)| name.to_string())),
+                            e.span().wrap(self.file),
+                        )
+                        .with_note(Note::UnionVariantSyntax),
+                );
+                continue;
+            };
+
+            // let variant_name = variant_name_span.lexeme(self.source);
+            // println!("  {variant_name}");
+        }
+
+        ir::Stmt::Nothing
+    }
+
     fn check_pattern_or_signature(
         &mut self,
         e: &ast::Expr,
     ) -> Either<ast::Pattern, ast::Signature> {
         use ast::Expr as E;
         match e {
-            E::Call(..) => Either::Right(self.check_signature(e)),
+            E::Call(..) => Either::Right(self.check_signature(e, true)),
             _ => Either::Left(self.check_pattern(e)),
         }
     }
@@ -571,13 +622,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    fn check_signature(&mut self, mut e: &ast::Expr) -> ast::Signature {
+    fn check_signature(&mut self, mut e: &ast::Expr, require_args: bool) -> ast::Signature {
         use ast::Signature as S;
         let mut signature = S::Empty;
         loop {
             use ast::Expr as E;
             match e {
-                E::Var(lex) if !matches!(signature, S::Empty) => {
+                E::Var(lex) if !require_args || !matches!(signature, S::Empty) => {
                     return S::Name(lex.span, Box::new(signature));
                 }
                 E::Tuple(tuple) => {
@@ -1146,7 +1197,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn check_fun(&mut self, e: &ast::Fun) -> ir::CheckedExpr {
-        let signature = self.check_signature(&e.signature);
+        let signature = self.check_signature(&e.signature, true);
         let sig_span = Span::combine(e.fun_kw, e.signature.span());
         for arg_pattern in signature.arg_patterns() {
             if !arg_pattern.is_irrefutable() {

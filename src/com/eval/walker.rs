@@ -29,6 +29,7 @@ impl<'a> Walker<'a> {
         use ir::Stmt as S;
         match stmt {
             S::Missing => Err(State::Error(Error::InvalidState)),
+            S::Nothing => Ok(None),
             S::Expr(e, _) => self.eval_expression(e).map(Some),
             S::Let(pattern, value) => {
                 self.eval_let(pattern, value)?;

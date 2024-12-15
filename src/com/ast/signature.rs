@@ -29,4 +29,13 @@ impl Signature {
         self.collect_arg_patterns(&mut patterns);
         patterns
     }
+
+    // pub fn curry_order(&self) -> usize {
+    //     match self {
+    //         Self::Missing => 0,
+    //         Self::Name(_, next) => next.curry_order(),
+    //         Self::Args(_, next) => 1 + next.curry_order(),
+    //         Self::Empty => 0,
+    //     }
+    // }
 }

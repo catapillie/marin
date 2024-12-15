@@ -189,6 +189,7 @@ impl<'src, 'e> Parser<'src, 'e> {
 
             Token::Import => return self.try_parse_import_expression(),
             Token::Super => self.try_parse_super_expression(),
+            Token::Union => self.try_parse_union_expression(),
             _ => None,
         }?;
 
@@ -514,6 +515,20 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_super_expression(&mut self) -> Option<ast::Expr> {
         self.try_expect_token(Token::Super)
             .map(|token| ast::Expr::Super(ast::Lexeme { span: token }))
+    }
+
+    fn try_parse_union_expression(&mut self) -> Option<ast::Expr> {
+        let union_kw = self.try_expect_token(Token::Union)?;
+        let signature = self.expect_primary_expression();
+        let variants = self.parse_newline_separated_items();
+        let end_kw = self.expect_token(Token::End);
+
+        Some(ast::Expr::Union(ast::Union {
+            union_kw,
+            end_kw,
+            signature: Box::new(signature),
+            variants,
+        }))
     }
 
     fn parse_optional_label(&mut self) -> ast::Label {

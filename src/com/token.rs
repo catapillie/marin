@@ -66,6 +66,8 @@ pub enum Token {
     Import,
     #[token("super")]
     Super,
+    #[token("union")]
+    Union,
 
     #[regex(r"[^\W\d_]\w*")]
     Ident,
@@ -113,6 +115,7 @@ impl Display for Token {
             Token::False => write!(f, "'false' keyword"),
             Token::Import => write!(f, "'import' keyword"),
             Token::Super => write!(f, "'super' keyword"),
+            Token::Union => write!(f, "'union' keyword"),
 
             Token::Ident => write!(f, "identifier"),
             Token::Int => write!(f, "integer literal"),
