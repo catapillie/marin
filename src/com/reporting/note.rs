@@ -2,6 +2,7 @@ pub enum Note {
     ConsiderStage(String),
     CyclicDependencies(Vec<String>),
     UnionVariantSyntax,
+    UseConstantUnionSyntax(String),
 }
 
 impl Note {
@@ -15,6 +16,8 @@ impl Note {
                 => format!("files involved in the cycle\n  {}", deps.join("\n  ")),
             N::UnionVariantSyntax
                 => "a union variant should contain a name, and optionally be followed by one or more arguments within parentheses".to_string(),
+            N::UseConstantUnionSyntax(name)
+                => format!("consider removing the parentheses to make '{name}' a constant union variant"),
         }
     }
 }

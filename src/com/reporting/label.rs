@@ -1,5 +1,6 @@
 use crate::com::ir::TypeString;
 
+#[derive(Clone)]
 pub enum Label {
     Empty,
     ExpectedImportQuery,

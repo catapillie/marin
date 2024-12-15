@@ -26,16 +26,19 @@ pub enum Header {
     InvalidInteger(),
     InvalidFloat(),
     InvalidExpression(),
+    InvalidType(),
     InvalidPattern(),
     InvalidSignature(),
     InvalidLabel(),
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
     UnknownVariable(String),
+    UnknownType(String),
     NotVariable(String),
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
     RefutablePattern(),
+    UnionVariantNoArgs(String),
 }
 
 impl Header {
@@ -67,16 +70,19 @@ impl Header {
             H::InvalidInteger(..) => "invalid_integer",
             H::InvalidFloat(..) => "invalid_float",
             H::InvalidExpression(..) => "invalid_expression",
+            H::InvalidType(..) => "invalid_type",
             H::InvalidPattern(..) => "invalid_pattern",
             H::InvalidSignature(..) => "invalid_signature",
             H::InvalidLabel(..) => "invalid_label",
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
             H::UnknownVariable(..) => "unknown_variable",
+            H::UnknownType(..) => "unknown_type",
             H::NotVariable(..) => "not_variable",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
             H::RefutablePattern(..) => "refutable_pattern",
+            H::UnionVariantNoArgs(..) => "union_variant_no_args",
         }
     }
 
@@ -129,6 +135,8 @@ impl Header {
                 => "invalid float literal".to_string(),
             H::InvalidExpression()
                 => "invalid expression syntax".to_string(),
+            H::InvalidType()
+                => "invalid type syntax".to_string(),
             H::InvalidPattern()
                 => "invalid pattern syntax".to_string(),
             H::InvalidSignature()
@@ -145,6 +153,8 @@ impl Header {
                 => format!("invalid skip in label '{name}'"),
             H::UnknownVariable(name)
                 => format!("unknown variable '{name}' in the current scope"),
+            H::UnknownType(name)
+                => format!("unknown type '{name}' in the current scope"),
             H::NotVariable(name)
                 => format!("identifier '{name}' does not refer to a variable in the current scope"),
             H::TypeMismatch(left, right)
@@ -155,6 +165,8 @@ impl Header {
                 => "unreachable conditional branches".to_string(),
             H::RefutablePattern()
                 => "refutable pattern".to_string(),
+            H::UnionVariantNoArgs(name)
+                => format!("non-constant union variant '{name}' cannot have no arguments"),
         }
     }
 }

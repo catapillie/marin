@@ -534,6 +534,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn check_union(&mut self, e: &ast::Union) -> ir::Stmt {
         use ast::Signature as S;
         let signature = self.check_signature(&e.signature, false);
+        let span = e.span();
 
         let name = self.signature_name(&signature);
         if name.is_none() && !matches!(signature, S::Missing) {
@@ -545,19 +546,14 @@ impl<'src, 'e> Checker<'src, 'e> {
             );
         }
 
-        for variant in &e.variants {
-            let variant_sig = self.check_signature(variant, false);
-            if matches!(variant_sig, S::Missing) {
-                continue;
-            }
+        let within_label = Label::WithinUnionDefinition(name.map(|(name, _)| name.to_string()));
 
-            let Some((_, _)) = (match variant_sig {
-                S::Name(span, next) => match *next {
-                    S::Empty => Some((span, None)),
-                    S::Args(args, next) => match *next {
-                        S::Empty => Some((span, Some(args))),
-                        _ => None,
-                    },
+        for variant in &e.variants {
+            use ast::Expr as E;
+            let Some((variant_name_span, variant_args)) = (match variant {
+                E::Var(e) => Some((e.span, None)),
+                E::Call(call) => match &*call.callee {
+                    E::Var(e) => Some((e.span, Some(&call.args))),
                     _ => None,
                 },
                 _ => None,
@@ -565,17 +561,27 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.reports.push(
                     Report::error(Header::InvalidSignature())
                         .with_primary_label(Label::Empty, variant.span().wrap(self.file))
-                        .with_secondary_label(
-                            Label::WithinUnionDefinition(name.map(|(name, _)| name.to_string())),
-                            e.span().wrap(self.file),
-                        )
+                        .with_secondary_label(within_label.clone(), span.wrap(self.file))
                         .with_note(Note::UnionVariantSyntax),
                 );
                 continue;
             };
 
-            // let variant_name = variant_name_span.lexeme(self.source);
-            // println!("  {variant_name}");
+            let variant_name = variant_name_span.lexeme(self.source);
+            if let Some(variant_args) = variant_args {
+                if variant_args.is_empty() {
+                    self.reports.push(
+                        Report::error(Header::UnionVariantNoArgs(variant_name.to_string()))
+                            .with_primary_label(Label::Empty, variant.span().wrap(self.file))
+                            .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                            .with_note(Note::UseConstantUnionSyntax(variant_name.to_string())),
+                    );
+                }
+
+                for arg in variant_args {
+                    self.check_type(arg);
+                }
+            }
         }
 
         ir::Stmt::Nothing
@@ -744,6 +750,48 @@ impl<'src, 'e> Checker<'src, 'e> {
                 (I::Done, ret_type, ret_type, None)
             }
         }
+    }
+
+    fn check_type(&mut self, t: &ast::Expr) -> ir::TypeID {
+        use ast::Expr as E;
+        match t {
+            E::Missing(t) => self.create_fresh_type(Some(t.span)),
+            E::Var(t) => self.check_var_type(t),
+            E::Tuple(t) => self.check_tuple_type(t),
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidType())
+                        .with_primary_label(Label::Empty, t.span().wrap(self.file)),
+                );
+                self.create_fresh_type(Some(t.span()))
+            }
+        }
+    }
+
+    fn check_var_type(&mut self, t: &ast::Lexeme) -> ir::TypeID {
+        let lexeme = t.span.lexeme(self.source);
+        match lexeme {
+            "int" => self.create_type(ir::Type::Int, Some(t.span)),
+            "float" => self.create_type(ir::Type::Float, Some(t.span)),
+            "string" => self.create_type(ir::Type::String, Some(t.span)),
+            "bool" => self.create_type(ir::Type::Bool, Some(t.span)),
+            _ => {
+                self.reports.push(
+                    Report::error(Header::UnknownType(lexeme.to_string()))
+                        .with_primary_label(Label::Empty, t.span.wrap(self.file)),
+                );
+                self.create_fresh_type(Some(t.span))
+            }
+        }
+    }
+
+    fn check_tuple_type(&mut self, t: &ast::Tuple) -> ir::TypeID {
+        if t.items.len() == 1 {
+            return self.check_type(&t.items[0]);
+        }
+
+        let item_types = t.items.iter().map(|item| self.check_type(item)).collect();
+        self.create_type(ir::Type::Tuple(item_types), Some(t.span()))
     }
 
     fn check_expression(&mut self, e: &ast::Expr) -> ir::CheckedExpr {
