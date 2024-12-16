@@ -38,11 +38,10 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         // native type bindings
-        use ir::TypeInfo::TypeNode as Node;
-        checker.create_user_type("int", Node(ir::Type::Int));
-        checker.create_user_type("float", Node(ir::Type::Float));
-        checker.create_user_type("string", Node(ir::Type::String));
-        checker.create_user_type("bool", Node(ir::Type::Bool));
+        checker.create_native_type("int", ir::Type::Int);
+        checker.create_native_type("float", ir::Type::Float);
+        checker.create_native_type("string", ir::Type::String);
+        checker.create_native_type("bool", ir::Type::Bool);
 
         checker
     }
@@ -426,6 +425,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    fn create_native_type(&mut self, name: &'src str, ty: ir::Type) {
+        let id = self.create_type(ty, None);
+        self.create_user_type(name, ir::TypeInfo::Type(id));
+    }
+
     fn create_user_type(&mut self, name: &'src str, info: ir::TypeInfo) -> ir::EntityID {
         let id = self.add_entity(ir::Entity::Type(info));
         self.scope.insert(name, id);
@@ -549,28 +553,69 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn check_union(&mut self, e: &ast::Union) -> ir::Stmt {
-        use ast::Signature as S;
-        let signature = self.check_signature(&e.signature, false);
+        use ast::Expr as E;
+
         let span = e.span();
-
-        let name = self.signature_name(&signature);
-        if name.is_none() && !matches!(signature, S::Missing) {
+        let Some((name_span, args)) = (match &*e.signature {
+            E::Var(e) => Some((e.span, None)),
+            E::Call(call) => match &*call.callee {
+                E::Var(e) => Some((e.span, Some(&*call.args))),
+                _ => None,
+            },
+            _ => None,
+        }) else {
             self.reports.push(
-                Report::error(Header::InvalidSignature()).with_primary_label(
-                    Label::NamelessUnionSignature,
-                    e.signature.span().wrap(self.file),
-                ),
+                Report::error(Header::InvalidSignature())
+                    .with_primary_label(Label::Empty, e.signature.span().wrap(self.file))
+                    .with_note(Note::UnionSyntax),
             );
-        }
+            return ir::Stmt::Nothing;
+        };
 
-        let within_label = Label::WithinUnionDefinition(name.map(|(name, _)| name.to_string()));
+        let name = name_span.lexeme(self.source);
+        let within_label = Label::WithinUnionDefinition(name.to_string());
+        self.open_scope(false);
+
+        let _type_args = match args {
+            None => None,
+            Some(args) => {
+                if args.is_empty() {
+                    self.reports.push(
+                        Report::error(Header::UnionNoArgs(name.to_string()))
+                            .with_primary_label(Label::Empty, e.signature.span().wrap(self.file))
+                            .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                            .with_note(Note::UseSimpleUnionSyntax(name.to_string())),
+                    );
+                }
+
+                let mut type_args = Vec::new();
+                for arg in args {
+                    let arg_id = match arg {
+                        E::Var(e) => {
+                            let arg_name = e.span.lexeme(self.source);
+                            let arg_id = self.create_fresh_type(Some(e.span));
+                            self.create_user_type(arg_name, ir::TypeInfo::Type(arg_id));
+                            arg_id
+                        }
+                        _ => {
+                            self.reports.push(
+                                Report::error(Header::InvalidTypeArg())
+                                    .with_primary_label(Label::Empty, arg.span().wrap(self.file)),
+                            );
+                            self.create_fresh_type(Some(arg.span()))
+                        }
+                    };
+                    type_args.push(arg_id);
+                }
+                Some(type_args.into_boxed_slice())
+            }
+        };
 
         for variant in &e.variants {
-            use ast::Expr as E;
             let Some((variant_name_span, variant_args)) = (match variant {
                 E::Var(e) => Some((e.span, None)),
                 E::Call(call) => match &*call.callee {
-                    E::Var(e) => Some((e.span, Some(&call.args))),
+                    E::Var(e) => Some((e.span, Some(&*call.args))),
                     _ => None,
                 },
                 _ => None,
@@ -579,7 +624,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     Report::error(Header::InvalidSignature())
                         .with_primary_label(Label::Empty, variant.span().wrap(self.file))
                         .with_secondary_label(within_label.clone(), span.wrap(self.file))
-                        .with_note(Note::UnionVariantSyntax),
+                        .with_note(Note::VariantSyntax),
                 );
                 continue;
             };
@@ -600,6 +645,8 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
             }
         }
+
+        self.close_scope();
 
         ir::Stmt::Nothing
     }
@@ -805,7 +852,11 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         use ir::TypeInfo as Info;
         match info {
-            Info::TypeNode(ty) => self.create_type(ty.clone(), Some(t.span)),
+            Info::Type(ty) => {
+                let new_id = self.clone_type_repr(*ty);
+                self.set_type_span(new_id, t.span);
+                new_id
+            }
         }
     }
 

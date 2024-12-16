@@ -1,4 +1,4 @@
-use super::{Scheme, Type};
+use super::{Scheme, TypeID};
 use crate::com::loc::Loc;
 
 #[derive(Debug, Copy, Clone)]
@@ -6,7 +6,7 @@ pub struct EntityID(pub usize);
 
 pub enum Entity {
     Variable(Variable),
-    Type(TypeInfo)
+    Type(TypeInfo),
 }
 
 pub struct Variable {
@@ -15,5 +15,5 @@ pub struct Variable {
 }
 
 pub enum TypeInfo {
-    TypeNode(Type)
+    Type(TypeID),
 }

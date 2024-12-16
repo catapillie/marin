@@ -27,6 +27,7 @@ pub enum Header {
     InvalidFloat(),
     InvalidExpression(),
     InvalidType(),
+    InvalidTypeArg(),
     InvalidPattern(),
     InvalidSignature(),
     InvalidLabel(),
@@ -39,6 +40,7 @@ pub enum Header {
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
     RefutablePattern(),
+    UnionNoArgs(String),
     UnionVariantNoArgs(String),
 }
 
@@ -72,6 +74,7 @@ impl Header {
             H::InvalidFloat(..) => "invalid_float",
             H::InvalidExpression(..) => "invalid_expression",
             H::InvalidType(..) => "invalid_type",
+            H::InvalidTypeArg(..) => "invalid_type_arg",
             H::InvalidPattern(..) => "invalid_pattern",
             H::InvalidSignature(..) => "invalid_signature",
             H::InvalidLabel(..) => "invalid_label",
@@ -84,6 +87,7 @@ impl Header {
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
             H::RefutablePattern(..) => "refutable_pattern",
+            H::UnionNoArgs(..) => "union_no_args",
             H::UnionVariantNoArgs(..) => "union_variant_no_args",
         }
     }
@@ -139,6 +143,8 @@ impl Header {
                 => "invalid expression syntax".to_string(),
             H::InvalidType()
                 => "invalid type syntax".to_string(),
+            H::InvalidTypeArg()
+                => "invalid type argument syntax".to_string(),
             H::InvalidPattern()
                 => "invalid pattern syntax".to_string(),
             H::InvalidSignature()
@@ -169,6 +175,8 @@ impl Header {
                 => "unreachable conditional branches".to_string(),
             H::RefutablePattern()
                 => "refutable pattern".to_string(),
+            H::UnionNoArgs(name)
+                => format!("non-constant union type '{name}' cannot have no arguments"),
             H::UnionVariantNoArgs(name)
                 => format!("non-constant union variant '{name}' cannot have no arguments"),
         }

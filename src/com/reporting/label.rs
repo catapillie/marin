@@ -23,10 +23,9 @@ pub enum Label {
     UnreachableConditionalBranches(usize),
     VariableDefinition(String),
     NamelessSignature,
-    NamelessUnionSignature,
     LetBindingPattern,
     FunctionArgPattern,
-    WithinUnionDefinition(Option<String>),
+    WithinUnionDefinition(String),
 }
 
 impl Label {
@@ -90,15 +89,11 @@ impl Label {
                 => format!("variable '{name}' is defined here"),
             L::NamelessSignature
                 => "function signature has no name".to_string(),
-            L::NamelessUnionSignature
-                => "union type signature has no name".to_string(),
             L::LetBindingPattern
                 => "let-binding patterns must be irrefutable".to_string(),
             L::FunctionArgPattern
                 => "function argument patterns must be irrefutable".to_string(),
-            L::WithinUnionDefinition(None)
-                => "within the definition of a union type".to_string(),
-            L::WithinUnionDefinition(Some(name))
+            L::WithinUnionDefinition(name)
                 => format!("within the definition of union type '{name}'"),
         }
     }
