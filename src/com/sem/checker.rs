@@ -611,6 +611,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         };
 
+        self.create_user_type(name, ir::TypeInfo::Union);
+
         for variant in &e.variants {
             let Some((variant_name_span, variant_args)) = (match variant {
                 E::Var(e) => Some((e.span, None)),
@@ -857,6 +859,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.set_type_span(new_id, t.span);
                 new_id
             }
+            _ => todo!(),
         }
     }
 

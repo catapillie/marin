@@ -16,4 +16,5 @@ pub struct Variable {
 
 pub enum TypeInfo {
     Type(TypeID),
+    Union,
 }
