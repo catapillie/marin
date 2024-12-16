@@ -35,6 +35,7 @@ pub enum Header {
     UnknownVariable(String),
     UnknownType(String),
     NotVariable(String),
+    NotType(String),
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
     RefutablePattern(),
@@ -79,6 +80,7 @@ impl Header {
             H::UnknownVariable(..) => "unknown_variable",
             H::UnknownType(..) => "unknown_type",
             H::NotVariable(..) => "not_variable",
+            H::NotType(..) => "not_type",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
             H::RefutablePattern(..) => "refutable_pattern",
@@ -157,6 +159,8 @@ impl Header {
                 => format!("unknown type '{name}' in the current scope"),
             H::NotVariable(name)
                 => format!("identifier '{name}' does not refer to a variable in the current scope"),
+            H::NotType(name)
+                => format!("identifier '{name}' does not refer to a type in the current scope"),
             H::TypeMismatch(left, right)
                 => format!("type mismatch between {left} and {right}"),
             H::UnreachableConditionalBranches(1)

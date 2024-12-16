@@ -24,7 +24,7 @@ pub struct Checker<'src, 'e> {
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn new(source: &'src str, file: usize, reports: &'e mut Vec<Report>) -> Self {
-        Self {
+        let mut checker = Self {
             source,
             file,
             reports,
@@ -35,7 +35,16 @@ impl<'src, 'e> Checker<'src, 'e> {
             entities: Vec::new(),
             labels: Vec::new(),
             types: Vec::new(),
-        }
+        };
+
+        // native type bindings
+        use ir::TypeInfo::TypeNode as Node;
+        checker.create_user_type("int", Node(ir::Type::Int));
+        checker.create_user_type("float", Node(ir::Type::Float));
+        checker.create_user_type("string", Node(ir::Type::String));
+        checker.create_user_type("bool", Node(ir::Type::Bool));
+
+        checker
     }
 
     fn open_scope(&mut self, blocking: bool) {
@@ -406,13 +415,21 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn get_variable(&self, id: ir::EntityID) -> &ir::Variable {
         match &self.entities[id.0] {
             ir::Entity::Variable(v) => v,
+            _ => panic!("id '{}' is not that of an entity", id.0),
         }
     }
 
     fn get_variable_mut(&mut self, id: ir::EntityID) -> &mut ir::Variable {
         match &mut self.entities[id.0] {
             ir::Entity::Variable(v) => v,
+            _ => panic!("id '{}' is not that of an entity", id.0),
         }
+    }
+
+    fn create_user_type(&mut self, name: &'src str, info: ir::TypeInfo) -> ir::EntityID {
+        let id = self.add_entity(ir::Entity::Type(info));
+        self.scope.insert(name, id);
+        id
     }
 
     fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
@@ -769,19 +786,26 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn check_var_type(&mut self, t: &ast::Lexeme) -> ir::TypeID {
-        let lexeme = t.span.lexeme(self.source);
-        match lexeme {
-            "int" => self.create_type(ir::Type::Int, Some(t.span)),
-            "float" => self.create_type(ir::Type::Float, Some(t.span)),
-            "string" => self.create_type(ir::Type::String, Some(t.span)),
-            "bool" => self.create_type(ir::Type::Bool, Some(t.span)),
-            _ => {
-                self.reports.push(
-                    Report::error(Header::UnknownType(lexeme.to_string()))
-                        .with_primary_label(Label::Empty, t.span.wrap(self.file)),
-                );
-                self.create_fresh_type(Some(t.span))
-            }
+        let name = t.span.lexeme(self.source);
+        let Some(id) = self.scope.search(name) else {
+            self.reports.push(
+                Report::error(Header::UnknownType(name.to_string()))
+                    .with_primary_label(Label::Empty, t.span.wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span));
+        };
+
+        let ir::Entity::Type(info) = &self.entities[id.0] else {
+            self.reports.push(
+                Report::error(Header::NotType(name.to_string()))
+                    .with_primary_label(Label::Empty, t.span.wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span));
+        };
+
+        use ir::TypeInfo as Info;
+        match info {
+            Info::TypeNode(ty) => self.create_type(ty.clone(), Some(t.span)),
         }
     }
 
