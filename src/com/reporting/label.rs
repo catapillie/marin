@@ -26,6 +26,8 @@ pub enum Label {
     LetBindingPattern,
     FunctionArgPattern,
     WithinUnionDefinition(String),
+    UnionTypeArgCount(usize),
+    UnionDefinition(String),
 }
 
 impl Label {
@@ -95,6 +97,12 @@ impl Label {
                 => "function argument patterns must be irrefutable".to_string(),
             L::WithinUnionDefinition(name)
                 => format!("within the definition of union type '{name}'"),
+            L::UnionTypeArgCount(1)
+                => "union type takes in a single argument".to_string(),
+            L::UnionTypeArgCount(count)
+                => format!("union type takes in {count} arguments"),
+            L::UnionDefinition(name)
+                => format!("union type '{name}' is defined here"),
         }
     }
 }

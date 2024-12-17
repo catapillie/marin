@@ -4,6 +4,8 @@ use crate::com::{
 };
 use std::{collections::HashSet, fmt::Display};
 
+use super::EntityID;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TypeID(pub usize);
 
@@ -40,6 +42,7 @@ pub enum Type {
     Tuple(Box<[TypeID]>),
     Array(TypeID),
     Lambda(Box<[TypeID]>, TypeID),
+    Union(EntityID, Option<Box<[TypeID]>>),
 }
 
 impl Type {
@@ -58,17 +61,18 @@ pub enum TypeString {
     Tuple(Box<[TypeString]>),
     Array(Box<TypeString>),
     Lambda(Box<[TypeString]>, Box<TypeString>),
+    Constructor(String, Box<[TypeString]>),
 }
 
 impl TypeString {
     fn fmt_paren(&self, paren: bool, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TypeString::Name(name) => write!(f, "{name}"),
-            TypeString::Int => write!(f, "int"),
-            TypeString::Float => write!(f, "float"),
-            TypeString::Bool => write!(f, "bool"),
-            TypeString::String => write!(f, "string"),
-            TypeString::Tuple(items) => {
+            Self::Name(name) => write!(f, "{name}"),
+            Self::Int => write!(f, "int"),
+            Self::Float => write!(f, "float"),
+            Self::Bool => write!(f, "bool"),
+            Self::String => write!(f, "string"),
+            Self::Tuple(items) => {
                 write!(f, "(")?;
                 let mut iter = items.iter().peekable();
                 while let Some(item) = iter.next() {
@@ -80,12 +84,12 @@ impl TypeString {
                 write!(f, ")")?;
                 Ok(())
             }
-            TypeString::Array(item) => {
+            Self::Array(item) => {
                 write!(f, "[]")?;
                 item.fmt_paren(true, f)?;
                 Ok(())
             }
-            TypeString::Lambda(args, ret) => {
+            Self::Lambda(args, ret) => {
                 if paren {
                     write!(f, "(")?;
                 }
@@ -102,6 +106,18 @@ impl TypeString {
                 if paren {
                     write!(f, ")")?;
                 }
+                Ok(())
+            }
+            Self::Constructor(name, items) => {
+                write!(f, "{name}(")?;
+                let mut iter = items.iter().peekable();
+                while let Some(item) = iter.next() {
+                    item.fmt_paren(false, f)?;
+                    if iter.peek().is_some() {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, ")")?;
                 Ok(())
             }
         }

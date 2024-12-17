@@ -42,6 +42,7 @@ pub enum Header {
     RefutablePattern(),
     UnionNoArgs(String),
     UnionVariantNoArgs(String),
+    IncompleteType(),
 }
 
 impl Header {
@@ -89,6 +90,7 @@ impl Header {
             H::RefutablePattern(..) => "refutable_pattern",
             H::UnionNoArgs(..) => "union_no_args",
             H::UnionVariantNoArgs(..) => "union_variant_no_args",
+            H::IncompleteType(..) => "incomplete_type",
         }
     }
 
@@ -179,6 +181,8 @@ impl Header {
                 => format!("non-constant union type '{name}' cannot have no arguments"),
             H::UnionVariantNoArgs(name)
                 => format!("non-constant union variant '{name}' cannot have no arguments"),
+            H::IncompleteType()
+                => "incomplete type expression".to_string(),
         }
     }
 }

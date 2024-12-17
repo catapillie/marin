@@ -16,5 +16,17 @@ pub struct Variable {
 
 pub enum TypeInfo {
     Type(TypeID),
-    Union,
+    Union(UnionInfo),
+}
+
+pub struct UnionInfo {
+    pub name: String,
+    pub loc: Loc,
+    pub scheme: Scheme,
+    pub type_args: Option<Box<[UnionTypeArg]>>,
+}
+
+pub struct UnionTypeArg {
+    #[allow(dead_code)]
+    pub name: Option<String>,
 }

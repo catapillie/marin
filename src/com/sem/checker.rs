@@ -127,6 +127,8 @@ impl<'src, 'e> Checker<'src, 'e> {
                 args.iter().any(|&arg| self.occurs_in_type(left, arg))
                     || self.occurs_in_type(left, ret)
             }
+            T::Union(_, Some(items)) => items.iter().any(|&item| self.occurs_in_type(left, item)),
+            T::Union(_, None) => false,
         }
     }
 
@@ -184,6 +186,21 @@ impl<'src, 'e> Checker<'src, 'e> {
                     self.unify(left_ret, right_ret, provenances);
                     return;
                 }
+            }
+
+            (T::Union(left_union, Some(left_items)), T::Union(right_union, Some(right_items)))
+                if left_union.0 == right_union.0 =>
+            {
+                for (left_item, right_item) in left_items.iter().zip(right_items.iter()) {
+                    self.unify(*left_item, *right_item, provenances);
+                }
+                return;
+            }
+
+            (T::Union(left_union, None), T::Union(right_union, None))
+                if left_union.0 == right_union.0 =>
+            {
+                return;
             }
 
             _ => {}
@@ -252,6 +269,12 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
                 self.collect_type_variables(ret, ids);
             }
+            T::Union(_, Some(items)) => {
+                for item in items {
+                    self.collect_type_variables(item, ids);
+                }
+            }
+            T::Union(_, None) => {}
         }
     }
 
@@ -306,6 +329,14 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let new_ret = self.apply_type_substitution(ret, sub);
                 self.create_type(T::Lambda(new_args, new_ret), None)
             }
+            T::Union(eid, Some(items)) => {
+                let new_items = items
+                    .iter()
+                    .map(|item| self.apply_type_substitution(*item, sub))
+                    .collect();
+                self.create_type(T::Union(eid, Some(new_items)), None)
+            }
+            T::Union(_, None) => ty,
         }
     }
 
@@ -339,6 +370,26 @@ impl<'src, 'e> Checker<'src, 'e> {
                     .collect(),
                 Box::new(self.get_type_string_map(ret, name_map)),
             ),
+            T::Union(eid, Some(items)) => {
+                let ir::TypeInfo::Union(info) = self.get_type_info(eid) else {
+                    unreachable!()
+                };
+                let name = info.name.clone();
+                S::Constructor(
+                    name,
+                    items
+                        .iter()
+                        .map(|item| self.get_type_string_map(*item, name_map))
+                        .collect(),
+                )
+            }
+            T::Union(eid, None) => {
+                let ir::TypeInfo::Union(info) = self.get_type_info(eid) else {
+                    unreachable!()
+                };
+                let name = info.name.clone();
+                S::Name(name)
+            }
         }
     }
 
@@ -378,7 +429,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     //     }
     // }
 
-    fn add_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
+    fn create_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
         let id = self.entities.len();
         self.entities.push(entity);
         ir::EntityID(id)
@@ -394,7 +445,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         scheme: ir::Scheme,
         span: Span,
     ) -> ir::EntityID {
-        let id = self.add_entity(ir::Entity::Variable(ir::Variable {
+        let id = self.create_entity(ir::Entity::Variable(ir::Variable {
             scheme,
             loc: span.wrap(self.file),
         }));
@@ -431,9 +482,16 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn create_user_type(&mut self, name: &'src str, info: ir::TypeInfo) -> ir::EntityID {
-        let id = self.add_entity(ir::Entity::Type(info));
+        let id = self.create_entity(ir::Entity::Type(info));
         self.scope.insert(name, id);
         id
+    }
+
+    fn get_type_info(&self, id: ir::EntityID) -> &ir::TypeInfo {
+        match &self.entities[id.0] {
+            ir::Entity::Type(i) => i,
+            _ => panic!("id '{}' is not that of a type", id.0),
+        }
     }
 
     fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
@@ -576,42 +634,59 @@ impl<'src, 'e> Checker<'src, 'e> {
         let within_label = Label::WithinUnionDefinition(name.to_string());
         self.open_scope(false);
 
-        let _type_args = match args {
-            None => None,
-            Some(args) => {
-                if args.is_empty() {
-                    self.reports.push(
-                        Report::error(Header::UnionNoArgs(name.to_string()))
-                            .with_primary_label(Label::Empty, e.signature.span().wrap(self.file))
-                            .with_secondary_label(within_label.clone(), span.wrap(self.file))
-                            .with_note(Note::UseSimpleUnionSyntax(name.to_string())),
-                    );
-                }
+        let (arg_info, arg_ids) = if let Some(args) = args {
+            let mut arg_info = Vec::new();
+            let mut arg_ids = Vec::new();
 
-                let mut type_args = Vec::new();
-                for arg in args {
-                    let arg_id = match arg {
-                        E::Var(e) => {
-                            let arg_name = e.span.lexeme(self.source);
-                            let arg_id = self.create_fresh_type(Some(e.span));
-                            self.create_user_type(arg_name, ir::TypeInfo::Type(arg_id));
-                            arg_id
-                        }
-                        _ => {
-                            self.reports.push(
-                                Report::error(Header::InvalidTypeArg())
-                                    .with_primary_label(Label::Empty, arg.span().wrap(self.file)),
-                            );
-                            self.create_fresh_type(Some(arg.span()))
-                        }
-                    };
-                    type_args.push(arg_id);
-                }
-                Some(type_args.into_boxed_slice())
+            if args.is_empty() {
+                self.reports.push(
+                    Report::error(Header::UnionNoArgs(name.to_string()))
+                        .with_primary_label(Label::Empty, e.signature.span().wrap(self.file))
+                        .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                        .with_note(Note::UseSimpleUnionSyntax(name.to_string())),
+                );
             }
+
+            for arg in args {
+                let (arg_id, arg_name) = match arg {
+                    E::Var(e) => {
+                        let arg_span = e.span;
+                        let arg_name = arg_span.lexeme(self.source);
+                        let arg_id = self.create_fresh_type(Some(e.span));
+                        self.create_user_type(arg_name, ir::TypeInfo::Type(arg_id));
+                        (arg_id, Some(arg_name.to_string()))
+                    }
+                    _ => {
+                        self.reports.push(
+                            Report::error(Header::InvalidTypeArg())
+                                .with_primary_label(Label::Empty, arg.span().wrap(self.file)),
+                        );
+                        (self.create_fresh_type(Some(arg.span())), None)
+                    }
+                };
+                arg_info.push(ir::UnionTypeArg { name: arg_name });
+                arg_ids.push(arg_id);
+            }
+
+            (
+                Some(arg_info.into_boxed_slice()),
+                Some(arg_ids.into_boxed_slice()),
+            )
+        } else {
+            (None, None)
         };
 
-        self.create_user_type(name, ir::TypeInfo::Union);
+        let union_id = ir::EntityID(self.entities.len());
+        let union_type = self.create_type(ir::Type::Union(union_id, arg_ids), None);
+        let union_scheme = self.generalize_type(union_type);
+        let info = ir::TypeInfo::Union(ir::UnionInfo {
+            name: name.to_string(),
+            type_args: arg_info,
+            loc: e.signature.span().wrap(self.file),
+            scheme: union_scheme,
+        });
+        self.entities.push(ir::Entity::Type(info));
+        self.scope.insert(name, union_id);
 
         for variant in &e.variants {
             let Some((variant_name_span, variant_args)) = (match variant {
@@ -649,6 +724,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         self.close_scope();
+        self.scope.insert(name, union_id);
 
         ir::Stmt::Nothing
     }
@@ -823,6 +899,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match t {
             E::Missing(t) => self.create_fresh_type(Some(t.span)),
             E::Var(t) => self.check_var_type(t),
+            E::Call(t) => self.check_call_type(t),
             E::Tuple(t) => self.check_tuple_type(t),
             _ => {
                 self.reports.push(
@@ -853,14 +930,97 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         use ir::TypeInfo as Info;
-        match info {
-            Info::Type(ty) => {
-                let new_id = self.clone_type_repr(*ty);
-                self.set_type_span(new_id, t.span);
-                new_id
-            }
-            _ => todo!(),
+        let id = match info {
+            Info::Type(ty) => self.clone_type_repr(*ty),
+            Info::Union(info) => match &info.type_args {
+                Some(type_args) => {
+                    self.reports.push(
+                        Report::error(Header::IncompleteType())
+                            .with_primary_label(
+                                Label::UnionTypeArgCount(type_args.len()),
+                                t.span.wrap(self.file),
+                            )
+                            .with_secondary_label(
+                                Label::UnionDefinition(info.name.to_string()),
+                                info.loc,
+                            ),
+                    );
+                    self.create_fresh_type(None)
+                }
+                None => self.instantiate_scheme(info.scheme.clone()),
+            },
+        };
+
+        self.set_type_span(id, t.span);
+        id
+    }
+
+    fn check_call_type(&mut self, t: &ast::Call) -> ir::TypeID {
+        // this is currently quite simple, but will need to be generalized
+        // (only works for union types)
+        let args: Box<_> = t.args.iter().map(|arg| self.check_type(arg)).collect();
+
+        use ast::Expr as E;
+        let E::Var(lex) = &*t.callee else {
+            self.reports.push(
+                Report::error(Header::InvalidType())
+                    .with_primary_label(Label::Empty, t.span().wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span()));
+        };
+
+        let name_span = lex.span;
+        let name = name_span.lexeme(self.source);
+
+        let Some(id) = self.scope.search(name) else {
+            self.reports.push(
+                Report::error(Header::UnknownType(name.to_string()))
+                    .with_primary_label(Label::Empty, name_span.wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span()));
+        };
+        let id = *id;
+
+        let ir::Entity::Type(info) = &self.entities[id.0] else {
+            self.reports.push(
+                Report::error(Header::NotType(name.to_string()))
+                    .with_primary_label(Label::Empty, name_span.wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span()));
+        };
+
+        let ir::TypeInfo::Union(info) = info else {
+            self.reports.push(
+                Report::error(Header::InvalidType())
+                    .with_primary_label(Label::Empty, t.span().wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span()));
+        };
+
+        let Some(type_args) = &info.type_args else {
+            self.reports.push(
+                Report::error(Header::InvalidType())
+                    .with_primary_label(Label::Empty, t.span().wrap(self.file)),
+            );
+            return self.create_fresh_type(Some(t.span()));
+        };
+
+        let arity = type_args.len();
+        let union_ty = self.instantiate_scheme(info.scheme.clone());
+        let union_ty = self.clone_type_repr(union_ty);
+        self.set_type_span(union_ty, t.span());
+
+        if arity == args.len() {
+            let ty = self.create_type(ir::Type::Union(id, Some(args)), Some(t.span()));
+            self.unify(ty, union_ty, &[]);
+        } else {
+            self.reports.push(
+                Report::error(Header::InvalidType())
+                    .with_primary_label(Label::Empty, t.span().wrap(self.file)),
+            );
         }
+
+        union_ty
     }
 
     fn check_tuple_type(&mut self, t: &ast::Tuple) -> ir::TypeID {
