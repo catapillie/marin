@@ -178,9 +178,9 @@ impl Header {
             H::RefutablePattern()
                 => "refutable pattern".to_string(),
             H::UnionNoArgs(name)
-                => format!("non-constant union type '{name}' cannot have no arguments"),
+                => format!("non-constant union type '{name}' has no no arguments"),
             H::UnionVariantNoArgs(name)
-                => format!("non-constant union variant '{name}' cannot have no arguments"),
+                => format!("non-constant union variant '{name}' has no arguments"),
             H::IncompleteType()
                 => "incomplete type expression".to_string(),
         }
