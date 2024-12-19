@@ -1,0 +1,93 @@
+use crate::com::{
+    ast, ir,
+    loc::Span,
+    reporting::{Header, Label, Report},
+    Checker,
+};
+
+impl<'src, 'e> Checker<'src, 'e> {
+    pub fn check_signature(&mut self, mut e: &ast::Expr, require_args: bool) -> ast::Signature {
+        use ast::Signature as S;
+        let mut signature = S::Empty;
+        loop {
+            use ast::Expr as E;
+            match e {
+                E::Var(lex) if !require_args || !matches!(signature, S::Empty) => {
+                    return S::Name(lex.span, Box::new(signature));
+                }
+                E::Tuple(tuple) => {
+                    return S::Args(
+                        tuple
+                            .items
+                            .iter()
+                            .map(|arg| self.check_pattern(arg))
+                            .collect(),
+                        Box::new(signature),
+                    );
+                }
+                E::Call(call) => {
+                    let patterns = call
+                        .args
+                        .iter()
+                        .map(|arg| self.check_pattern(arg))
+                        .collect();
+                    e = &call.callee;
+                    signature = S::Args(patterns, Box::new(signature));
+                }
+                _ => {
+                    self.reports.push(
+                        Report::error(Header::InvalidSignature())
+                            .with_primary_label(Label::Empty, e.span().wrap(self.file)),
+                    );
+                    return S::Missing;
+                }
+            }
+        }
+    }
+
+    pub fn signature_name(&self, s: &ast::Signature) -> Option<(&'src str, Span)> {
+        use ast::Signature as S;
+        match s {
+            S::Name(span, _) => Some((span.lexeme(self.source), *span)),
+            _ => None,
+        }
+    }
+
+    // (signature, sig_type, ret_type, recursive_binding)
+    pub fn declare_signature(
+        &mut self,
+        s: &ast::Signature,
+    ) -> (ir::Signature, ir::TypeID, ir::TypeID, Option<ir::EntityID>) {
+        use ast::Signature as S;
+        use ir::Signature as I;
+        match s {
+            S::Missing => (
+                I::Missing,
+                self.create_fresh_type(None),
+                self.create_fresh_type(None),
+                None,
+            ),
+            S::Name(span, next) => {
+                let (sig, sig_type, ret_type, _) = self.declare_signature(next);
+                let name = span.lexeme(self.source);
+                let id = self.create_variable_mono(name, sig_type, *span);
+                (sig, sig_type, ret_type, Some(id))
+            }
+            S::Args(patterns, next) => {
+                let (sig, sig_type, ret_type, _) = self.declare_signature(next);
+                let (arg_patterns, arg_types): (Vec<_>, Vec<_>) =
+                    patterns.iter().map(|arg| self.declare_pattern(arg)).unzip();
+                (
+                    I::Args(arg_patterns.into(), Box::new(sig)),
+                    self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),
+                    ret_type,
+                    None,
+                )
+            }
+            S::Empty => {
+                let ret_type = self.create_fresh_type(None);
+                (I::Done, ret_type, ret_type, None)
+            }
+        }
+    }
+}
