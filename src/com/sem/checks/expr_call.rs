@@ -6,12 +6,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         let (args, arg_types) = self.check_expression_list(&e.args);
 
         let ret_type = self.create_fresh_type(Some(e.span()));
-        let sig_type = self.create_type(
-            ir::Type::Lambda(arg_types.into(), ret_type),
-            Some(e.callee.span()),
-        );
+        let sig_type = self.create_type(ir::Type::Lambda(arg_types.into(), ret_type), None);
         self.unify(callee_type, sig_type, &[]);
 
-        (ir::Expr::Call(Box::new(callee), args.into()), ret_type)
+        let result_ty = self.clone_type_repr(ret_type);
+        self.set_type_span(result_ty, e.span());
+
+        (ir::Expr::Call(Box::new(callee), args.into()), result_ty)
     }
 }

@@ -1,7 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::com::{
-    ast, ir::{self, TypeProvenance}, loc::Span, reporting::{Header, Label, Report}, sem::provenance::Provenance, Checker
+    ast,
+    ir::{self, TypeProvenance},
+    loc::Span,
+    reporting::{Header, Label, Report},
+    sem::provenance::Provenance,
+    Checker,
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -318,7 +323,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match self.types[repr.0].ty.clone() {
             T::Var => match name_map.get(&repr) {
                 Some(name) => S::Name(name.clone()),
-                None => S::Name(format!("X{}", repr.0)),
+                None => S::Hidden,
             },
             T::Int => S::Int,
             T::Float => S::Float,

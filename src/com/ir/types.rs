@@ -53,6 +53,7 @@ impl Type {
 
 #[derive(Debug, Clone)]
 pub enum TypeString {
+    Hidden,
     Name(String),
     Int,
     Float,
@@ -67,6 +68,7 @@ pub enum TypeString {
 impl TypeString {
     fn fmt_paren(&self, paren: bool, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Hidden => write!(f, "_"),
             Self::Name(name) => write!(f, "{name}"),
             Self::Int => write!(f, "int"),
             Self::Float => write!(f, "float"),
