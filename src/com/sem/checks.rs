@@ -32,3 +32,8 @@ mod type_call;
 mod type_tuple;
 mod type_var;
 mod types;
+
+mod path;
+mod path_access;
+mod path_access_union;
+mod path_var;
