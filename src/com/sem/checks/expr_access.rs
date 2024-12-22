@@ -12,6 +12,7 @@ pub enum PathQuery {
     Expr(ir::CheckedExpr),
     Type(ir::TypeID),
     Union(ir::EntityID),
+    Variant(ir::EntityID, usize),
 }
 
 use PathQuery as Q;
@@ -67,6 +68,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Expr(_) => todo!("access on expr"),
             Q::Type(_) => todo!("access on type"),
             Q::Union(id) => self.check_union_access_path(id, &e.accessor),
+            Q::Variant(_, _) => todo!("access on variant"),
         }
     }
 
@@ -79,7 +81,12 @@ impl<'src, 'e> Checker<'src, 'e> {
             unreachable!("id '{}' is not that of a union type", id.0)
         };
 
-        let Some(variant) = info.variants.iter().find(|var| var.name == name) else {
+        let Some((tag, _)) = info
+            .variants
+            .iter()
+            .enumerate()
+            .find(|(_, var)| var.name == name)
+        else {
             self.reports.push(
                 Report::error(Header::UnknownVariant(name.to_string(), info.name.clone()))
                     .with_primary_label(Label::Empty, name_span.wrap(self.file))
@@ -87,6 +94,40 @@ impl<'src, 'e> Checker<'src, 'e> {
             );
             return Q::Missing;
         };
+
+        PathQuery::Variant(id, tag)
+    }
+
+    pub fn check_access(&mut self, e: &ast::Access) -> ir::CheckedExpr {
+        let q = self.check_access_path(e);
+        self.check_path_into_expr(q, e.span())
+    }
+
+    pub fn check_path_into_expr(&mut self, q: Q, span: Span) -> ir::CheckedExpr {
+        match q {
+            Q::Missing => self.check_missing(),
+            Q::Expr(e) => e,
+            Q::Variant(id, tag) => self.check_variant_path_into_expr(id, tag),
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidExpression())
+                        .with_primary_label(Label::NotAnExpression, span.wrap(self.file)),
+                );
+                self.check_missing()
+            }
+        }
+    }
+
+    pub fn check_variant_path_into_expr(
+        &mut self,
+        id: ir::EntityID,
+        tag: usize,
+    ) -> ir::CheckedExpr {
+        let ir::Entity::Type(ir::TypeInfo::Union(info)) = self.get_entity(id) else {
+            unreachable!("id '{}' is not that of a union type", id.0)
+        };
+
+        let variant = &info.variants[tag];
 
         let provenance = TypeProvenance::VariantDefinition(
             variant.loc,
@@ -99,21 +140,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         let ty = self.instantiate_scheme(variant.scheme.clone());
         self.add_type_provenance(ty, provenance);
 
-        Q::Expr((expr, ty))
-    }
-
-    pub fn check_access(&mut self, e: &ast::Access) -> ir::CheckedExpr {
-        let q = self.check_access_path(e);
-        match q {
-            Q::Missing => self.check_missing(),
-            Q::Expr(e) => e,
-            _ => {
-                self.reports.push(
-                    Report::error(Header::InvalidExpression())
-                        .with_primary_label(Label::NotAnExpression, e.span().wrap(self.file)),
-                );
-                self.check_missing()
-            }
-        }
+        (expr, ty)
     }
 }
