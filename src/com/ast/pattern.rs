@@ -1,4 +1,4 @@
-use super::mix_spans;
+use super::{mix_spans, Expr};
 use crate::com::loc::Span;
 
 #[derive(Debug)]
@@ -11,6 +11,8 @@ pub enum Pattern {
     True(Span),
     False(Span),
     Tuple(Span, Span, Box<[Pattern]>),
+    Call(Span, Span, Box<Expr>, Box<[Pattern]>),
+    Access(Box<Expr>),
 }
 
 impl Pattern {
@@ -27,6 +29,10 @@ impl Pattern {
             P::Tuple(left_paren, right_paren, items) => {
                 mix_spans([*left_paren, *right_paren, item_spans(items)])
             }
+            P::Call(left_paren, right_paren, callee, args) => {
+                mix_spans([callee.span(), *left_paren, *right_paren, item_spans(args)])
+            }
+            P::Access(e) => e.span(),
         }
     }
 
@@ -41,6 +47,8 @@ impl Pattern {
             P::True(_) => false,
             P::False(_) => false,
             P::Tuple(_, _, items) => items.iter().all(Self::is_irrefutable),
+            P::Call(..) => false,
+            P::Access(_) => false,
         }
     }
 }

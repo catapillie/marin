@@ -46,6 +46,9 @@ pub enum Header {
     UnionNoArgs(String),
     UnionVariantNoArgs(String),
     IncompleteType(),
+    IncompleteVariant(String),
+    IncorrectVariantArgs(String),
+    IncorrectVariantArgCount(String, usize, usize),
 }
 
 impl Header {
@@ -97,6 +100,9 @@ impl Header {
             H::UnionNoArgs(..) => "union_no_args",
             H::UnionVariantNoArgs(..) => "union_variant_no_args",
             H::IncompleteType(..) => "incomplete_type",
+            H::IncompleteVariant(_) => "incomplete_variant",
+            H::IncorrectVariantArgs(..) => "incorrect_variant_args",
+            H::IncorrectVariantArgCount(..) => "incorrect_variant_arg_count",
         }
     }
 
@@ -195,6 +201,16 @@ impl Header {
                 => format!("non-constant union variant '{name}' has no arguments"),
             H::IncompleteType()
                 => "incomplete type expression".to_string(),
+            H::IncompleteVariant(name)
+                => format!("variant pattern '{name}' is incomplete"),
+            H::IncorrectVariantArgs(name)
+                => format!("variant '{name}' takes no arguments"),
+            H::IncorrectVariantArgCount(name, 1, have)
+                => format!("variant '{name}' takes a single argument, but received {have}"),
+            H::IncorrectVariantArgCount(name, want, 1)
+                => format!("variant '{name}' takes {want} arguments, but received only one"),
+            H::IncorrectVariantArgCount(name, want, have)
+                => format!("variant '{name}' takes {want} arguments, but received {have}"),
         }
     }
 }

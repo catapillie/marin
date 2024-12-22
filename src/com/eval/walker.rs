@@ -67,9 +67,22 @@ impl<'a> Walker<'a> {
                 for (left, right) in left_items.iter().zip(right_items) {
                     matched &= self.deconstruct(left, right)?;
                 }
-
                 Ok(matched)
             }
+
+            (P::Variant(tag_left, Some(left_items)), V::Variant(tag_right, Some(right_items))) => {
+                if *tag_left != tag_right || left_items.len() != right_items.len() {
+                    return Ok(false);
+                }
+
+                let mut matched = true;
+                for (left, right) in left_items.iter().zip(right_items) {
+                    matched &= self.deconstruct(left, right)?;
+                }
+                Ok(matched)
+            }
+            (P::Variant(tag_left, _), V::Variant(tag_right, _)) => Ok(*tag_left == tag_right),
+
             _ => Err(State::Error(Error::PatternMismatch)),
         }
     }

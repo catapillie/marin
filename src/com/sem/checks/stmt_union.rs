@@ -137,10 +137,9 @@ impl<'src, 'e> Checker<'src, 'e> {
             };
 
             let arity = variant_type_args.as_ref().map(|args| args.len());
-            let has_args = arity.is_some();
 
             let variant_expr = self.build_variant_expr(tag, arity);
-            let variant_type = match variant_type_args {
+            let variant_type = match variant_type_args.clone() {
                 Some(args) => {
                     self.create_type(ir::Type::Lambda(args, union_type), Some(variant_name_span))
                 }
@@ -154,7 +153,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 loc: variant_loc,
                 expr: variant_expr,
                 scheme: self.generalize_type(variant_type),
-                has_args,
+                type_args: variant_type_args,
             });
         }
 

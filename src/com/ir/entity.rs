@@ -33,11 +33,10 @@ pub struct UnionArgInfo {
     pub name: Option<String>,
 }
 
-#[allow(dead_code)]
 pub struct VariantInfo {
     pub name: String,
     pub loc: Loc,
     pub expr: Expr,
     pub scheme: Scheme,
-    pub has_args: bool,
+    pub type_args: Option<Box<[TypeID]>>,
 }

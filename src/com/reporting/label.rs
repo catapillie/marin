@@ -26,10 +26,12 @@ pub enum Label {
     LetBindingPattern,
     FunctionArgPattern,
     WithinUnionDefinition(String),
-    UnionTypeArgCount(usize),
+    UnionTypeArgCount(String, usize),
     UnionDefinition(String),
+    VariantArgCount(String, usize),
     VariantDefinition(String),
     NotAnExpression,
+    NotAPattern,
 }
 
 impl Label {
@@ -99,16 +101,22 @@ impl Label {
                 => "function argument patterns must be irrefutable".to_string(),
             L::WithinUnionDefinition(name)
                 => format!("within the definition of union type '{name}'"),
-            L::UnionTypeArgCount(1)
-                => "union type takes in a single argument".to_string(),
-            L::UnionTypeArgCount(count)
-                => format!("union type takes in {count} arguments"),
+            L::UnionTypeArgCount(name, 1)
+                => format!("union type '{name}' takes in a single argument"),
+            L::UnionTypeArgCount(name, count)
+                => format!("union type '{name}' takes in {count} arguments"),
             L::UnionDefinition(name)
                 => format!("union type '{name}' is defined here"),
+            L::VariantArgCount(name, 1)
+                => format!("variant '{name}' takes in a single argument"),
+            L::VariantArgCount(name, count)
+                => format!("variant '{name}' takes in {count} arguments"),
             L::VariantDefinition(name)
                 => format!("variant '{name}' is defined here"),
             L::NotAnExpression
                 => "this is valid syntax but does not represent a value".to_string(),
+            L::NotAPattern
+                => "this is valid syntax but does not represent a pattern".to_string(),
         }
     }
 }

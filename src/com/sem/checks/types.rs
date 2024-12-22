@@ -37,11 +37,27 @@ impl<'src, 'e> Checker<'src, 'e> {
         id
     }
 
-    fn get_type_info(&self, id: ir::EntityID) -> &ir::TypeInfo {
-        match &self.entities[id.0] {
+    pub fn get_type_info(&self, id: ir::EntityID) -> &ir::TypeInfo {
+        match self.get_entity(id) {
             ir::Entity::Type(i) => i,
             _ => panic!("id '{}' is not that of a type", id.0),
         }
+    }
+
+    pub fn get_union_info(&self, id: ir::EntityID) -> &ir::UnionInfo {
+        match self.get_entity(id) {
+            ir::Entity::Type(ir::TypeInfo::Union(info)) => info,
+            _ => panic!("id '{}' is not that of a union type", id.0),
+        }
+    }
+
+    pub fn get_union_variant_info(
+        &self,
+        id: ir::EntityID,
+        tag: usize,
+    ) -> (&ir::UnionInfo, &ir::VariantInfo) {
+        let info = self.get_union_info(id);
+        (info, &info.variants[tag])
     }
 
     pub fn add_type_provenance(&mut self, id: ir::TypeID, prov: TypeProvenance) {
@@ -257,15 +273,21 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn instantiate_scheme(&mut self, scheme: ir::Scheme) -> ir::TypeID {
-        let sub = scheme
-            .forall
-            .into_iter()
-            .map(|id| (id, self.create_fresh_type(None)))
-            .collect();
+        let sub = self.build_type_substitution(scheme.forall);
         self.apply_type_substitution(scheme.uninstantiated, &sub)
     }
 
-    fn apply_type_substitution(
+    pub fn build_type_substitution(
+        &mut self,
+        domain: HashSet<ir::TypeID>,
+    ) -> HashMap<ir::TypeID, ir::TypeID> {
+        domain
+            .into_iter()
+            .map(|id| (id, self.create_fresh_type(None)))
+            .collect()
+    }
+
+    pub fn apply_type_substitution(
         &mut self,
         ty: ir::TypeID,
         sub: &HashMap<ir::TypeID, ir::TypeID>,

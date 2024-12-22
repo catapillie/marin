@@ -1,8 +1,11 @@
 use crate::com::{
     ast, ir,
+    loc::Span,
     reporting::{Header, Label, Report},
     Checker,
 };
+
+use super::path::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_pattern(&mut self, e: &ast::Expr) -> ast::Pattern {
@@ -25,6 +28,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                     .map(|item| self.check_pattern(item))
                     .collect(),
             ),
+            E::Call(e) => P::Call(
+                e.left_paren,
+                e.right_paren,
+                e.callee.clone(),
+                e.args.iter().map(|arg| self.check_pattern(arg)).collect(),
+            ),
+            E::Access(_) => P::Access(Box::new(e.clone())),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidPattern())
@@ -40,7 +50,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ir::Pattern as I;
         let span = p.span();
         match p {
-            P::Missing(_) => (I::Missing, self.create_fresh_type(Some(span))),
+            P::Missing(_) => self.declare_missing_pattern(),
             P::Binding(_) => {
                 let name = span.lexeme(self.source);
                 let ty = self.create_fresh_type(Some(span));
@@ -71,6 +81,130 @@ impl<'src, 'e> Checker<'src, 'e> {
                     self.create_type(ir::Type::Tuple(item_types.into()), Some(span)),
                 )
             }
+            P::Call(_, _, e, args) => self.declare_call_pattern(e, args, span),
+            P::Access(e) => self.declare_access_pattern(e, span),
         }
+    }
+
+    fn declare_call_pattern(
+        &mut self,
+        e: &ast::Expr,
+        args: &[ast::Pattern],
+        span: Span,
+    ) -> (ir::Pattern, ir::TypeID) {
+        let q = self.check_path(e);
+        let (args, arg_types): (Vec<_>, Vec<_>) =
+            args.iter().map(|item| self.declare_pattern(item)).unzip();
+
+        use ir::Pattern as I;
+        match q {
+            Q::Variant(id, tag) => {
+                let (info, variant) = self.get_union_variant_info(id, tag);
+
+                let Some(variant_args) = &variant.type_args else {
+                    self.reports.push(
+                        Report::error(Header::IncorrectVariantArgs(variant.name.to_string()))
+                            .with_primary_label(Label::Empty, span.wrap(self.file))
+                            .with_secondary_label(
+                                Label::VariantDefinition(variant.name.to_string()),
+                                variant.loc,
+                            )
+                            .with_secondary_label(
+                                Label::UnionDefinition(info.name.to_string()),
+                                info.loc,
+                            ),
+                    );
+                    return self.declare_missing_pattern();
+                };
+
+                let mut variant_args = variant_args.clone();
+                if variant_args.len() != args.len() {
+                    self.reports.push(
+                        Report::error(Header::IncorrectVariantArgCount(
+                            variant.name.to_string(),
+                            variant_args.len(),
+                            args.len(),
+                        ))
+                        .with_primary_label(Label::Empty, span.wrap(self.file))
+                        .with_secondary_label(
+                            Label::VariantDefinition(variant.name.to_string()),
+                            variant.loc,
+                        )
+                        .with_secondary_label(
+                            Label::UnionDefinition(info.name.to_string()),
+                            info.loc,
+                        ),
+                    );
+                }
+
+                let (info, variant) = self.get_union_variant_info(id, tag);
+                let union_type = info.scheme.uninstantiated;
+
+                let sub = self.build_type_substitution(variant.scheme.forall.clone());
+                let union_type = self.apply_type_substitution(union_type, &sub);
+                for (i, variant_arg) in variant_args.iter_mut().enumerate() {
+                    *variant_arg = self.apply_type_substitution(*variant_arg, &sub);
+                    if let Some(arg) = arg_types.get(i) {
+                        self.unify(*arg, *variant_arg, &[]);
+                    }
+                }
+
+                let ty = self.clone_type_repr(union_type);
+                self.set_type_span(ty, span);
+                (I::Variant(tag, Some(args.into())), ty)
+            }
+            Q::Missing => self.declare_missing_pattern(),
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidPattern())
+                        .with_primary_label(Label::NotAPattern, span.wrap(self.file)),
+                );
+                self.declare_missing_pattern()
+            }
+        }
+    }
+
+    fn declare_access_pattern(&mut self, e: &ast::Expr, span: Span) -> (ir::Pattern, ir::TypeID) {
+        use ir::Pattern as I;
+        match self.check_path(e) {
+            Q::Variant(id, tag) => {
+                let (info, variant) = self.get_union_variant_info(id, tag);
+
+                if let Some(variant_args) = &variant.type_args {
+                    self.reports.push(
+                        Report::error(Header::IncompleteVariant(variant.name.to_string()))
+                            .with_primary_label(Label::Empty, span.wrap(self.file))
+                            .with_secondary_label(
+                                Label::VariantArgCount(
+                                    variant.name.to_string(),
+                                    variant_args.len(),
+                                ),
+                                variant.loc,
+                            )
+                            .with_secondary_label(
+                                Label::UnionDefinition(info.name.to_string()),
+                                info.loc,
+                            ),
+                    );
+                    return self.declare_missing_pattern();
+                };
+
+                let ty = self.instantiate_scheme(info.scheme.clone());
+                self.set_type_span(ty, span);
+                (I::Variant(tag, None), ty)
+            }
+            Q::Missing => self.declare_missing_pattern(),
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidPattern())
+                        .with_primary_label(Label::NotAPattern, span.wrap(self.file)),
+                );
+                self.declare_missing_pattern()
+            }
+        }
+    }
+
+    fn declare_missing_pattern(&mut self) -> (ir::Pattern, ir::TypeID) {
+        (ir::Pattern::Missing, self.create_fresh_type(None))
     }
 }

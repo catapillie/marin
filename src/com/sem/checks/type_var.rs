@@ -31,7 +31,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     self.reports.push(
                         Report::error(Header::IncompleteType())
                             .with_primary_label(
-                                Label::UnionTypeArgCount(type_args.len()),
+                                Label::UnionTypeArgCount(info.name.to_string(), type_args.len()),
                                 t.span.wrap(self.file),
                             )
                             .with_secondary_label(

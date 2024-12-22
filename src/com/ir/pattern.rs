@@ -9,6 +9,7 @@ pub enum Pattern {
     String(String),
     Bool(bool),
     Tuple(Box<[Pattern]>),
+    Variant(usize, Option<Box<[Pattern]>>),
 }
 
 impl Pattern {
@@ -21,6 +22,12 @@ impl Pattern {
             Self::Bool(_) => {}
             Self::Binding(id) => bindings.push(*id),
             Self::Tuple(items) => {
+                for item in items {
+                    item.collect_bindings(bindings);
+                }
+            }
+            Self::Variant(_, None) => {}
+            Self::Variant(_, Some(items)) => {
                 for item in items {
                     item.collect_bindings(bindings);
                 }

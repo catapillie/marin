@@ -25,14 +25,14 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn get_variable(&self, id: ir::EntityID) -> &ir::Variable {
-        match &self.entities[id.0] {
+        match self.get_entity(id) {
             ir::Entity::Variable(v) => v,
             _ => panic!("id '{}' is not that of an entity", id.0),
         }
     }
 
     pub fn get_variable_mut(&mut self, id: ir::EntityID) -> &mut ir::Variable {
-        match &mut self.entities[id.0] {
+        match self.get_entity_mut(id) {
             ir::Entity::Variable(v) => v,
             _ => panic!("id '{}' is not that of an entity", id.0),
         }
