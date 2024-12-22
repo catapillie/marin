@@ -31,7 +31,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match q {
             Q::Missing => self.check_missing(),
             Q::Expr(e) => e,
-            Q::Variant(id, tag) => self.check_variant_path_into_expr(id, tag),
+            Q::Variant(id, tag) => self.check_variant_path_into_expr(id, tag, span),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidExpression())
@@ -42,7 +42,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    fn check_variant_path_into_expr(&mut self, id: ir::EntityID, tag: usize) -> ir::CheckedExpr {
+    fn check_variant_path_into_expr(
+        &mut self,
+        id: ir::EntityID,
+        tag: usize,
+        span: Span,
+    ) -> ir::CheckedExpr {
         let ir::Entity::Type(ir::TypeInfo::Union(info)) = self.get_entity(id) else {
             unreachable!("id '{}' is not that of a union type", id.0)
         };
@@ -58,6 +63,8 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let expr = variant.expr.clone();
         let ty = self.instantiate_scheme(variant.scheme.clone());
+        let ty = self.clone_type_repr(ty);
+        self.set_type_span(ty, span);
         self.add_type_provenance(ty, provenance);
 
         (expr, ty)
