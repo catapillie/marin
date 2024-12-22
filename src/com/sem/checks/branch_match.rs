@@ -1,7 +1,11 @@
 use crate::com::{ast, ir, loc::Span, Checker};
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_match(&mut self, b: &ast::MatchBranch, span: Span) -> (ir::Branch, ir::TypeID, bool) {
+    pub fn check_match(
+        &mut self,
+        b: &ast::MatchBranch,
+        span: Span,
+    ) -> (ir::Branch, ir::TypeID, bool) {
         let result_type = self.create_fresh_type(Some(span));
 
         let (scrut, scrut_type) = self.check_expression(&b.scrutinee);
@@ -17,6 +21,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             self.unify(scrut_type, pattern_type, &[]);
 
             let (val, val_type) = self.check_expression(&case.value);
+
             self.unify(val_type, result_type, &[]);
 
             self.close_scope();

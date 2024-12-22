@@ -32,6 +32,7 @@ pub enum Label {
     VariantDefinition(String),
     NotAnExpression,
     NotAPattern,
+    WantFunctionType(TypeString),
 }
 
 impl Label {
@@ -117,6 +118,8 @@ impl Label {
                 => "this is valid syntax but does not represent a value".to_string(),
             L::NotAPattern
                 => "this is valid syntax but does not represent a pattern".to_string(),
+            L::WantFunctionType(ty)
+                => format!("this expression is expected to be a function of type {ty}"),
         }
     }
 }

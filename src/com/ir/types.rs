@@ -97,7 +97,7 @@ impl TypeString {
                 }
                 let mut iter = args.iter().peekable();
                 while let Some(item) = iter.next() {
-                    item.fmt_paren(false, f)?;
+                    item.fmt_paren(true, f)?;
                     match iter.peek() {
                         Some(_) => write!(f, ", ")?,
                         None => write!(f, " ")?,

@@ -1,4 +1,5 @@
 use crate::com::{
+    ir::TypeString,
     loc::Loc,
     reporting::{Label, Report},
 };
@@ -8,6 +9,7 @@ pub enum Provenance {
     LabelValues(Loc, Option<String>),
     ConditionalBoolType(Loc),
     ConditionalReturnValues(Loc),
+    FunctionCall(TypeString, Loc),
 }
 
 impl Provenance {
@@ -23,6 +25,9 @@ impl Provenance {
             }
             Pr::ConditionalReturnValues(loc) => {
                 report.with_secondary_label(Label::ConditionalReturnValues, *loc)
+            }
+            Pr::FunctionCall(ty, loc) => {
+                report.with_secondary_label(Label::WantFunctionType(ty.clone()), *loc)
             }
         }
     }
