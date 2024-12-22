@@ -157,6 +157,7 @@ pub enum TypeProvenance {
     ReturnedFromBreak(Loc, Option<String>),
     NonExhaustiveConditional(Loc),
     VariableDefinition(Loc, String),
+    VariantDefinition(Loc, String, Loc, String),
 }
 
 impl TypeProvenance {
@@ -172,6 +173,9 @@ impl TypeProvenance {
             Pr::VariableDefinition(loc, name) => {
                 report.with_secondary_label(Label::VariableDefinition(name.clone()), *loc)
             }
+            Pr::VariantDefinition(variant_loc, variant_name, union_loc, union_name) => report
+                .with_secondary_label(Label::VariantDefinition(variant_name.clone()), *variant_loc)
+                .with_secondary_label(Label::UnionDefinition(union_name.clone()), *union_loc),
         }
     }
 }

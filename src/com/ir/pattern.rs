@@ -1,6 +1,6 @@
 use super::EntityID;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Pattern {
     Missing,
     Binding(EntityID),

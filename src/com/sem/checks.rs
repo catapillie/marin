@@ -1,14 +1,15 @@
+mod entities;
 mod labels;
 mod patterns;
 mod signatures;
 mod variables;
-mod entities;
 
 mod stmt;
 mod stmt_let;
 mod stmt_union;
 
 mod expr;
+mod expr_access;
 mod expr_array;
 mod expr_block;
 mod expr_break;
@@ -27,7 +28,7 @@ mod branch_loop;
 mod branch_match;
 mod branch_while;
 
-mod types;
-mod type_var;
-mod type_tuple;
 mod type_call;
+mod type_tuple;
+mod type_var;
+mod types;

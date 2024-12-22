@@ -29,7 +29,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Break(e) => self.check_break(e),
             E::Skip(e) => self.check_skip(e),
             E::Call(e) => self.check_call(e),
-            E::Access(..) => todo!(),
+            E::Access(e) => self.check_access(e),
             E::Fun(e) => self.check_fun(e),
             _ => {
                 self.reports.push(

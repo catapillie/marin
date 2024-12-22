@@ -35,7 +35,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                                 t.span.wrap(self.file),
                             )
                             .with_secondary_label(
-                                Label::UnionDefinition(info.name.to_string()),
+                                Label::WithinUnionDefinition(info.name.to_string()),
                                 info.loc,
                             ),
                     );

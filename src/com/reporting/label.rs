@@ -28,6 +28,8 @@ pub enum Label {
     WithinUnionDefinition(String),
     UnionTypeArgCount(usize),
     UnionDefinition(String),
+    VariantDefinition(String),
+    NotAnExpression,
 }
 
 impl Label {
@@ -103,6 +105,10 @@ impl Label {
                 => format!("union type takes in {count} arguments"),
             L::UnionDefinition(name)
                 => format!("union type '{name}' is defined here"),
+            L::VariantDefinition(name)
+                => format!("variant '{name}' is defined here"),
+            L::NotAnExpression
+                => "this is valid syntax but does not represent a value".to_string(),
         }
     }
 }

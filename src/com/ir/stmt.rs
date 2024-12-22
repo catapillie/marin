@@ -1,6 +1,6 @@
 use super::{Expr, Pattern, TypeID};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     Missing,
     Nothing,

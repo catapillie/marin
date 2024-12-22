@@ -2,7 +2,7 @@ use super::{Branch, EntityID, LabelID, Signature, Stmt, TypeID};
 
 pub type CheckedExpr = (Expr, TypeID);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Missing,
     Int(i64),
@@ -18,4 +18,5 @@ pub enum Expr {
     Skip(LabelID),
     Fun(Option<EntityID>, Box<Signature>, Box<Expr>),
     Call(Box<Expr>, Box<[Expr]>),
+    Variant(usize, Option<Box<[Expr]>>)
 }

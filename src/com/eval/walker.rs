@@ -92,6 +92,7 @@ impl<'a> Walker<'a> {
             E::Skip(id) => self.eval_skip(id.0),
             E::Fun(rec_id, sig, value) => self.eval_fun(sig, value, *rec_id),
             E::Call(callee, args) => self.eval_call(callee, args),
+            E::Variant(tag, items) => self.eval_variant(*tag, items),
         }
     }
 
@@ -310,6 +311,24 @@ impl<'a> Walker<'a> {
         };
 
         Ok(result)
+    }
+
+    fn eval_variant(
+        &mut self,
+        tag: usize,
+        items: &'a Option<Box<[ir::Expr]>>,
+    ) -> Result<'a, Value<'a>> {
+        let items = match items {
+            Some(items) => {
+                let mut values = Vec::with_capacity(items.len());
+                for item in &**items {
+                    values.push(self.eval_expression(item)?);
+                }
+                Some(values.into_boxed_slice())
+            }
+            None => None,
+        };
+        Ok(Value::Variant(tag, items))
     }
 }
 
