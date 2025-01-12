@@ -30,18 +30,18 @@ impl<'src, 'e> Checker<'src, 'e> {
             cases.push((lhs, rhs));
         }
 
-        let decision = self.build_decision_tree(cases);
+        let (decision, is_exhaustive) = self.build_decision_tree(cases);
 
         (
             ir::Branch::Match(scrut_var, Box::new(scrut), Box::new(decision)),
             result_type,
-            true,
+            is_exhaustive,
         )
     }
 
     // algorithm based on: https://julesjacobs.com/notes/patternmatching/patternmatching.pdf
     // and with help from this implementation: https://gitlab.com/yorickpeterse/pattern-matching-in-rust/-/tree/main/jacobs2021
-    fn build_decision_tree(&mut self, mut cases: MatchProblem) -> ir::Decision {
+    fn build_decision_tree(&mut self, mut cases: MatchProblem) -> (ir::Decision, bool) {
         // find tests against irrefutable patterns and move them as variable let bindings
         for (lhs, MatchRhs(_, stmts)) in &mut cases {
             let (irrefutables, refutables) = std::mem::take(lhs)
@@ -60,13 +60,13 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         // no cases means the pattern matching is non-exhaustive
         let Some((first_lhs, _)) = cases.first() else {
-            panic!("error: non-exhaustive pattern match")
+            return (ir::Decision::Failure, false);
         };
 
         // this case has no test, it always passes at this point
         if first_lhs.is_empty() {
             let MatchRhs(expr, stmts) = cases.swap_remove(0).1;
-            return ir::Decision::Success(stmts.into(), Box::new(expr));
+            return (ir::Decision::Success(stmts.into(), Box::new(expr)), true);
         }
 
         // select a test in the first case
@@ -102,13 +102,14 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
 
                 // if a variant is missing, ensure that it is handled in the failure subproblem
-                let mut final_decision = if all_variants_found {
-                    ir::Decision::Failure
+                let (mut final_decision, mut is_exhaustive) = if all_variants_found {
+                    (ir::Decision::Failure, true)
                 } else {
                     self.build_decision_tree(current_subproblem)
                 };
 
-                for (pat, decision) in decisions {
+                for (pat, (decision, decision_exhaustive)) in decisions {
+                    is_exhaustive &= decision_exhaustive;
                     final_decision = ir::Decision::Test(
                         checked_variable,
                         Box::new(pat),
@@ -117,18 +118,24 @@ impl<'src, 'e> Checker<'src, 'e> {
                     );
                 }
 
-                final_decision
+                (final_decision, is_exhaustive)
             }
             _ => {
                 // simply calculate subproblems based on this constructor check
                 let (pat, _, success, failure) =
                     self.create_subproblem(checked_variable, constructor, cases);
 
-                ir::Decision::Test(
-                    checked_variable,
-                    Box::new(pat),
-                    Box::new(self.build_decision_tree(success)),
-                    Box::new(self.build_decision_tree(failure)),
+                let (success_decision, success_exhaustive) = self.build_decision_tree(success);
+                let (failure_decision, failure_exhaustive) = self.build_decision_tree(failure);
+
+                (
+                    ir::Decision::Test(
+                        checked_variable,
+                        Box::new(pat),
+                        Box::new(success_decision),
+                        Box::new(failure_decision),
+                    ),
+                    success_exhaustive || failure_exhaustive,
                 )
             }
         }
