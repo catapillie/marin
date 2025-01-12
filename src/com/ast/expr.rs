@@ -23,6 +23,7 @@ pub enum Expr {
     Fun(Fun),
     Import(Import),
     Super(Lexeme),
+    Record(Record),
     Union(Union),
 }
 
@@ -172,6 +173,14 @@ pub struct Import {
 }
 
 #[derive(Debug, Clone)]
+pub struct Record {
+    pub record_kw: Span,
+    pub end_kw: Span,
+    pub signature: Box<Expr>,
+    pub fields: Box<[(Expr, Expr)]>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Union {
     pub union_kw: Span,
     pub end_kw: Span,
@@ -298,6 +307,21 @@ impl Union {
     }
 }
 
+impl Record {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.record_kw,
+            self.signature.span(),
+            mix_spans(
+                self.fields
+                    .iter()
+                    .map(|(expr, ty)| mix_spans([expr.span(), ty.span()])),
+            ),
+            self.end_kw,
+        ])
+    }
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -321,6 +345,7 @@ impl Expr {
             Expr::Fun(e) => e.span(),
             Expr::Import(e) => e.span(),
             Expr::Super(e) => e.span,
+            Expr::Record(e) => e.span(),
             Expr::Union(e) => e.span(),
         }
     }

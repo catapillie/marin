@@ -25,6 +25,8 @@ pub enum Token {
     Maps,
     #[token("=")]
     Assign,
+    #[token(":")]
+    Colon,
     #[token(",")]
     Comma,
     #[token("..")]
@@ -66,6 +68,8 @@ pub enum Token {
     Import,
     #[token("super")]
     Super,
+    #[token("record")]
+    Record,
     #[token("union")]
     Union,
 
@@ -94,6 +98,7 @@ impl Display for Token {
 
             Token::Maps => write!(f, "'=>'"),
             Token::Assign => write!(f, "'='"),
+            Token::Colon => write!(f, "':'"),
             Token::Comma => write!(f, "','"),
             Token::Spread => write!(f, "'..'"),
             Token::Dot => write!(f, "'.'"),
@@ -115,6 +120,7 @@ impl Display for Token {
             Token::False => write!(f, "'false' keyword"),
             Token::Import => write!(f, "'import' keyword"),
             Token::Super => write!(f, "'super' keyword"),
+            Token::Record => write!(f, "'record' keyword"),
             Token::Union => write!(f, "'union' keyword"),
 
             Token::Ident => write!(f, "identifier"),

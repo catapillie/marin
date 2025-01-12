@@ -189,6 +189,7 @@ impl<'src, 'e> Parser<'src, 'e> {
 
             Token::Import => return self.try_parse_import_expression(),
             Token::Super => self.try_parse_super_expression(),
+            Token::Record => self.try_parse_record_expression(),
             Token::Union => self.try_parse_union_expression(),
             _ => None,
         }?;
@@ -515,6 +516,36 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_super_expression(&mut self) -> Option<ast::Expr> {
         self.try_expect_token(Token::Super)
             .map(|token| ast::Expr::Super(ast::Lexeme { span: token }))
+    }
+
+    fn try_parse_record_expression(&mut self) -> Option<ast::Expr> {
+        let record_kw = self.try_expect_token(Token::Record)?;
+        let signature = self.expect_primary_expression();
+
+        let mut fields = Vec::new();
+
+        self.skip_newlines();
+        while let Some(field) = self.try_parse_expression() {
+            self.expect_token(Token::Colon);
+            let ty = self.expect_primary_expression();
+
+            fields.push((field, ty));
+
+            if self.try_expect_token(Token::Comma).is_some() {
+                self.skip_newlines();
+            } else if !self.skip_newlines() {
+                break;
+            }
+        }
+
+        let end_kw = self.expect_token(Token::End);
+
+        Some(ast::Expr::Record(ast::Record {
+            record_kw,
+            end_kw,
+            signature: Box::new(signature),
+            fields: fields.into(),
+        }))
     }
 
     fn try_parse_union_expression(&mut self) -> Option<ast::Expr> {
