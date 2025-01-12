@@ -147,12 +147,13 @@ impl<'src, 'e> Checker<'src, 'e> {
             };
 
             let variant_loc = variant.span().wrap(self.file);
+            let scheme = self.generalize_type(variant_type);
 
             variants.push(ir::VariantInfo {
                 name: variant_name.to_string(),
                 loc: variant_loc,
                 expr: variant_expr,
-                scheme: self.generalize_type(variant_type),
+                scheme,
                 type_args: variant_type_args,
             });
         }
@@ -161,9 +162,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.close_scope();
         self.scope.insert(union_name, union_id);
 
-        let ir::Entity::Type(ir::TypeInfo::Union(info)) = self.get_entity_mut(union_id) else {
-            unreachable!()
-        };
+        let info = self.get_union_info_mut(union_id);
         info.variants = variants.into();
 
         // done

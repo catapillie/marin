@@ -51,6 +51,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn get_union_info_mut(&mut self, id: ir::EntityID) -> &mut ir::UnionInfo {
+        match self.get_entity_mut(id) {
+            ir::Entity::Type(ir::TypeInfo::Union(info)) => info,
+            _ => panic!("id '{}' is not that of a union type", id.0),
+        }
+    }
+
     pub fn get_union_variant_info(
         &self,
         id: ir::EntityID,
@@ -283,7 +290,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     ) -> HashMap<ir::TypeID, ir::TypeID> {
         domain
             .into_iter()
-            .map(|id| (id, self.create_fresh_type(None)))
+            .map(|id| (self.get_type_repr(id), self.create_fresh_type(None)))
             .collect()
     }
 
@@ -338,6 +345,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         &mut self,
         id: ir::TypeID,
         name_map: &HashMap<ir::TypeID, String>,
+        hide: bool,
     ) -> ir::TypeString {
         use ir::Type as T;
         use ir::TypeString as S;
@@ -345,7 +353,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         match self.types[repr.0].ty.clone() {
             T::Var => match name_map.get(&repr) {
                 Some(name) => S::Name(name.clone()),
-                None => S::Hidden,
+                None if hide => S::Hidden,
+                None => S::Name(format!("{{{}}}", repr.0)),
             },
             T::Int => S::Int,
             T::Float => S::Float,
@@ -354,15 +363,15 @@ impl<'src, 'e> Checker<'src, 'e> {
             T::Tuple(items) => S::Tuple(
                 items
                     .iter()
-                    .map(|item| self.get_type_string_map(*item, name_map))
+                    .map(|item| self.get_type_string_map(*item, name_map, hide))
                     .collect(),
             ),
-            T::Array(item) => S::Array(Box::new(self.get_type_string_map(item, name_map))),
+            T::Array(item) => S::Array(Box::new(self.get_type_string_map(item, name_map, hide))),
             T::Lambda(args, ret) => S::Lambda(
                 args.iter()
-                    .map(|arg| self.get_type_string_map(*arg, name_map))
+                    .map(|arg| self.get_type_string_map(*arg, name_map, hide))
                     .collect(),
-                Box::new(self.get_type_string_map(ret, name_map)),
+                Box::new(self.get_type_string_map(ret, name_map, hide)),
             ),
             T::Union(eid, Some(items)) => {
                 let ir::TypeInfo::Union(info) = self.get_type_info(eid) else {
@@ -373,7 +382,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     name,
                     items
                         .iter()
-                        .map(|item| self.get_type_string_map(*item, name_map))
+                        .map(|item| self.get_type_string_map(*item, name_map, hide))
                         .collect(),
                 )
             }
@@ -388,7 +397,12 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn get_type_string(&mut self, id: ir::TypeID) -> ir::TypeString {
-        self.get_type_string_map(id, &HashMap::new())
+        self.get_type_string_map(id, &HashMap::new(), true)
+    }
+
+    #[allow(dead_code)]
+    pub fn get_type_string_detailed(&mut self, id: ir::TypeID) -> ir::TypeString {
+        self.get_type_string_map(id, &HashMap::new(), false)
     }
 
     #[allow(dead_code)]
@@ -411,7 +425,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             })
             .collect();
 
-        let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map);
+        let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map, true);
         let forall = scheme
             .forall
             .iter()

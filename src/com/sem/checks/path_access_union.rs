@@ -27,9 +27,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             return Q::Missing;
         };
 
-        let ir::Entity::Type(ir::TypeInfo::Union(info)) = self.get_entity(id) else {
-            unreachable!("id '{}' is not that of a union type", id.0)
-        };
+        let info = self.get_union_info(id);
 
         let Some((tag, _)) = info
             .variants
