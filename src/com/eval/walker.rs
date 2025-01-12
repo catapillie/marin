@@ -70,7 +70,10 @@ impl<'a> Walker<'a> {
                 Ok(matched)
             }
 
-            (P::Variant(tag_left, Some(left_items)), V::Variant(tag_right, Some(right_items))) => {
+            (
+                P::Variant(_, tag_left, Some(left_items)),
+                V::Variant(tag_right, Some(right_items)),
+            ) => {
                 if *tag_left != tag_right || left_items.len() != right_items.len() {
                     return Ok(false);
                 }
@@ -81,7 +84,7 @@ impl<'a> Walker<'a> {
                 }
                 Ok(matched)
             }
-            (P::Variant(tag_left, _), V::Variant(tag_right, _)) => Ok(*tag_left == tag_right),
+            (P::Variant(_, tag_left, _), V::Variant(tag_right, _)) => Ok(*tag_left == tag_right),
 
             _ => Err(State::Error(Error::PatternMismatch)),
         }
@@ -172,7 +175,7 @@ impl<'a> Walker<'a> {
             B::While(condition, stmts, label_id) => self.eval_while(condition, stmts, label_id.0),
             B::Loop(stmts, label_id) => self.eval_loop(stmts, label_id.0),
             B::Else(stmts, label_id) => self.eval_else(stmts, label_id.0),
-            B::Match(scrutinee, cases) => self.eval_match(scrutinee, cases),
+            B::Match(id, scrutinee, decision) => self.eval_match(id.0, scrutinee, decision),
         }
     }
 
@@ -255,16 +258,33 @@ impl<'a> Walker<'a> {
 
     fn eval_match(
         &mut self,
+        id: usize,
         scrutinee: &'a ir::Expr,
-        cases: &'a [(ir::Pattern, ir::Expr)],
+        decision: &'a ir::Decision,
     ) -> Result<'a, Option<Value<'a>>> {
         let scrutinee = self.eval_expression(scrutinee)?;
-        for (pattern, value) in cases {
-            if self.deconstruct(pattern, scrutinee.clone())? {
-                return Ok(Some(self.eval_expression(value)?));
+        self.variables.insert(id, scrutinee);
+        Ok(Some(self.eval_decision(decision)?))
+    }
+
+    fn eval_decision(&mut self, decision: &'a ir::Decision) -> Result<'a, Value<'a>> {
+        use ir::Decision as D;
+        match decision {
+            D::Failure => Err(State::Error(Error::InvalidState)),
+            D::Success(stmts, expr) => {
+                for stmt in stmts {
+                    self.eval_statement(stmt)?;
+                }
+                self.eval_expression(expr)
+            }
+            D::Test(id, pat, success, failure) => {
+                let value = self.eval_var(id.0)?;
+                match self.deconstruct(pat, value)? {
+                    true => self.eval_decision(success),
+                    false => self.eval_decision(failure),
+                }
             }
         }
-        Ok(None)
     }
 
     fn eval_break(&mut self, id: usize) -> Result<'a, Value<'a>> {

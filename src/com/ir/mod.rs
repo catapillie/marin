@@ -1,4 +1,5 @@
 mod branch;
+mod decision;
 mod entity;
 mod expr;
 mod file;
@@ -9,6 +10,7 @@ mod stmt;
 mod types;
 
 pub use branch::*;
+pub use decision::*;
 pub use entity::*;
 pub use expr::*;
 pub use file::*;

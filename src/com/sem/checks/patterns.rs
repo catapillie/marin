@@ -69,7 +69,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             ),
             P::String(_) => (
                 I::String(self.read_source_string(span).to_string()),
-                self.create_type(ir::Type::Float, Some(span)),
+                self.create_type(ir::Type::String, Some(span)),
             ),
             P::True(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
             P::False(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
@@ -151,7 +151,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
                 let ty = self.clone_type_repr(union_type);
                 self.set_type_span(ty, span);
-                (I::Variant(tag, Some(args.into())), ty)
+                (I::Variant(id, tag, Some(args.into())), ty)
             }
             Q::Missing => self.declare_missing_pattern(),
             _ => {
@@ -191,7 +191,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
                 let ty = self.instantiate_scheme(info.scheme.clone());
                 self.set_type_span(ty, span);
-                (I::Variant(tag, None), ty)
+                (I::Variant(id, tag, None), ty)
             }
             Q::Missing => self.declare_missing_pattern(),
             _ => {
