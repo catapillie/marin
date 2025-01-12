@@ -37,10 +37,37 @@ impl<'src, 'e> Checker<'src, 'e> {
         id
     }
 
-    pub fn get_type_info(&self, id: ir::EntityID) -> &ir::TypeInfo {
+    pub fn declare_type_argument(&mut self, e: &ast::Expr) -> (ir::TypeID, Option<String>) {
+        use ast::Expr as E;
+        match e {
+            E::Var(e) => {
+                let arg_span = e.span;
+                let arg_name = arg_span.lexeme(self.source);
+                let arg_id = self.create_fresh_type(Some(e.span));
+                self.create_user_type(arg_name, ir::TypeInfo::Type(arg_id));
+                (arg_id, Some(arg_name.to_string()))
+            }
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidTypeArg())
+                        .with_primary_label(Label::Empty, e.span().wrap(self.file)),
+                );
+                (self.create_fresh_type(Some(e.span())), None)
+            }
+        }
+    }
+
+    pub fn get_record_info(&self, id: ir::EntityID) -> &ir::RecordInfo {
         match self.get_entity(id) {
-            ir::Entity::Type(i) => i,
-            _ => panic!("id '{}' is not that of a type", id.0),
+            ir::Entity::Type(ir::TypeInfo::Record(info)) => info,
+            _ => panic!("id '{}' is not that of a record type", id.0),
+        }
+    }
+
+    pub fn get_record_info_mut(&mut self, id: ir::EntityID) -> &mut ir::RecordInfo {
+        match self.get_entity_mut(id) {
+            ir::Entity::Type(ir::TypeInfo::Record(info)) => info,
+            _ => panic!("id '{}' is not that of a record type", id.0),
         }
     }
 
@@ -122,6 +149,8 @@ impl<'src, 'e> Checker<'src, 'e> {
                 args.iter().any(|&arg| self.occurs_in_type(left, arg))
                     || self.occurs_in_type(left, ret)
             }
+            T::Record(_, Some(items)) => items.iter().any(|&item| self.occurs_in_type(left, item)),
+            T::Record(_, None) => false,
             T::Union(_, Some(items)) => items.iter().any(|&item| self.occurs_in_type(left, item)),
             T::Union(_, None) => false,
         }
@@ -264,6 +293,12 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
                 self.collect_type_variables(ret, ids);
             }
+            T::Record(_, Some(items)) => {
+                for item in items {
+                    self.collect_type_variables(item, ids);
+                }
+            }
+            T::Record(_, None) => {}
             T::Union(_, Some(items)) => {
                 for item in items {
                     self.collect_type_variables(item, ids);
@@ -330,6 +365,14 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let new_ret = self.apply_type_substitution(ret, sub);
                 self.create_type(T::Lambda(new_args, new_ret), None)
             }
+            T::Record(eid, Some(items)) => {
+                let new_items = items
+                    .iter()
+                    .map(|item| self.apply_type_substitution(*item, sub))
+                    .collect();
+                self.create_type(T::Union(eid, Some(new_items)), None)
+            }
+            T::Record(_, None) => ty,
             T::Union(eid, Some(items)) => {
                 let new_items = items
                     .iter()
@@ -373,10 +416,24 @@ impl<'src, 'e> Checker<'src, 'e> {
                     .collect(),
                 Box::new(self.get_type_string_map(ret, name_map, hide)),
             ),
+            T::Record(eid, Some(items)) => {
+                let info = self.get_record_info(eid);
+                let name = info.name.clone();
+                S::Constructor(
+                    name,
+                    items
+                        .iter()
+                        .map(|item| self.get_type_string_map(*item, name_map, hide))
+                        .collect(),
+                )
+            }
+            T::Record(eid, None) => {
+                let info = self.get_record_info(eid);
+                let name = info.name.clone();
+                S::Name(name)
+            }
             T::Union(eid, Some(items)) => {
-                let ir::TypeInfo::Union(info) = self.get_type_info(eid) else {
-                    unreachable!()
-                };
+                let info = self.get_union_info(eid);
                 let name = info.name.clone();
                 S::Constructor(
                     name,
@@ -387,9 +444,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 )
             }
             T::Union(eid, None) => {
-                let ir::TypeInfo::Union(info) = self.get_type_info(eid) else {
-                    unreachable!()
-                };
+                let info = self.get_union_info(eid);
                 let name = info.name.clone();
                 S::Name(name)
             }

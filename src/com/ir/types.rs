@@ -42,6 +42,7 @@ pub enum Type {
     Tuple(Box<[TypeID]>),
     Array(TypeID),
     Lambda(Box<[TypeID]>, TypeID),
+    Record(EntityID, Option<Box<[TypeID]>>),
     Union(EntityID, Option<Box<[TypeID]>>),
 }
 

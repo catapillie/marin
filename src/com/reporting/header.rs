@@ -32,6 +32,7 @@ pub enum Header {
     InvalidPattern(),
     InvalidSignature(),
     InvalidLabel(),
+    InvalidField(),
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
     UnknownVariable(String),
@@ -49,6 +50,7 @@ pub enum Header {
     IncompleteVariant(String),
     IncorrectVariantArgs(String),
     IncorrectVariantArgCount(String, usize, usize),
+    RecordNoArgs(String),
 }
 
 impl Header {
@@ -86,6 +88,7 @@ impl Header {
             H::InvalidPattern(..) => "invalid_pattern",
             H::InvalidSignature(..) => "invalid_signature",
             H::InvalidLabel(..) => "invalid_label",
+            H::InvalidField(..) => "invalid_field",
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
             H::UnknownVariable(..) => "unknown_variable",
@@ -103,6 +106,7 @@ impl Header {
             H::IncompleteVariant(_) => "incomplete_variant",
             H::IncorrectVariantArgs(..) => "incorrect_variant_args",
             H::IncorrectVariantArgCount(..) => "incorrect_variant_arg_count",
+            H::RecordNoArgs(..) => "record_no_args",
         }
     }
 
@@ -167,6 +171,8 @@ impl Header {
                 => "invalid signature syntax".to_string(),
             H::InvalidLabel()
                 => "invalid label syntax".to_string(),
+            H::InvalidField()
+                => "invalid record field syntax".to_string(),
             H::InvalidBreak(None)
                 => "invalid break".to_string(),
             H::InvalidBreak(Some(name))
@@ -196,7 +202,7 @@ impl Header {
             H::RefutablePattern()
                 => "refutable pattern".to_string(),
             H::UnionNoArgs(name)
-                => format!("non-constant union type '{name}' has no no arguments"),
+                => format!("non-constant union type '{name}' has no arguments"),
             H::UnionVariantNoArgs(name)
                 => format!("non-constant union variant '{name}' has no arguments"),
             H::IncompleteType()
@@ -211,6 +217,8 @@ impl Header {
                 => format!("variant '{name}' takes {want} arguments, but received only one"),
             H::IncorrectVariantArgCount(name, want, have)
                 => format!("variant '{name}' takes {want} arguments, but received {have}"),
+            H::RecordNoArgs(name)
+                => format!("non-constant record type '{name}' has no arguments"),
         }
     }
 }

@@ -1,43 +1,10 @@
 use crate::com::{
     ast, ir,
-    loc::Span,
     reporting::{Header, Label, Note, Report},
     Checker,
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    fn extract_simple_signature(e: &ast::Expr) -> Option<(Span, Option<&[ast::Expr]>)> {
-        use ast::Expr as E;
-        match e {
-            E::Var(e) => Some((e.span, None)),
-            E::Call(call) => match &*call.callee {
-                E::Var(e) => Some((e.span, Some(&*call.args))),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
-    fn declare_type_argument(&mut self, e: &ast::Expr) -> (ir::TypeID, Option<String>) {
-        use ast::Expr as E;
-        match e {
-            E::Var(e) => {
-                let arg_span = e.span;
-                let arg_name = arg_span.lexeme(self.source);
-                let arg_id = self.create_fresh_type(Some(e.span));
-                self.create_user_type(arg_name, ir::TypeInfo::Type(arg_id));
-                (arg_id, Some(arg_name.to_string()))
-            }
-            _ => {
-                self.reports.push(
-                    Report::error(Header::InvalidTypeArg())
-                        .with_primary_label(Label::Empty, e.span().wrap(self.file)),
-                );
-                (self.create_fresh_type(Some(e.span())), None)
-            }
-        }
-    }
-
     pub fn check_union(&mut self, e: &ast::Union) -> ir::Stmt {
         // ensure the union's signature syntax is valid
         let span = e.span();
@@ -110,7 +77,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     Report::error(Header::InvalidSignature())
                         .with_primary_label(Label::Empty, variant.span().wrap(self.file))
                         .with_secondary_label(within_label.clone(), span.wrap(self.file))
-                        .with_note(Note::VariantSyntax),
+                        .with_note(Note::UnionVariantSyntax),
                 );
                 continue;
             };

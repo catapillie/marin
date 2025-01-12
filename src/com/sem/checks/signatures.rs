@@ -90,4 +90,17 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         }
     }
+
+    // extract a signature with a curry depth of at most 1
+    pub fn extract_simple_signature(e: &ast::Expr) -> Option<(Span, Option<&[ast::Expr]>)> {
+        use ast::Expr as E;
+        match e {
+            E::Var(e) => Some((e.span, None)),
+            E::Call(call) => match &*call.callee {
+                E::Var(e) => Some((e.span, Some(&*call.args))),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
 }

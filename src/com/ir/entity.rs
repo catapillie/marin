@@ -17,7 +17,26 @@ pub struct Variable {
 
 pub enum TypeInfo {
     Type(TypeID),
+    Record(RecordInfo),
     Union(UnionInfo),
+}
+
+pub struct RecordInfo {
+    pub name: String,
+    pub loc: Loc,
+    pub scheme: Scheme,
+    pub type_args: Option<Box<[RecordArgInfo]>>,
+    pub fields: Box<[RecordFieldInfo]>
+}
+
+pub struct RecordArgInfo {
+    #[allow(dead_code)]
+    pub name: Option<String>,
+}
+
+pub struct RecordFieldInfo {
+    pub name: String,
+    pub ty: TypeID,
 }
 
 pub struct UnionInfo {

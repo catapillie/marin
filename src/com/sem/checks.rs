@@ -6,6 +6,7 @@ mod variables;
 
 mod stmt;
 mod stmt_let;
+mod stmt_record;
 mod stmt_union;
 
 mod expr;

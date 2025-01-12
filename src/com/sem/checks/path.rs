@@ -11,6 +11,7 @@ pub enum PathQuery {
     Missing,
     Expr(ir::CheckedExpr),
     Type(ir::TypeID),
+    Record(ir::EntityID),
     Union(ir::EntityID),
     Variant(ir::EntityID, usize),
 }

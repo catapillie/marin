@@ -11,6 +11,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match e {
             E::Let(e) => self.check_let(e),
             E::Import(..) => todo!(),
+            E::Record(e) => self.check_record(e),
             E::Union(e) => self.check_union(e),
             _ => {
                 let (expr, ty) = self.check_expression(e);

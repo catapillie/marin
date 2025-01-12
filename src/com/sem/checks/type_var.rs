@@ -26,6 +26,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ir::TypeInfo as Info;
         let id = match info {
             Info::Type(ty) => self.clone_type_repr(*ty),
+            Info::Record(_) => todo!("record type"),
             Info::Union(info) => match &info.type_args {
                 Some(type_args) => {
                     self.reports.push(
