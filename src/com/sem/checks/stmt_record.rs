@@ -64,9 +64,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         });
         self.entities.push(ir::Entity::Type(info));
 
-        // let sch = self.get_record_info(record_id).scheme.clone();
-        // println!("{}", self.get_scheme_string(&sch));
-
         // bind it to its name now so that it can be used recursively
         self.scope.insert(record_name, record_id);
 
@@ -92,7 +89,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             })
         }
 
-        // close scope, but export the union's name binding
+        // close scope, but export the record's name binding
         self.close_scope();
         self.scope.insert(record_name, record_id);
 

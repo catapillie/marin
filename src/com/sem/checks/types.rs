@@ -212,6 +212,21 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
             }
 
+            (T::Record(left_rec, Some(left_items)), T::Record(right_rec, Some(right_items)))
+                if left_rec.0 == right_rec.0 =>
+            {
+                for (left_item, right_item) in left_items.iter().zip(right_items.iter()) {
+                    self.unify(*left_item, *right_item, provenances);
+                }
+                return;
+            }
+
+            (T::Record(left_rec, None), T::Record(right_rec, None))
+                if left_rec.0 == right_rec.0 =>
+            {
+                return;
+            }
+
             (T::Union(left_union, Some(left_items)), T::Union(right_union, Some(right_items)))
                 if left_union.0 == right_union.0 =>
             {
@@ -370,7 +385,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     .iter()
                     .map(|item| self.apply_type_substitution(*item, sub))
                     .collect();
-                self.create_type(T::Union(eid, Some(new_items)), None)
+                self.create_type(T::Record(eid, Some(new_items)), None)
             }
             T::Record(_, None) => ty,
             T::Union(eid, Some(items)) => {

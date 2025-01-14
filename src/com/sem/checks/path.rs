@@ -24,6 +24,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match e {
             E::Var(e) => self.check_var_path(e),
             E::Access(e) => self.check_access_path(e),
+            E::Call(e) => self.check_call_path(e),
             _ => Q::Expr(self.check_expression(e)),
         }
     }
@@ -66,5 +67,19 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.add_type_provenance(ty, provenance);
 
         (expr, ty)
+    }
+
+    pub fn check_path_into_type(&mut self, q: Q, span: Span) -> ir::TypeID {
+        match q {
+            Q::Missing => self.create_fresh_type(Some(span)),
+            Q::Type(ty) => ty,
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidType())
+                        .with_primary_label(Label::NotAType, span.wrap(self.file)),
+                );
+                self.create_fresh_type(Some(span))
+            }
+        }
     }
 }

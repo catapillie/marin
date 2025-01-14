@@ -26,7 +26,23 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ir::TypeInfo as Info;
         let id = match info {
             Info::Type(ty) => self.clone_type_repr(*ty),
-            Info::Record(_) => todo!("record type"),
+            Info::Record(info) => match &info.type_args {
+                Some(type_args) => {
+                    self.reports.push(
+                        Report::error(Header::IncompleteType())
+                            .with_primary_label(
+                                Label::RecordTypeArgCount(info.name.to_string(), type_args.len()),
+                                t.span.wrap(self.file),
+                            )
+                            .with_secondary_label(
+                                Label::WithinRecordDefinition(info.name.to_string()),
+                                info.loc,
+                            ),
+                    );
+                    self.create_fresh_type(None)
+                }
+                None => self.instantiate_scheme(info.scheme.clone()),
+            },
             Info::Union(info) => match &info.type_args {
                 Some(type_args) => {
                     self.reports.push(

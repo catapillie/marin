@@ -51,6 +51,8 @@ pub enum Header {
     IncorrectVariantArgs(String),
     IncorrectVariantArgCount(String, usize, usize),
     RecordNoArgs(String),
+    UnionArgMismatch(String),
+    RecordArgMismatch(String),
 }
 
 impl Header {
@@ -107,6 +109,8 @@ impl Header {
             H::IncorrectVariantArgs(..) => "incorrect_variant_args",
             H::IncorrectVariantArgCount(..) => "incorrect_variant_arg_count",
             H::RecordNoArgs(..) => "record_no_args",
+            H::UnionArgMismatch(..) => "union_arg_mismatch",
+            H::RecordArgMismatch(..) => "record_arg_mismatch",
         }
     }
 
@@ -219,6 +223,10 @@ impl Header {
                 => format!("variant '{name}' takes {want} arguments, but received {have}"),
             H::RecordNoArgs(name)
                 => format!("non-constant record type '{name}' has no arguments"),
+            H::UnionArgMismatch(name)
+                => format!("invalid number of arguments provided into union type '{name}'"),
+            H::RecordArgMismatch(name)
+                => format!("invalid number of arguments provided into record type '{name}'"),
         }
     }
 }

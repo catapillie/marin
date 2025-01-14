@@ -32,7 +32,7 @@ impl Scheme {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Type {
     Var,
     Int,

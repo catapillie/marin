@@ -27,13 +27,18 @@ pub enum Label {
     FunctionArgPattern,
     WithinUnionDefinition(String),
     UnionTypeArgCount(String, usize),
+    UnionTypeNoArgs(String),
     UnionDefinition(String),
     VariantArgCount(String, usize),
     VariantDefinition(String),
     NotAnExpression,
     NotAPattern,
+    NotAType,
     WantFunctionType(TypeString),
     WithinRecordDefinition(String),
+    RecordTypeArgCount(String, usize),
+    RecordTypeNoArgs(String),
+    RecordDefinition(String),
 }
 
 impl Label {
@@ -107,6 +112,8 @@ impl Label {
                 => format!("union type '{name}' takes in a single argument"),
             L::UnionTypeArgCount(name, count)
                 => format!("union type '{name}' takes in {count} arguments"),
+            L::UnionTypeNoArgs(name)
+                => format!("union type '{name}' does not take in any argument"),
             L::UnionDefinition(name)
                 => format!("union type '{name}' is defined here"),
             L::VariantArgCount(name, 1)
@@ -119,10 +126,20 @@ impl Label {
                 => "this is valid syntax but does not represent a value".to_string(),
             L::NotAPattern
                 => "this is valid syntax but does not represent a pattern".to_string(),
+            L::NotAType
+                => "this is valid syntax but does not represent a type".to_string(),
             L::WantFunctionType(ty)
                 => format!("this expression is expected to be a function of type {ty}"),
             L::WithinRecordDefinition(name)
                 => format!("within the definition of record type '{name}'"),
+            L::RecordTypeArgCount(name, 1)
+                => format!("record type '{name}' takes in a single argument"),
+            L::RecordTypeArgCount(name, count)
+                => format!("record type '{name}' takes in {count} arguments"), 
+            L::RecordTypeNoArgs(name)
+                => format!("record type '{name}' does not take in any argument"),
+            L::RecordDefinition(name)
+                => format!("record type '{name}' is defined here"),
         }
     }
 }
