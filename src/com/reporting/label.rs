@@ -39,6 +39,7 @@ pub enum Label {
     RecordTypeArgCount(String, usize),
     RecordTypeNoArgs(String),
     RecordDefinition(String),
+    NoAdmissibleRecord(usize),
 }
 
 impl Label {
@@ -140,6 +141,12 @@ impl Label {
                 => format!("record type '{name}' does not take in any argument"),
             L::RecordDefinition(name)
                 => format!("record type '{name}' is defined here"),
+            L::NoAdmissibleRecord(0)
+                => "no record type in this scope contains zero fields".to_string(),
+            L::NoAdmissibleRecord(1)
+                => "no record type in this scope contains this field".to_string(),
+            L::NoAdmissibleRecord(_)
+                => "no record type in this scope contains all these fields at the same time".to_string(),
         }
     }
 }

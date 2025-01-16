@@ -1,0 +1,96 @@
+use crate::com::{
+    ast, ir,
+    reporting::{Header, Label, Note, Report},
+    Checker,
+};
+
+impl<'src, 'e> Checker<'src, 'e> {
+    pub fn check_record_value(&mut self, e: &ast::RecordValue) -> ir::CheckedExpr {
+        let mut values = Vec::new();
+        let mut fields = Vec::new();
+        for (name, expr) in &e.fields {
+            let (value, field_ty) = self.check_expression(expr);
+
+            use ast::Expr as E;
+            let E::Var(field_name_span) = name else {
+                self.reports.push(
+                    Report::error(Header::InvalidField())
+                        .with_primary_label(Label::Empty, name.span().wrap(self.file))
+                        .with_note(Note::RecordFieldSyntax),
+                );
+                continue;
+            };
+
+            let field_name = field_name_span.span.lexeme(self.source);
+            values.push(value);
+            fields.push((field_name, field_ty));
+        }
+
+        use ir::Entity as Ent;
+        use ir::TypeInfo as T;
+        let field_names = fields.iter().map(|(name, _)| *name).collect::<Vec<_>>();
+        let mut record_types = self
+            .entities
+            .iter()
+            .enumerate()
+            .filter_map(|(i, ent)| match ent {
+                Ent::Type(T::Record(info)) => Some((ir::EntityID(i), info)),
+                _ => None,
+            })
+            .filter(|(_, info)| Self::is_record_admissible(info, &field_names))
+            .collect::<Vec<_>>();
+
+        if record_types.is_empty() {
+            self.reports.push(
+                Report::error(Header::NoAdmissibleRecords()).with_primary_label(
+                    Label::NoAdmissibleRecord(fields.len()),
+                    e.span().wrap(self.file),
+                ),
+            );
+            return self.check_missing();
+        }
+
+        if record_types.len() > 1 {
+            self.reports.push(
+                Report::error(Header::AmbiguousRecord())
+                    .with_primary_label(Label::Empty, e.span().wrap(self.file)),
+            );
+            return self.check_missing();
+        }
+
+        let (record_id, info) = record_types.pop().unwrap();
+
+        let scheme = info.scheme.clone();
+        let sub = self.build_type_substitution(scheme.forall);
+
+        let record_value_type = self.apply_type_substitution(scheme.uninstantiated, &sub);
+        let record_value_type = self.clone_type_repr(record_value_type);
+        self.set_type_span(record_value_type, e.span());
+
+        // check that all fields are actually set
+        let info = self.get_record_info(record_id);
+        for field_info in info.fields.clone() {
+            let Some((_, field_value_ty)) =
+                fields.iter().find(|(name, _)| name == &field_info.name)
+            else {
+                panic!("error: uninitialized field '{}'", field_info.name);
+            };
+
+            let field_ty = self.apply_type_substitution(field_info.ty, &sub);
+            self.unify(*field_value_ty, field_ty, &[]);
+        }
+
+        (ir::Expr::Missing, record_value_type)
+    }
+
+    fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {
+        for name in names {
+            let found_field = info.fields.iter().any(|rec| &rec.name == name);
+            if !found_field {
+                return false;
+            }
+        }
+
+        true
+    }
+}

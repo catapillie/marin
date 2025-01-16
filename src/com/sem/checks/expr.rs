@@ -31,6 +31,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Call(e) => self.check_call(e),
             E::Access(e) => self.check_access(e),
             E::Fun(e) => self.check_fun(e),
+            E::RecordValue(e) => self.check_record_value(e),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidExpression())

@@ -53,6 +53,8 @@ pub enum Header {
     RecordNoArgs(String),
     UnionArgMismatch(String),
     RecordArgMismatch(String),
+    NoAdmissibleRecords(),
+    AmbiguousRecord(),
 }
 
 impl Header {
@@ -111,6 +113,8 @@ impl Header {
             H::RecordNoArgs(..) => "record_no_args",
             H::UnionArgMismatch(..) => "union_arg_mismatch",
             H::RecordArgMismatch(..) => "record_arg_mismatch",
+            H::NoAdmissibleRecords(..) => "no_admissible_records",
+            H::AmbiguousRecord(..) => "ambiguous_record",
         }
     }
 
@@ -227,6 +231,10 @@ impl Header {
                 => format!("invalid number of arguments provided into union type '{name}'"),
             H::RecordArgMismatch(name)
                 => format!("invalid number of arguments provided into record type '{name}'"),
+            H::NoAdmissibleRecords()
+                => "no admissible record type in the current scope".to_string(),
+            H::AmbiguousRecord()
+                => "ambiguous record type for given fields".to_string(),
         }
     }
 }

@@ -34,6 +34,7 @@ pub struct RecordArgInfo {
     pub name: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct RecordFieldInfo {
     pub name: String,
     pub ty: TypeID,

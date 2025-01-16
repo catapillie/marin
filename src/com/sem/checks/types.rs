@@ -477,9 +477,15 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     #[allow(dead_code)]
     pub fn get_scheme_string(&mut self, scheme: &ir::Scheme) -> ir::SchemeString {
-        const NAMES: &str = "abcdefghijklmnopqrstuvwxyz";
-        let name_map = scheme
+        // update the domain to use representant types
+        let domain = scheme
             .forall
+            .iter()
+            .map(|x| self.get_type_repr(*x))
+            .collect::<Vec<_>>();
+        
+        const NAMES: &str = "abcdefghijklmnopqrstuvwxyz";
+        let name_map = domain
             .iter()
             .enumerate()
             .map(|(n, id)| {
@@ -496,8 +502,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             .collect();
 
         let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map, true);
-        let forall = scheme
-            .forall
+        let forall = domain
             .iter()
             .map(|id| name_map.get(id).unwrap().clone())
             .collect();
