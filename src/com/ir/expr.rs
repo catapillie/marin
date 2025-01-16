@@ -18,5 +18,6 @@ pub enum Expr {
     Skip(LabelID),
     Fun(Option<EntityID>, Box<Signature>, Box<Expr>),
     Call(Box<Expr>, Box<[Expr]>),
-    Variant(usize, Option<Box<[Expr]>>)
+    Variant(usize, Option<Box<[Expr]>>),
+    Record(Box<[Expr]>),
 }

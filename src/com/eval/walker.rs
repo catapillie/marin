@@ -109,6 +109,7 @@ impl<'a> Walker<'a> {
             E::Fun(rec_id, sig, value) => self.eval_fun(sig, value, *rec_id),
             E::Call(callee, args) => self.eval_call(callee, args),
             E::Variant(tag, items) => self.eval_variant(*tag, items),
+            E::Record(values) => self.eval_record(values),
         }
     }
 
@@ -362,6 +363,14 @@ impl<'a> Walker<'a> {
             None => None,
         };
         Ok(Value::Variant(tag, items))
+    }
+    
+    fn eval_record(&mut self, fields: &'a [ir::Expr]) -> Result<'a, Value<'a>> {
+        let mut values = Vec::with_capacity(fields.len());
+        for field in fields {
+            values.push(self.eval_expression(field)?);
+        }
+        Ok(Value::Record(values.into()))
     }
 }
 

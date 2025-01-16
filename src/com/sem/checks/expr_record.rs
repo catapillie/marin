@@ -80,7 +80,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             self.unify(*field_value_ty, field_ty, &[]);
         }
 
-        (ir::Expr::Missing, record_value_type)
+        (ir::Expr::Record(values.into()), record_value_type)
     }
 
     fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {

@@ -16,6 +16,7 @@ pub enum Value<'a> {
         Option<ir::EntityID>,
     ),
     Variant(usize, Option<Box<[Value<'a>]>>),
+    Record(Box<[Value<'a>]>),
 }
 
 impl<'a> Value<'a> {
@@ -68,6 +69,18 @@ impl<'a> Display for Value<'a> {
                     }
                 }
                 write!(f, ")}}")?;
+                Ok(())
+            },
+            V::Record(items) => {
+                write!(f, "{{")?;
+                let mut iter = items.iter().peekable();
+                while let Some(item) = iter.next() {
+                    item.fmt(f)?;
+                    if iter.peek().is_some() {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "}}")?;
                 Ok(())
             },
         }
