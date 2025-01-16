@@ -16,6 +16,10 @@ pub enum Token {
     LeftBracket,
     #[token("]")]
     RightBracket,
+    #[token("{")]
+    LeftBrace,
+    #[token("}")]
+    RightBrace,
     #[token("<")]
     LeftChev,
     #[token(">")]
@@ -93,6 +97,8 @@ impl Display for Token {
             Token::RightParen => write!(f, "')'"),
             Token::LeftBracket => write!(f, "'['"),
             Token::RightBracket => write!(f, "']'"),
+            Token::LeftBrace => write!(f, "'{{'"),
+            Token::RightBrace => write!(f, "'}}'"),
             Token::LeftChev => write!(f, "'<'"),
             Token::RightChev => write!(f, "'>'"),
 

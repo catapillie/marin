@@ -177,6 +177,7 @@ impl<'src, 'e> Parser<'src, 'e> {
 
             Token::LeftParen => self.try_parse_tuple_expression(),
             Token::LeftBracket => self.try_parse_array_expression(),
+            Token::LeftBrace => self.try_parse_record_value_expression(),
 
             Token::Do => self.try_parse_block_expression(),
             Token::If | Token::While | Token::Loop | Token::Match => {
@@ -304,6 +305,33 @@ impl<'src, 'e> Parser<'src, 'e> {
             left_bracket,
             right_bracket,
             items,
+        }))
+    }
+
+    fn try_parse_record_value_expression(&mut self) -> Option<ast::Expr> {
+        let left_brace = self.try_expect_token(Token::LeftBrace)?;
+        let mut fields = Vec::new();
+
+        self.skip_newlines();
+        while let Some(field) = self.try_parse_expression() {
+            self.expect_token(Token::Assign);
+            let expr = self.expect_expression();
+
+            fields.push((field, expr));
+
+            if self.try_expect_token(Token::Comma).is_some() {
+                self.skip_newlines();
+            } else if !self.skip_newlines() {
+                break;
+            }
+        }
+
+        let right_brace = self.expect_token(Token::RightBrace);
+
+        Some(ast::Expr::RecordValue(ast::RecordValue {
+            left_brace,
+            right_brace,
+            fields: fields.into(),
         }))
     }
 

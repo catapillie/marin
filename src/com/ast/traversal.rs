@@ -64,6 +64,12 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         E::Import(..) => {}
         E::Super(..) => {}
         E::Record(..) => {}
+        E::RecordValue(e) => {
+            for (name, value) in &e.fields {
+                walk_expr(name, nodes);
+                walk_expr(value, nodes);
+            }
+        }
         E::Union(..) => {}
     }
 }
