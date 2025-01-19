@@ -314,8 +314,9 @@ impl<'src, 'e> Parser<'src, 'e> {
 
         self.skip_newlines();
         while let Some(field) = self.try_parse_expression() {
-            self.expect_token(Token::Assign);
-            let expr = self.expect_expression();
+            let expr = self
+                .try_expect_token(Token::Assign)
+                .map(|_| self.expect_expression());
 
             fields.push((field, expr));
 

@@ -185,7 +185,7 @@ pub struct Record {
 pub struct RecordValue {
     pub left_brace: Span,
     pub right_brace: Span,
-    pub fields: Box<[(Expr, Expr)]>,
+    pub fields: Box<[(Expr, Option<Expr>)]>,
 }
 
 #[derive(Debug, Clone)]
@@ -323,11 +323,7 @@ impl RecordValue {
     pub fn span(&self) -> Span {
         mix_spans([
             self.left_brace,
-            mix_spans(
-                self.fields
-                    .iter()
-                    .map(|(expr, ty)| mix_spans([expr.span(), ty.span()])),
-            ),
+            mix_spans(self.fields.iter().map(|(expr, _)| expr.span())),
             self.right_brace,
         ])
     }

@@ -56,6 +56,7 @@ pub enum Header {
     NoAdmissibleRecords(),
     AmbiguousRecord(),
     UninitializedFields(String),
+    RequiredFieldValue(),
 }
 
 impl Header {
@@ -117,6 +118,7 @@ impl Header {
             H::NoAdmissibleRecords(..) => "no_admissible_records",
             H::AmbiguousRecord(..) => "ambiguous_record",
             H::UninitializedFields(..) => "uninitialized_fields",
+            H::RequiredFieldValue(..) => "required_fields_value",
         }
     }
 
@@ -238,7 +240,9 @@ impl Header {
             H::AmbiguousRecord()
                 => "ambiguous record type for given fields".to_string(),
             H::UninitializedFields(record)
-                => format!("record type '{record}' is not fully initialized")
+                => format!("record type '{record}' is not fully initialized"),
+            H::RequiredFieldValue()
+                => "record field requires a value to be initialized".to_string(),
         }
     }
 }

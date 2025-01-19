@@ -11,20 +11,39 @@ impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_record_value(&mut self, e: &ast::RecordValue) -> ir::CheckedExpr {
         let mut fields = HashMap::new();
         for (name, expr) in &e.fields {
-            let (value, field_ty) = self.check_expression(expr);
-
+            // find the field's name
             use ast::Expr as E;
-            let E::Var(field_name_span) = name else {
-                self.reports.push(
-                    Report::error(Header::InvalidField())
-                        .with_primary_label(Label::Empty, name.span().wrap(self.file))
-                        .with_note(Note::RecordFieldSyntax),
-                );
-                continue;
+            let field_name_span = match name {
+                E::Var(s) => Some(s.span),
+                _ => {
+                    self.reports.push(
+                        Report::error(Header::InvalidField())
+                            .with_primary_label(Label::Empty, name.span().wrap(self.file))
+                            .with_note(Note::RecordFieldSyntax),
+                    );
+                    None
+                }
             };
 
-            let field_name = field_name_span.span.lexeme(self.source);
-            fields.insert(field_name, (value, field_ty));
+            // ensure there is an expression on the rhs
+            // otherwise push an error and return a dummy expression
+            let (value, field_ty) = match expr {
+                Some(expr) => self.check_expression(expr),
+                _ => {
+                    self.reports.push(
+                        Report::error(Header::RequiredFieldValue())
+                            .with_primary_label(Label::Empty, name.span().wrap(self.file))
+                            .with_note(Note::FieldValueSyntax),
+                    );
+                    self.check_missing()
+                }
+            };
+
+            // if there's at least a name, add it to the map of fields (by name)
+            if let Some(field_name_span) = field_name_span {
+                let field_name = field_name_span.lexeme(self.source);
+                fields.insert(field_name, (value, field_ty));
+            }
         }
 
         use ir::Entity as Ent;

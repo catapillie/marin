@@ -8,6 +8,7 @@ pub enum Note {
     UseSimpleRecordSyntax(String),
     UseSimpleUnionSyntax(String),
     UseConstantUnionSyntax(String),
+    FieldValueSyntax,
 }
 
 impl Note {
@@ -33,6 +34,8 @@ impl Note {
                 => format!("consider removing the parentheses to make '{name}' a union type with no type arguments"),
             N::UseConstantUnionSyntax(name)
                 => format!("consider removing the parentheses to make '{name}' a constant union variant"),
+            N::FieldValueSyntax
+                => "the field name should be followed by '=' and an expression".to_string(),
         }
     }
 }

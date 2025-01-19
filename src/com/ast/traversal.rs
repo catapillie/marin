@@ -67,7 +67,9 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         E::RecordValue(e) => {
             for (name, value) in &e.fields {
                 walk_expr(name, nodes);
-                walk_expr(value, nodes);
+                if let Some(value) = value {
+                    walk_expr(value, nodes);
+                }
             }
         }
         E::Union(..) => {}
