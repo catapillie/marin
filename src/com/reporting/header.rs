@@ -55,6 +55,7 @@ pub enum Header {
     RecordArgMismatch(String),
     NoAdmissibleRecords(),
     AmbiguousRecord(),
+    UninitializedFields(String),
 }
 
 impl Header {
@@ -115,6 +116,7 @@ impl Header {
             H::RecordArgMismatch(..) => "record_arg_mismatch",
             H::NoAdmissibleRecords(..) => "no_admissible_records",
             H::AmbiguousRecord(..) => "ambiguous_record",
+            H::UninitializedFields(..) => "uninitialized_fields",
         }
     }
 
@@ -235,6 +237,8 @@ impl Header {
                 => "no admissible record type in the current scope".to_string(),
             H::AmbiguousRecord()
                 => "ambiguous record type for given fields".to_string(),
+            H::UninitializedFields(record)
+                => format!("record type '{record}' is not fully initialized")
         }
     }
 }

@@ -40,6 +40,7 @@ pub enum Label {
     RecordTypeNoArgs(String),
     RecordDefinition(String),
     NoAdmissibleRecord(usize),
+    MissingFields(Box<[String]>, String),
 }
 
 impl Label {
@@ -147,6 +148,10 @@ impl Label {
                 => "no record type in this scope contains this field".to_string(),
             L::NoAdmissibleRecord(_)
                 => "no record type in this scope contains all these fields at the same time".to_string(),
+            L::MissingFields(fields, record) if fields.len() == 1
+                => format!("record type '{record}' is missing field: '{}'", &fields[0]),
+            L::MissingFields(fields, record) 
+                => format!("record type '{record}' is missing fields: {}", fields.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
         }
     }
 }

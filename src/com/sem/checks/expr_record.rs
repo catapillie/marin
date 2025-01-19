@@ -68,16 +68,35 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.set_type_span(record_value_type, e.span());
 
         // check that all fields are actually set
+        let mut missing_fields = Vec::new();
         let info = self.get_record_info(record_id);
-        for field_info in info.fields.clone() {
+        for (i, field_info) in info.fields.clone().iter().enumerate() {
             let Some((_, field_value_ty)) =
                 fields.iter().find(|(name, _)| name == &field_info.name)
             else {
-                panic!("error: uninitialized field '{}'", field_info.name);
+                missing_fields.push(i);
+                continue;
             };
 
             let field_ty = self.apply_type_substitution(field_info.ty, &sub);
             self.unify(*field_value_ty, field_ty, &[]);
+        }
+
+        let info = self.get_record_info(record_id);
+        if !missing_fields.is_empty() {
+            let missing_field_names = missing_fields
+                .into_iter()
+                .map(|id| info.fields[id].name.clone())
+                .collect();
+            let record_name = info.name.clone();
+            self.reports.push(
+                Report::error(Header::UninitializedFields(record_name.clone()))
+                    .with_primary_label(
+                        Label::MissingFields(missing_field_names, record_name.clone()),
+                        e.span().wrap(self.file),
+                    )
+                    .with_secondary_label(Label::RecordDefinition(record_name), info.loc),
+            );
         }
 
         (ir::Expr::Record(values.into()), record_value_type)
