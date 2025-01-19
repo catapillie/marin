@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::com::{
     ast,
     ir::{self, TypeProvenance},
-    loc::Span,
+    loc::{Loc, Span},
     reporting::{Header, Label, Report},
     sem::provenance::Provenance,
     Checker,
@@ -100,6 +100,10 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     pub fn set_type_span(&mut self, id: ir::TypeID, span: Span) {
         self.types[id.0].loc = Some(span.wrap(self.file))
+    }
+
+    pub fn set_type_loc(&mut self, id: ir::TypeID, loc: Loc) {
+        self.types[id.0].loc = Some(loc)
     }
 
     pub fn clone_type_repr(&mut self, ty: ir::TypeID) -> ir::TypeID {

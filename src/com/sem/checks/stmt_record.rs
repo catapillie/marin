@@ -86,6 +86,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             fields.push(ir::RecordFieldInfo {
                 name: field_name.to_string(),
                 ty: field_ty,
+                loc: field_name_span.span.wrap(self.file),
             })
         }
 

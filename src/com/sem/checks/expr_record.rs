@@ -1,6 +1,7 @@
 use crate::com::{
     ast, ir,
     reporting::{Header, Label, Note, Report},
+    sem::provenance::Provenance,
     Checker,
 };
 
@@ -59,6 +60,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         let (record_id, info) = record_types.pop().unwrap();
+        let record_name = info.name.clone();
+        let record_loc = info.loc;
 
         let scheme = info.scheme.clone();
         let sub = self.build_type_substitution(scheme.forall);
@@ -78,8 +81,15 @@ impl<'src, 'e> Checker<'src, 'e> {
                 continue;
             };
 
+            let provenances = &[Provenance::RecordFieldTypes(
+                record_name.clone(),
+                record_loc,
+            )];
+
             let field_ty = self.apply_type_substitution(field_info.ty, &sub);
-            self.unify(*field_value_ty, field_ty, &[]);
+            let field_ty = self.clone_type_repr(field_ty);
+            self.set_type_loc(field_ty, field_info.loc);
+            self.unify(*field_value_ty, field_ty, provenances);
         }
 
         let info = self.get_record_info(record_id);
@@ -88,14 +98,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                 .into_iter()
                 .map(|id| info.fields[id].name.clone())
                 .collect();
-            let record_name = info.name.clone();
             self.reports.push(
                 Report::error(Header::UninitializedFields(record_name.clone()))
                     .with_primary_label(
                         Label::MissingFields(missing_field_names, record_name.clone()),
                         e.span().wrap(self.file),
                     )
-                    .with_secondary_label(Label::RecordDefinition(record_name), info.loc),
+                    .with_secondary_label(Label::RecordDefinition(record_name), record_loc),
             );
         }
 

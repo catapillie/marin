@@ -10,6 +10,7 @@ pub enum Provenance {
     ConditionalBoolType(Loc),
     ConditionalReturnValues(Loc),
     FunctionCall(TypeString, Loc),
+    RecordFieldTypes(String, Loc),
 }
 
 impl Provenance {
@@ -28,6 +29,9 @@ impl Provenance {
             }
             Pr::FunctionCall(ty, loc) => {
                 report.with_secondary_label(Label::WantFunctionType(ty.clone()), *loc)
+            }
+            Pr::RecordFieldTypes(record, loc) => {
+                report.with_secondary_label(Label::RecordDefinition(record.clone()), *loc)
             }
         }
     }

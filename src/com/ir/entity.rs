@@ -38,6 +38,7 @@ pub struct RecordArgInfo {
 pub struct RecordFieldInfo {
     pub name: String,
     pub ty: TypeID,
+    pub loc: Loc,
 }
 
 pub struct UnionInfo {
