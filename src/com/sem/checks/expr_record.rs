@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::com::{
     ast, ir,
     reporting::{Header, Label, Note, Report},
@@ -7,8 +9,7 @@ use crate::com::{
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_record_value(&mut self, e: &ast::RecordValue) -> ir::CheckedExpr {
-        let mut values = Vec::new();
-        let mut fields = Vec::new();
+        let mut fields = HashMap::new();
         for (name, expr) in &e.fields {
             let (value, field_ty) = self.check_expression(expr);
 
@@ -23,13 +24,12 @@ impl<'src, 'e> Checker<'src, 'e> {
             };
 
             let field_name = field_name_span.span.lexeme(self.source);
-            values.push(value);
-            fields.push((field_name, field_ty));
+            fields.insert(field_name, (value, field_ty));
         }
 
         use ir::Entity as Ent;
         use ir::TypeInfo as T;
-        let field_names = fields.iter().map(|(name, _)| *name).collect::<Vec<_>>();
+        let field_names = fields.keys().copied().collect::<Vec<_>>();
         let mut record_types = self
             .entities
             .iter()
@@ -72,14 +72,15 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         // check that all fields are actually set
         let mut missing_fields = Vec::new();
+        let mut set_fields = Vec::new();
         let info = self.get_record_info(record_id);
         for (i, field_info) in info.fields.clone().iter().enumerate() {
-            let Some((_, field_value_ty)) =
-                fields.iter().find(|(name, _)| name == &field_info.name)
+            let Some((field_value, field_value_ty)) = fields.remove(field_info.name.as_str())
             else {
                 missing_fields.push(i);
                 continue;
             };
+            set_fields.push(field_value);
 
             let provenances = &[Provenance::RecordFieldTypes(
                 record_name.clone(),
@@ -89,7 +90,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             let field_ty = self.apply_type_substitution(field_info.ty, &sub);
             let field_ty = self.clone_type_repr(field_ty);
             self.set_type_loc(field_ty, field_info.loc);
-            self.unify(*field_value_ty, field_ty, provenances);
+            self.unify(field_value_ty, field_ty, provenances);
         }
 
         let info = self.get_record_info(record_id);
@@ -108,7 +109,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             );
         }
 
-        (ir::Expr::Record(values.into()), record_value_type)
+        (ir::Expr::Record(set_fields.into()), record_value_type)
     }
 
     fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {
