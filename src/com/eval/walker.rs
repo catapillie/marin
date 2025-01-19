@@ -174,7 +174,10 @@ impl<'a> Walker<'a> {
             }
         }
 
-        Err(State::Error(Error::InvalidState))
+        match is_exhaustive {
+            true => Err(State::Error(Error::InvalidState)),
+            false => Ok(Value::unit()),
+        }
     }
 
     fn eval_branch(&mut self, b: &'a ir::Branch) -> Result<'a, Option<Value<'a>>> {
@@ -273,18 +276,18 @@ impl<'a> Walker<'a> {
     ) -> Result<'a, Option<Value<'a>>> {
         let scrutinee = self.eval_expression(scrutinee)?;
         self.variables.insert(id, scrutinee);
-        Ok(Some(self.eval_decision(decision)?))
+        self.eval_decision(decision)
     }
 
-    fn eval_decision(&mut self, decision: &'a ir::Decision) -> Result<'a, Value<'a>> {
+    fn eval_decision(&mut self, decision: &'a ir::Decision) -> Result<'a, Option<Value<'a>>> {
         use ir::Decision as D;
         match decision {
-            D::Failure => Err(State::Error(Error::InvalidState)),
+            D::Failure => Ok(None),
             D::Success(stmts, expr) => {
                 for stmt in stmts {
                     self.eval_statement(stmt)?;
                 }
-                self.eval_expression(expr)
+                Ok(Some(self.eval_expression(expr)?))
             }
             D::Test(id, pat, success, failure) => {
                 let value = self.eval_var(id.0)?;

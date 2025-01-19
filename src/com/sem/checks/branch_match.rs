@@ -31,7 +31,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         let (decision, is_exhaustive) = self.build_decision_tree(cases);
-        println!("{is_exhaustive}");
 
         (
             ir::Branch::Match(scrut_var, Box::new(scrut), Box::new(decision)),
@@ -136,7 +135,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                         Box::new(success_decision),
                         Box::new(failure_decision),
                     ),
-                    success_exhaustive || failure_exhaustive,
+                    success_exhaustive && failure_exhaustive,
                 )
             }
         }
