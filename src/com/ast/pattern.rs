@@ -13,6 +13,7 @@ pub enum Pattern {
     Tuple(Span, Span, Box<[Pattern]>),
     Call(Span, Span, Box<Expr>, Box<[Pattern]>),
     Access(Box<Expr>),
+    Record(Span, Span, Box<[(Option<Span>, Option<Pattern>)]>),
 }
 
 impl Pattern {
@@ -33,6 +34,7 @@ impl Pattern {
                 mix_spans([callee.span(), *left_paren, *right_paren, item_spans(args)])
             }
             P::Access(e) => e.span(),
+            P::Record(left_brace, right_brace, _) => mix_spans([*left_brace, *right_brace]),
         }
     }
 
@@ -49,6 +51,9 @@ impl Pattern {
             P::Tuple(_, _, items) => items.iter().all(Self::is_irrefutable),
             P::Call(..) => false,
             P::Access(_) => false,
+            P::Record(_, _, fields) => fields
+                .iter()
+                .all(|(_, pat)| pat.as_ref().map(Self::is_irrefutable).unwrap_or(true)),
         }
     }
 }

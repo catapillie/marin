@@ -31,6 +31,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         let (decision, is_exhaustive) = self.build_decision_tree(cases);
+        println!("{is_exhaustive}");
 
         (
             ir::Branch::Match(scrut_var, Box::new(scrut), Box::new(decision)),
@@ -225,6 +226,11 @@ impl<'src, 'e> Checker<'src, 'e> {
                     }
                     None => (P::Variant(*id, *tag, None), vec![]),
                 }
+            }
+            C::Record(id) => {
+                let info = self.get_record_info(*id);
+                let (arg_patterns, arg_ids) = self.create_binding_patterns(info.fields.len());
+                (P::Record(*id, arg_patterns.into()), arg_ids)
             }
         }
     }

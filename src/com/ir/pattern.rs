@@ -10,6 +10,7 @@ pub enum Pattern {
     Bool(bool),
     Tuple(Box<[Pattern]>),
     Variant(EntityID, usize, Option<Box<[Pattern]>>),
+    Record(EntityID, Box<[Pattern]>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,6 +22,7 @@ pub enum Constructor {
     Bool(bool),
     Tuple(usize),
     Variant(EntityID, usize),
+    Record(EntityID),
 }
 
 impl Pattern {
@@ -34,6 +36,7 @@ impl Pattern {
             Self::Bool(_) => false,
             Self::Tuple(items) => items.iter().all(|item| item.is_exhaustive()),
             Self::Variant(_, _, _) => false,
+            Self::Record(_, fields) => fields.iter().all(|field| field.is_exhaustive()),
         }
     }
 
@@ -48,6 +51,7 @@ impl Pattern {
             Self::Bool(b) => C::Bool(*b),
             Self::Tuple(items) => C::Tuple(items.len()),
             Self::Variant(id, var, _) => C::Variant(*id, *var),
+            Self::Record(id, _) => C::Record(*id),
         }
     }
 
@@ -62,6 +66,7 @@ impl Pattern {
             Self::Tuple(items) => items.to_vec(),
             Self::Variant(_, _, None) => vec![],
             Self::Variant(_, _, Some(items)) => items.to_vec(),
+            Self::Record(_, fields) => fields.to_vec(),
         }
     }
 
@@ -82,6 +87,11 @@ impl Pattern {
             Self::Variant(_, _, Some(items)) => {
                 for item in items {
                     item.collect_bindings(bindings);
+                }
+            }
+            Self::Record(_, fields) => {
+                for field in fields {
+                    field.collect_bindings(bindings);
                 }
             }
         }

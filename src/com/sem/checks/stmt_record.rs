@@ -100,4 +100,15 @@ impl<'src, 'e> Checker<'src, 'e> {
         // done
         ir::Stmt::Nothing
     }
+
+    pub fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {
+        for name in names {
+            let found_field = info.fields.iter().any(|rec| &rec.name == name);
+            if !found_field {
+                return false;
+            }
+        }
+
+        true
+    }
 }

@@ -1,11 +1,13 @@
+use super::path::PathQuery as Q;
 use crate::com::{
     ast, ir,
     loc::Span,
-    reporting::{Header, Label, Report},
+    reporting::{Header, Label, Note, Report},
+    sem::provenance::Provenance,
     Checker,
 };
 
-use super::path::PathQuery as Q;
+use std::collections::HashMap;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_pattern(&mut self, e: &ast::Expr) -> ast::Pattern {
@@ -35,6 +37,26 @@ impl<'src, 'e> Checker<'src, 'e> {
                 e.args.iter().map(|arg| self.check_pattern(arg)).collect(),
             ),
             E::Access(_) => P::Access(Box::new(e.clone())),
+            E::RecordValue(e) => {
+                let mut fields = Vec::new();
+                for (name, expr) in &e.fields {
+                    let field_name_span = match name {
+                        E::Var(s) => Some(s.span),
+                        _ => {
+                            self.reports.push(
+                                Report::error(Header::InvalidField())
+                                    .with_primary_label(Label::Empty, name.span().wrap(self.file))
+                                    .with_note(Note::RecordFieldSyntax),
+                            );
+                            None
+                        }
+                    };
+
+                    let pat = expr.as_ref().map(|e| self.check_pattern(e));
+                    fields.push((field_name_span, pat));
+                }
+                P::Record(e.left_brace, e.right_brace, fields.into())
+            }
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidPattern())
@@ -83,6 +105,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
             P::Call(_, _, e, args) => self.declare_call_pattern(e, args, span),
             P::Access(e) => self.declare_access_pattern(e, span),
+            P::Record(_, _, fields) => self.declare_record_pattern(fields, span),
         }
     }
 
@@ -202,6 +225,114 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.declare_missing_pattern()
             }
         }
+    }
+
+    fn declare_record_pattern(
+        &mut self,
+        field_pats: &[(Option<Span>, Option<ast::Pattern>)],
+        span: Span,
+    ) -> (ir::Pattern, ir::TypeID) {
+        let mut fields = HashMap::new();
+        for (name, pat) in field_pats {
+            let Some(name_span) = name else {
+                continue;
+            };
+
+            let field_name = name_span.lexeme(self.source);
+            let field_pattern = match pat {
+                Some(pat) => pat,
+                None => &ast::Pattern::Binding(*name_span),
+            };
+
+            let pat = self.declare_pattern(field_pattern);
+            fields.insert(field_name, pat);
+        }
+
+        use ir::Entity as Ent;
+        use ir::TypeInfo as T;
+        let field_names = fields.keys().copied().collect::<Vec<_>>();
+        let mut record_types = self
+            .entities
+            .iter()
+            .enumerate()
+            .filter_map(|(i, ent)| match ent {
+                Ent::Type(T::Record(info)) => Some((ir::EntityID(i), info)),
+                _ => None,
+            })
+            .filter(|(_, info)| Self::is_record_admissible(info, &field_names))
+            .collect::<Vec<_>>();
+
+        if record_types.is_empty() {
+            self.reports.push(
+                Report::error(Header::NoAdmissibleRecords()).with_primary_label(
+                    Label::NoAdmissibleRecord(fields.len()),
+                    span.wrap(self.file),
+                ),
+            );
+            return self.declare_missing_pattern();
+        }
+
+        if record_types.len() > 1 {
+            self.reports.push(
+                Report::error(Header::AmbiguousRecord())
+                    .with_primary_label(Label::Empty, span.wrap(self.file)),
+            );
+            return self.declare_missing_pattern();
+        }
+
+        let (record_id, info) = record_types.pop().unwrap();
+        let record_name = info.name.clone();
+        let record_loc = info.loc;
+
+        let scheme = info.scheme.clone();
+        let sub = self.build_type_substitution(scheme.forall);
+
+        let record_value_type = self.apply_type_substitution(scheme.uninstantiated, &sub);
+        let record_value_type = self.clone_type_repr(record_value_type);
+        self.set_type_span(record_value_type, span);
+
+        // check that all fields are actually set
+        let mut missing_fields = Vec::new();
+        let mut set_fields = Vec::new();
+        let info = self.get_record_info(record_id);
+        for (i, field_info) in info.fields.clone().iter().enumerate() {
+            let Some((field_pat, field_pat_ty)) = fields.remove(field_info.name.as_str()) else {
+                missing_fields.push(i);
+                continue;
+            };
+            set_fields.push(field_pat);
+
+            let provenances = &[Provenance::RecordFieldTypes(
+                record_name.clone(),
+                record_loc,
+            )];
+
+            let field_ty = self.apply_type_substitution(field_info.ty, &sub);
+            let field_ty = self.clone_type_repr(field_ty);
+            self.set_type_loc(field_ty, field_info.loc);
+            self.unify(field_pat_ty, field_ty, provenances);
+        }
+
+        let info = self.get_record_info(record_id);
+        if !missing_fields.is_empty() {
+            let missing_field_names = missing_fields
+                .into_iter()
+                .map(|id| info.fields[id].name.clone())
+                .collect();
+            self.reports.push(
+                Report::error(Header::UnmatchedFields(record_name.clone()))
+                    .with_primary_label(
+                        Label::MissingFields(missing_field_names, record_name.clone()),
+                        span.wrap(self.file),
+                    )
+                    .with_secondary_label(Label::RecordDefinition(record_name), record_loc),
+            );
+        }
+
+        (
+            ir::Pattern::Record(record_id, set_fields.into()),
+            record_value_type,
+        )
     }
 
     fn declare_missing_pattern(&mut self) -> (ir::Pattern, ir::TypeID) {

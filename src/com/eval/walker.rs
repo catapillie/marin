@@ -86,6 +86,14 @@ impl<'a> Walker<'a> {
             }
             (P::Variant(_, tag_left, _), V::Variant(tag_right, _)) => Ok(*tag_left == tag_right),
 
+            (P::Record(_, left_fields), V::Record(right_fields)) => {
+                let mut matched = true;
+                for (left, right) in left_fields.iter().zip(right_fields) {
+                    matched &= self.deconstruct(left, right)?;
+                }
+                Ok(matched)
+            }
+
             _ => Err(State::Error(Error::PatternMismatch)),
         }
     }
@@ -364,7 +372,7 @@ impl<'a> Walker<'a> {
         };
         Ok(Value::Variant(tag, items))
     }
-    
+
     fn eval_record(&mut self, fields: &'a [ir::Expr]) -> Result<'a, Value<'a>> {
         let mut values = Vec::with_capacity(fields.len());
         for field in fields {

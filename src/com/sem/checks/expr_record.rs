@@ -130,15 +130,4 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         (ir::Expr::Record(set_fields.into()), record_value_type)
     }
-
-    fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {
-        for name in names {
-            let found_field = info.fields.iter().any(|rec| &rec.name == name);
-            if !found_field {
-                return false;
-            }
-        }
-
-        true
-    }
 }
