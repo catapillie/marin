@@ -9,8 +9,8 @@ pub struct Checker<'src, 'e> {
     pub file: usize,
     pub reports: &'e mut Vec<Report>,
 
-    pub scope: Scope<'src, ir::EntityID>,
-    pub label_scope: Scope<'src, ir::LabelID>,
+    pub scope: Scope<&'src str, ir::EntityID>,
+    pub label_scope: Scope<&'src str, ir::LabelID>,
 
     pub entities: Vec<ir::Entity>,
     pub labels: Vec<ir::Label>,

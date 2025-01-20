@@ -1,18 +1,16 @@
-use std::collections::HashMap;
-
 use super::{Error, Value};
-use crate::com::ir;
+use crate::com::{ir, scope::Scope};
 
 type Result<'a, T> = std::result::Result<T, State<'a>>;
 
 pub struct Walker<'a> {
-    variables: HashMap<usize, Value<'a>>,
+    variables: Scope<usize, Value<'a>>,
 }
 
 impl<'a> Walker<'a> {
     pub fn new() -> Self {
         Self {
-            variables: HashMap::new(),
+            variables: Scope::root(),
         }
     }
 
@@ -123,7 +121,7 @@ impl<'a> Walker<'a> {
 
     fn eval_var(&self, id: usize) -> Result<'a, Value<'a>> {
         self.variables
-            .get(&id)
+            .search(id)
             .cloned()
             .ok_or(State::Error(Error::UnknownVariable))
     }
@@ -345,13 +343,18 @@ impl<'a> Walker<'a> {
             S::Missing => return Err(State::Error(Error::InvalidFunction)),
             S::Args(_, _) => Value::Lambda(provided, next_sig, value, None),
             S::Done => {
+                self.variables.open(false);
+
                 for (arg_pattern, arg) in provided {
                     self.deconstruct(arg_pattern, arg)?;
                 }
-                match self.eval_expression(value) {
+                let result = match self.eval_expression(value) {
                     Ok(val) => val,
                     Err(s) => return Err(State::Error(s.into())),
-                }
+                };
+
+                self.variables.close();
+                result
             }
         };
 

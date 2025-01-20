@@ -1,14 +1,20 @@
-use std::{collections::HashMap, mem};
+use std::{collections::HashMap, hash::Hash, mem};
 
 #[derive(Debug, Clone)]
-pub struct Scope<'a, T> {
-    parent: Option<Box<Scope<'a, T>>>,
-    bindings: HashMap<&'a str, T>,
+pub struct Scope<K, T>
+where
+    K: Eq + Hash,
+{
+    parent: Option<Box<Scope<K, T>>>,
+    bindings: HashMap<K, T>,
     blocking: bool,
     depth: usize,
 }
 
-impl<'a, T> Scope<'a, T> {
+impl<K, T> Scope<K, T>
+where
+    K: Eq + Hash,
+{
     fn new(blocking: bool, depth: usize) -> Self {
         Self {
             parent: None,
@@ -40,7 +46,7 @@ impl<'a, T> Scope<'a, T> {
         *self = *self.parent.take().expect("scope underflow");
     }
 
-    pub fn search(&self, key: &'a str) -> Option<&T> {
+    pub fn search(&self, key: K) -> Option<&T> {
         match self.bindings.get(&key) {
             Some(value) => Some(value),
             None => match &self.parent {
@@ -63,7 +69,7 @@ impl<'a, T> Scope<'a, T> {
         }
     }
 
-    pub fn insert(&mut self, key: &'a str, val: T) -> Option<T> {
+    pub fn insert(&mut self, key: K, val: T) -> Option<T> {
         self.bindings.insert(key, val)
     }
 }
