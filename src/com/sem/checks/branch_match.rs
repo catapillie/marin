@@ -157,7 +157,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             C::Tuple(n) => Some(vec![C::Tuple(*n)]),
             C::Variant(id, _) => {
                 let info = self.get_union_info(*id);
-                let variant_count = info.variants.len();
+                let variant_count = info.variant_count();
                 let variations = (0..variant_count).map(|tag| C::Variant(*id, tag)).collect();
                 Some(variations)
             }
