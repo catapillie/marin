@@ -1,4 +1,9 @@
-use crate::com::{ast, ir, loc::Span, Checker};
+use crate::com::{
+    ast,
+    ir::{self, Constructor},
+    loc::Span,
+    Checker,
+};
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_match(
@@ -72,22 +77,17 @@ impl<'src, 'e> Checker<'src, 'e> {
         // select a test in the first case
         let &MatchTest(checked_variable, ref checked_pattern) =
             Self::select_match_test(first_lhs, &cases);
+
         let constructor = checked_pattern.constructor();
+        let variations = self.get_all_variations(&constructor);
 
-        use ir::Constructor as C;
-        match &constructor {
-            C::Variant(id, _) => {
-                // test all constructors
-                let info = self.get_union_info(*id);
-                let variant_count = info.variant_count();
-
-                // build a match subproblem for each variant of the union type
+        match variations {
+            Some(variations) => {
+                // build a match subproblem for each variation of the constructor
                 let mut all_variants_found = true;
                 let mut current_subproblem = cases;
                 let mut decisions = Vec::new();
-                for tag in 0..variant_count {
-                    let variant_constructor = C::Variant(*id, tag);
-
+                for variant_constructor in variations {
                     let (pat, ok, success, failure) = self.create_subproblem(
                         checked_variable,
                         variant_constructor,
@@ -101,7 +101,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     decisions.push((pat, variant_decision));
                 }
 
-                // if a variant is missing, ensure that it is handled in the failure subproblem
+                // if a variation is missing, ensure that it is handled in the failure subproblem
                 let (mut final_decision, mut is_exhaustive) = if all_variants_found {
                     (ir::Decision::Failure, true)
                 } else {
@@ -121,7 +121,9 @@ impl<'src, 'e> Checker<'src, 'e> {
                 (final_decision, is_exhaustive)
             }
             _ => {
+                // in this case, there are an infinite number of cases for the current constructor
                 // simply calculate subproblems based on this constructor check
+                // the failure subproblem will check whether all possibilities are handled or not
                 let (pat, _, success, failure) =
                     self.create_subproblem(checked_variable, constructor, cases);
 
@@ -138,6 +140,28 @@ impl<'src, 'e> Checker<'src, 'e> {
                     success_exhaustive && failure_exhaustive,
                 )
             }
+        }
+    }
+
+    // None means an infinite number of variations for a given constructor
+    // for example: the set of string patterns is infinite
+    // but for a bool(_) constructor, the two cases are bool(true) and bool(false)
+    pub fn get_all_variations(&self, c: &Constructor) -> Option<Vec<Constructor>> {
+        use ir::Constructor as C;
+        match c {
+            C::Missing => None,
+            C::Int(_) => None,
+            C::Float(_) => None,
+            C::String(_) => None,
+            C::Bool(_) => Some(vec![C::Bool(true), C::Bool(false)]),
+            C::Tuple(n) => Some(vec![C::Tuple(*n)]),
+            C::Variant(id, _) => {
+                let info = self.get_union_info(*id);
+                let variant_count = info.variants.len();
+                let variations = (0..variant_count).map(|tag| C::Variant(*id, tag)).collect();
+                Some(variations)
+            }
+            C::Record(id) => Some(vec![C::Record(*id)]),
         }
     }
 

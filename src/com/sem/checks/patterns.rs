@@ -94,7 +94,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.create_type(ir::Type::String, Some(span)),
             ),
             P::True(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
-            P::False(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
+            P::False(_) => (I::Bool(false), self.create_type(ir::Type::Bool, Some(span))),
             P::Tuple(_, _, items) => {
                 let (items, item_types): (Vec<_>, Vec<_>) =
                     items.iter().map(|item| self.declare_pattern(item)).unzip();
