@@ -19,6 +19,7 @@ pub enum Header {
     InvalidCharacterSequence(String),
     ExpectedToken(Token, Token),
     ExpectedExpression(),
+    ExpectedTypeAnnotation(Token),
     EmptyImport(),
     InvalidImportQuery(),
     RedundantSuper(),
@@ -83,6 +84,7 @@ impl Header {
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
             H::ExpectedToken(..) => "expected_token",
             H::ExpectedExpression(..) => "expected_expression",
+            H::ExpectedTypeAnnotation(..) => "expected_type_annotation",
             H::EmptyImport(..) => "empty_import",
             H::InvalidImportQuery(..) => "invalid_import_query",
             H::RedundantSuper(..) => "redundant_super",
@@ -158,9 +160,11 @@ impl Header {
             H::InvalidCharacterSequence(seq)
                 => format!("invalid characters '{seq}'"),
             H::ExpectedToken(want, have)
-                => format!("expected {want}, encounted {have} instead"),
+                => format!("expected {want}, encountered {have} instead"),
             H::ExpectedExpression()
                 => "expected an expression".to_string(),
+            H::ExpectedTypeAnnotation(have)
+                => format!("expected a type annotation starting with {}, or a function return type annotation with {}, encountered {have} instead", Token::Colon, Token::Maps),
             H::EmptyImport()
                 => "empty import expression".to_string(),
             H::InvalidImportQuery()

@@ -5,6 +5,7 @@ mod signatures;
 mod variables;
 
 mod stmt;
+mod stmt_class;
 mod stmt_let;
 mod stmt_record;
 mod stmt_union;

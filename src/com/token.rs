@@ -76,6 +76,10 @@ pub enum Token {
     Record,
     #[token("union")]
     Union,
+    #[token("class")]
+    Class,
+    #[token("of")]
+    Of,
 
     #[regex(r"[^\W\d_]\w*")]
     Ident,
@@ -128,6 +132,8 @@ impl Display for Token {
             Token::Super => write!(f, "'super' keyword"),
             Token::Record => write!(f, "'record' keyword"),
             Token::Union => write!(f, "'union' keyword"),
+            Token::Class => write!(f, "'class' keyword"),
+            Token::Of => write!(f, "'of' keyword"),
 
             Token::Ident => write!(f, "identifier"),
             Token::Int => write!(f, "integer literal"),

@@ -192,6 +192,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Super => self.try_parse_super_expression(),
             Token::Record => self.try_parse_record_expression(),
             Token::Union => self.try_parse_union_expression(),
+            Token::Class => self.try_parse_class_expression(),
             _ => None,
         }?;
 
@@ -588,6 +589,56 @@ impl<'src, 'e> Parser<'src, 'e> {
             end_kw,
             signature: Box::new(signature),
             variants,
+        }))
+    }
+
+    fn try_parse_class_expression(&mut self) -> Option<ast::Expr> {
+        let class_kw = self.try_expect_token(Token::Class)?;
+        let signature = self.expect_primary_expression();
+        let associated = self
+            .try_expect_token(Token::Of)
+            .map(|_| self.parse_strictly_comma_separated_items());
+
+        let mut items = Vec::new();
+
+        self.skip_newlines();
+        while let Some(item) = self.try_parse_expression() {
+            let kind = match self.peek() {
+                Token::Colon => {
+                    self.consume_token();
+                    ast::ClassItem::Variable
+                }
+                Token::Maps => {
+                    self.consume_token();
+                    ast::ClassItem::Function
+                }
+                tok => {
+                    self.reports.push(
+                        Report::error(Header::ExpectedTypeAnnotation(tok))
+                            .with_primary_label(Label::Empty, self.loc_from_here()),
+                    );
+                    ast::ClassItem::Unknown
+                }
+            };
+
+            let ty = self.expect_primary_expression();
+            items.push((kind, item, ty));
+
+            if self.try_expect_token(Token::Comma).is_some() {
+                self.skip_newlines();
+            } else if !self.skip_newlines() {
+                break;
+            }
+        }
+
+        let end_kw = self.expect_token(Token::End);
+
+        Some(ast::Expr::Class(ast::Class {
+            class_kw,
+            end_kw,
+            signature: Box::new(signature),
+            associated,
+            items: items.into(),
         }))
     }
 

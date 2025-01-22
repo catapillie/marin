@@ -26,6 +26,7 @@ pub enum Expr {
     Record(Record),
     RecordValue(RecordValue),
     Union(Union),
+    Class(Class),
 }
 
 #[derive(Debug, Clone)]
@@ -196,6 +197,21 @@ pub struct Union {
     pub variants: Box<[Expr]>,
 }
 
+#[derive(Debug, Clone)]
+pub enum ClassItem {
+    Variable,
+    Function,
+    Unknown,
+}
+#[derive(Debug, Clone)]
+pub struct Class {
+    pub class_kw: Span,
+    pub end_kw: Span,
+    pub signature: Box<Expr>,
+    pub associated: Option<Box<[Expr]>>,
+    pub items: Box<[(ClassItem, Expr, Expr)]>,
+}
+
 impl Tuple {
     pub fn span(&self) -> Span {
         mix_spans([self.left_paren, item_spans(&self.items), self.right_paren])
@@ -340,32 +356,48 @@ impl Union {
     }
 }
 
+impl Class {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.class_kw,
+            self.signature.span(),
+            mix_spans(
+                self.items
+                    .iter()
+                    .map(|(_, sig, ty)| mix_spans([sig.span(), ty.span()])),
+            ),
+            self.end_kw,
+        ])
+    }
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
-            Expr::Missing(e) => e.span,
-            Expr::Int(e) => e.span,
-            Expr::Float(e) => e.span,
-            Expr::String(e) => e.span,
-            Expr::True(e) => e.span,
-            Expr::False(e) => e.span,
-            Expr::Var(e) => e.span,
-            Expr::Tuple(e) => e.span(),
-            Expr::Array(e) => e.span(),
-            Expr::Spread(e) => e.span(),
-            Expr::Block(e) => e.span(),
-            Expr::Conditional(e) => e.span(),
-            Expr::Break(e) => e.span(),
-            Expr::Skip(e) => e.span(),
-            Expr::Call(e) => e.span(),
-            Expr::Access(e) => e.span(),
-            Expr::Let(e) => e.span(),
-            Expr::Fun(e) => e.span(),
-            Expr::Import(e) => e.span(),
-            Expr::Super(e) => e.span,
-            Expr::Record(e) => e.span(),
-            Expr::RecordValue(e) => e.span(),
-            Expr::Union(e) => e.span(),
+            Self::Missing(e) => e.span,
+            Self::Int(e) => e.span,
+            Self::Float(e) => e.span,
+            Self::String(e) => e.span,
+            Self::True(e) => e.span,
+            Self::False(e) => e.span,
+            Self::Var(e) => e.span,
+            Self::Tuple(e) => e.span(),
+            Self::Array(e) => e.span(),
+            Self::Spread(e) => e.span(),
+            Self::Block(e) => e.span(),
+            Self::Conditional(e) => e.span(),
+            Self::Break(e) => e.span(),
+            Self::Skip(e) => e.span(),
+            Self::Call(e) => e.span(),
+            Self::Access(e) => e.span(),
+            Self::Let(e) => e.span(),
+            Self::Fun(e) => e.span(),
+            Self::Import(e) => e.span(),
+            Self::Super(e) => e.span,
+            Self::Record(e) => e.span(),
+            Self::RecordValue(e) => e.span(),
+            Self::Union(e) => e.span(),
+            Self::Class(e) => e.span(),
         }
     }
 }
