@@ -31,6 +31,7 @@ pub enum Header {
     InvalidTypeArg(),
     InvalidPattern(),
     InvalidSignature(),
+    InvalidTypeSignature(),
     InvalidLabel(),
     InvalidField(),
     InvalidBreak(Option<String>),
@@ -94,6 +95,7 @@ impl Header {
             H::InvalidTypeArg(..) => "invalid_type_arg",
             H::InvalidPattern(..) => "invalid_pattern",
             H::InvalidSignature(..) => "invalid_signature",
+            H::InvalidTypeSignature(..) => "invalid_type_signature",
             H::InvalidLabel(..) => "invalid_label",
             H::InvalidField(..) => "invalid_field",
             H::InvalidBreak(..) => "invalid_break",
@@ -183,6 +185,8 @@ impl Header {
                 => "invalid pattern syntax".to_string(),
             H::InvalidSignature()
                 => "invalid signature syntax".to_string(),
+            H::InvalidTypeSignature()
+                => "invalid type signature syntax".to_string(),
             H::InvalidLabel()
                 => "invalid label syntax".to_string(),
             H::InvalidField()

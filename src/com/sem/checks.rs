@@ -31,6 +31,7 @@ mod branch_match;
 mod branch_while;
 
 mod type_call;
+mod type_fun;
 mod type_tuple;
 mod type_var;
 mod types;

@@ -45,6 +45,31 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn check_type_signature(&mut self, mut e: &ast::Expr) -> ast::TypeSignature {
+        use ast::TypeSignature as S;
+        let mut signature = S::Empty;
+        loop {
+            use ast::Expr as E;
+            match e {
+                E::Tuple(tuple) => {
+                    return S::Args(tuple.items.iter().cloned().collect(), Box::new(signature));
+                }
+                E::Call(call) => {
+                    let patterns = call.args.iter().cloned().collect();
+                    e = &call.callee;
+                    signature = S::Args(patterns, Box::new(signature));
+                }
+                _ => {
+                    self.reports.push(
+                        Report::error(Header::InvalidTypeSignature())
+                            .with_primary_label(Label::Empty, e.span().wrap(self.file)),
+                    );
+                    return S::Missing;
+                }
+            }
+        }
+    }
+
     pub fn signature_name(&self, s: &ast::Signature) -> Option<(&'src str, Span)> {
         use ast::Signature as S;
         match s {
@@ -87,6 +112,26 @@ impl<'src, 'e> Checker<'src, 'e> {
             S::Empty => {
                 let ret_type = self.create_fresh_type(None);
                 (I::Done, ret_type, ret_type, None)
+            }
+        }
+    }
+
+    // (sig_type, ret_type)
+    pub fn declare_type_signature(&mut self, s: &ast::TypeSignature) -> (ir::TypeID, ir::TypeID) {
+        use ast::TypeSignature as S;
+        match s {
+            S::Missing => (self.create_fresh_type(None), self.create_fresh_type(None)),
+            S::Args(exprs, next) => {
+                let (sig_type, ret_type) = self.declare_type_signature(next);
+                let arg_types = exprs.iter().map(|arg| self.check_type(arg)).collect();
+                (
+                    self.create_type(ir::Type::Lambda(arg_types, sig_type), None),
+                    ret_type,
+                )
+            }
+            S::Empty => {
+                let ret_type = self.create_fresh_type(None);
+                (ret_type, ret_type)
             }
         }
     }

@@ -524,6 +524,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Var(t) => self.check_var_type(t),
             E::Tuple(t) => self.check_tuple_type(t),
             E::Call(t) => self.check_call_type(t),
+            E::Fun(t) => self.check_fun_type(t),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidType())

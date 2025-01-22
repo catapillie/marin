@@ -92,20 +92,29 @@ impl TypeString {
                 item.fmt_paren(true, f)?;
                 Ok(())
             }
-            Self::Lambda(args, ret) => {
+            Self::Lambda(_, _) => {
                 if paren {
                     write!(f, "(")?;
                 }
-                let mut iter = args.iter().peekable();
-                while let Some(item) = iter.next() {
-                    item.fmt_paren(true, f)?;
-                    match iter.peek() {
-                        Some(_) => write!(f, ", ")?,
-                        None => write!(f, " ")?,
+
+                write!(f, "fun")?;
+                let mut ty = self;
+                while let Self::Lambda(args, ret) = ty {
+                    write!(f, "(")?;
+                    let mut iter = args.iter().peekable();
+                    while let Some(item) = iter.next() {
+                        item.fmt_paren(true, f)?;
+                        if iter.peek().is_some() {
+                            write!(f, ", ")?;
+                        }
                     }
+                    write!(f, ")")?;
+
+                    ty = ret;
                 }
-                write!(f, "-> ")?;
-                ret.fmt_paren(false, f)?;
+
+                write!(f, " => ")?;
+                ty.fmt_paren(false, f)?;
                 if paren {
                     write!(f, ")")?;
                 }
