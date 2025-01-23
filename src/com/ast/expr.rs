@@ -199,10 +199,11 @@ pub struct Union {
 
 #[derive(Debug, Clone)]
 pub enum ClassItem {
-    Variable,
+    Constant,
     Function,
     Unknown,
 }
+
 #[derive(Debug, Clone)]
 pub struct Class {
     pub class_kw: Span,

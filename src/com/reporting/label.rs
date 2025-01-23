@@ -23,6 +23,7 @@ pub enum Label {
     UnreachableConditionalBranches(usize),
     VariableDefinition(String),
     NamelessSignature,
+    FunctionTypeCannotHaveName(String),
     LetBindingPattern,
     FunctionArgPattern,
     WithinUnionDefinition(String),
@@ -41,6 +42,7 @@ pub enum Label {
     RecordDefinition(String),
     NoAdmissibleRecord(usize),
     MissingFields(Box<[String]>, String),
+    WithinClassDefinition(String),
 }
 
 impl Label {
@@ -103,7 +105,9 @@ impl Label {
             L::VariableDefinition(name)
                 => format!("variable '{name}' is defined here"),
             L::NamelessSignature
-                => "function signature has no name".to_string(),
+                => "function signature has no name".to_string(), 
+            L::FunctionTypeCannotHaveName(name)
+                => format!("a function type cannot have a name ('{name}')"),
             L::LetBindingPattern
                 => "let-binding patterns must be irrefutable".to_string(),
             L::FunctionArgPattern
@@ -152,6 +156,8 @@ impl Label {
                 => format!("record type '{record}' is missing field: '{}'", &fields[0]),
             L::MissingFields(fields, record) 
                 => format!("record type '{record}' is missing fields: {}", fields.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
+            L::WithinClassDefinition(name)
+                => format!("within the definition of class '{name}'"),
         }
     }
 }

@@ -8,7 +8,7 @@ use crate::com::{
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    fn check_pattern_or_signature(
+    pub fn check_pattern_or_signature(
         &mut self,
         e: &ast::Expr,
     ) -> Either<ast::Pattern, ast::Signature> {

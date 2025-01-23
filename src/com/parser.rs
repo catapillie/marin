@@ -606,7 +606,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             let kind = match self.peek() {
                 Token::Colon => {
                     self.consume_token();
-                    ast::ClassItem::Variable
+                    ast::ClassItem::Constant
                 }
                 Token::Maps => {
                     self.consume_token();

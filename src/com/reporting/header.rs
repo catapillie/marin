@@ -37,6 +37,7 @@ pub enum Header {
     InvalidField(),
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
+    UnallowedSignatureName(),
     UnknownVariable(String),
     UnknownBinding(String),
     UnknownType(String),
@@ -60,6 +61,7 @@ pub enum Header {
     UninitializedFields(String),
     UnmatchedFields(String),
     RequiredFieldValue(),
+    ClassNoArgs(String),
 }
 
 impl Header {
@@ -102,6 +104,7 @@ impl Header {
             H::InvalidField(..) => "invalid_field",
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
+            H::UnallowedSignatureName(..) => "unallowed_signature_name",
             H::UnknownVariable(..) => "unknown_variable",
             H::UnknownBinding(..) => "unknown_binding",
             H::UnknownType(..) => "unknown_type",
@@ -125,6 +128,7 @@ impl Header {
             H::UninitializedFields(..) => "uninitialized_fields",
             H::UnmatchedFields(..) => "unmatched_fields",
             H::RequiredFieldValue(..) => "required_fields_value",
+            H::ClassNoArgs(..) => "class_no_args",
         }
     }
 
@@ -201,6 +205,8 @@ impl Header {
                 => format!("invalid break to label '{name}'"),
             H::InvalidSkip(None)
                 => "invalid Skip".to_string(),
+            H::UnallowedSignatureName()
+                => "unallowed signature name".to_string(),
             H::InvalidSkip(Some(name))
                 => format!("invalid skip in label '{name}'"),
             H::UnknownVariable(name)
@@ -255,6 +261,8 @@ impl Header {
                 => format!("record type '{record}' is not fully matched"),
             H::RequiredFieldValue()
                 => "record field requires a value to be initialized".to_string(),
+            H::ClassNoArgs(name)
+                => format!("class '{name}' has no type arguments"),
         }
     }
 }

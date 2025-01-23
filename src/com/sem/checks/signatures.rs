@@ -6,13 +6,13 @@ use crate::com::{
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_signature(&mut self, mut e: &ast::Expr, require_args: bool) -> ast::Signature {
+    pub fn check_signature(&mut self, mut e: &ast::Expr, require_name: bool) -> ast::Signature {
         use ast::Signature as S;
         let mut signature = S::Empty;
         loop {
             use ast::Expr as E;
             match e {
-                E::Var(lex) if !require_args || !matches!(signature, S::Empty) => {
+                E::Var(lex) if !require_name || !matches!(signature, S::Empty) => {
                     return S::Name(lex.span, Box::new(signature));
                 }
                 E::Tuple(tuple) => {
@@ -45,14 +45,21 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    pub fn check_type_signature(&mut self, mut e: &ast::Expr) -> ast::TypeSignature {
+    pub fn check_type_signature(
+        &mut self,
+        mut e: &ast::Expr,
+    ) -> (ast::TypeSignature, Option<Span>) {
         use ast::TypeSignature as S;
         let mut signature = S::Empty;
         loop {
             use ast::Expr as E;
             match e {
+                E::Var(lex) => return (signature, Some(lex.span)),
                 E::Tuple(tuple) => {
-                    return S::Args(tuple.items.iter().cloned().collect(), Box::new(signature));
+                    return (
+                        S::Args(tuple.items.iter().cloned().collect(), Box::new(signature)),
+                        None,
+                    );
                 }
                 E::Call(call) => {
                     let patterns = call.args.iter().cloned().collect();
@@ -64,7 +71,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                         Report::error(Header::InvalidTypeSignature())
                             .with_primary_label(Label::Empty, e.span().wrap(self.file)),
                     );
-                    return S::Missing;
+                    return (S::Missing, None);
                 }
             }
         }
@@ -143,6 +150,18 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Var(e) => Some((e.span, None)),
             E::Call(call) => match &*call.callee {
                 E::Var(e) => Some((e.span, Some(&*call.args))),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    // extract a signature with a curry depth of exactly 1
+    pub fn extract_simple_signature_with_args(e: &ast::Expr) -> Option<(Span, &[ast::Expr])> {
+        use ast::Expr as E;
+        match e {
+            E::Call(call) => match &*call.callee {
+                E::Var(e) => Some((e.span, &*call.args)),
                 _ => None,
             },
             _ => None,

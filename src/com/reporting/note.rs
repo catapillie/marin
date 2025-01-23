@@ -5,6 +5,7 @@ pub enum Note {
     RecordFieldSyntax,
     UnionSyntax,
     UnionVariantSyntax,
+    ClassSyntax,
     UseSimpleRecordSyntax(String),
     UseSimpleUnionSyntax(String),
     UseConstantUnionSyntax(String),
@@ -27,7 +28,9 @@ impl Note {
             N::UnionSyntax
                 => "a union signature must have a name, and may optionally be followed by one or more arguments within parentheses".to_string(),
             N::UnionVariantSyntax
-                => "a union variant must have a name, and may optionally be followed by one or more arguments within parentheses".to_string(),
+                => "a union variant must have a name, and may optionally be followed by one or more arguments within parentheses".to_string(),    
+            N::ClassSyntax
+                => "a class signature must have a name, and must be followed by one or more arguments within parentheses".to_string(),
             N::UseSimpleRecordSyntax(name)
                 => format!("consider removing the parentheses to make '{name}' a record type with no type arguments"),
             N::UseSimpleUnionSyntax(name)
