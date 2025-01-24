@@ -19,6 +19,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let info = self.get_class_info(id);
+        let class_loc = info.loc;
+        let class_name = info.name.clone();
+
         let Some((item_id, _)) = info
             .items
             .iter()
@@ -37,11 +40,18 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let item_info = self.get_class_item_info(id, item_id);
+        let item_loc = item_info.loc;
+        let item_name = item_info.name.clone();
+
         let scheme = item_info.scheme.clone();
 
         let item_ty = self.instantiate_scheme(scheme);
         let item_ty = self.clone_type_repr(item_ty);
         self.set_type_span(item_ty, span);
+        self.add_type_provenance(
+            item_ty,
+            ir::TypeProvenance::ClassItemDefinition(item_loc, item_name, class_loc, class_name),
+        );
 
         Q::Expr((ir::Expr::Missing, item_ty))
     }

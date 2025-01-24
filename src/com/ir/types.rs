@@ -220,6 +220,7 @@ pub enum TypeProvenance {
     NonExhaustiveConditional(Loc),
     VariableDefinition(Loc, String),
     VariantDefinition(Loc, String, Loc, String),
+    ClassItemDefinition(Loc, String, Loc, String),
 }
 
 impl TypeProvenance {
@@ -238,6 +239,9 @@ impl TypeProvenance {
             Pr::VariantDefinition(variant_loc, variant_name, union_loc, union_name) => report
                 .with_secondary_label(Label::VariantDefinition(variant_name.clone()), *variant_loc)
                 .with_secondary_label(Label::UnionDefinition(union_name.clone()), *union_loc),
+            Pr::ClassItemDefinition(item_loc, item_name, class_loc, class_name) => report
+                .with_secondary_label(Label::ClassDefinition(class_name.clone()), *class_loc)
+                .with_secondary_label(Label::ClassItemDefinition(item_name.clone()), *item_loc),
         }
     }
 }

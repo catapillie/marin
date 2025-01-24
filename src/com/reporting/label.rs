@@ -44,6 +44,7 @@ pub enum Label {
     MissingFields(Box<[String]>, String),
     WithinClassDefinition(String),
     ClassDefinition(String),
+    ClassItemDefinition(String),
     IncorrectClassConstantItemSyntax,
     IncorrectClassFunctionItemSyntax,
 }
@@ -163,6 +164,8 @@ impl Label {
                 => format!("within the definition of class '{name}'"),
             L::ClassDefinition(name)
                 => format!("class '{name}' is defined here"),
+            L::ClassItemDefinition(name)
+                => format!("class item '{name}' is defined here"),
             L::IncorrectClassConstantItemSyntax
                 => format!("the annotation token should be {}, not {}", Token::Colon, Token::Maps),
             L::IncorrectClassFunctionItemSyntax
