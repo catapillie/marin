@@ -58,7 +58,18 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         }
 
+        let class_id = self.create_entity(ir::Entity::Class(ir::ClassInfo {
+            name: class_name.to_string(),
+            loc: span.wrap(self.file),
+            items: Default::default(),
+        }));
+
         let mut items = Vec::new();
+        let constraint = ir::Constraint {
+            id: class_id,
+            class_args: arg_ids.into(),
+            associated_args: associated_arg_ids.into(),
+        };
 
         use ast::ClassItem as K;
         use ast::Pattern as P;
@@ -125,7 +136,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
             };
 
-            let scheme = self.generalize_type(item_type);
+            let mut scheme = self.generalize_type(item_type);
+            self.add_class_constraint(&mut scheme, constraint.clone());
+
+            println!(
+                "{class_name}.{item_name} :: {}",
+                self.get_scheme_string(&scheme)
+            );
 
             items.push(ir::ClassItemInfo {
                 name: item_name.to_string(),
@@ -134,10 +151,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             });
         }
 
-        let class_id = self.create_entity(ir::Entity::Class(ir::ClassInfo {
-            items: items.into(),
-            loc: span.wrap(self.file),
-        }));
+        let info = self.get_class_info_mut(class_id);
+        info.items = items.into();
 
         self.close_scope();
         self.scope.insert(class_name, class_id);

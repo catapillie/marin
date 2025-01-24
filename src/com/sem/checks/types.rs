@@ -1,5 +1,3 @@
-use std::collections::{HashMap, HashSet};
-
 use crate::com::{
     ast,
     ir::{self, TypeProvenance},
@@ -8,6 +6,7 @@ use crate::com::{
     sem::provenance::Provenance,
     Checker,
 };
+use std::collections::{HashMap, HashSet};
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn create_type(&mut self, ty: ir::Type, span: Option<Span>) -> ir::TypeID {
@@ -92,6 +91,20 @@ impl<'src, 'e> Checker<'src, 'e> {
     ) -> (&ir::UnionInfo, &ir::VariantInfo) {
         let info = self.get_union_info(id);
         (info, &info.variants[tag])
+    }
+
+    pub fn get_class_info(&self, id: ir::EntityID) -> &ir::ClassInfo {
+        match self.get_entity(id) {
+            ir::Entity::Class(info) => info,
+            _ => panic!("id '{}' is not that of a class", id.0),
+        }
+    }
+
+    pub fn get_class_info_mut(&mut self, id: ir::EntityID) -> &mut ir::ClassInfo {
+        match self.get_entity_mut(id) {
+            ir::Entity::Class(info) => info,
+            _ => panic!("id '{}' is not that of a class", id.0),
+        }
     }
 
     pub fn add_type_provenance(&mut self, id: ir::TypeID, prov: TypeProvenance) {
@@ -333,6 +346,16 @@ impl<'src, 'e> Checker<'src, 'e> {
         scheme
     }
 
+    pub fn add_class_constraint(&mut self, scheme: &mut ir::Scheme, constraint: ir::Constraint) {
+        for arg in &constraint.class_args {
+            self.collect_type_variables(*arg, &mut scheme.forall);
+        }
+        for arg in &constraint.associated_args {
+            self.collect_type_variables(*arg, &mut scheme.forall);
+        }
+        scheme.constraints.push(constraint);
+    }
+
     pub fn instantiate_scheme(&mut self, scheme: ir::Scheme) -> ir::TypeID {
         let sub = self.build_type_substitution(scheme.forall);
         self.apply_type_substitution(scheme.uninstantiated, &sub)
@@ -506,14 +529,34 @@ impl<'src, 'e> Checker<'src, 'e> {
             .collect();
 
         let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map, true);
+
         let forall = domain
             .iter()
             .map(|id| name_map.get(id).unwrap().clone())
             .collect();
 
+        let constraints = scheme
+            .constraints
+            .iter()
+            .map(|constr| ir::ConstraintString {
+                name: self.get_class_info(constr.id).name.to_string(),
+                class_args: constr
+                    .class_args
+                    .iter()
+                    .map(|arg| self.get_type_string_map(*arg, &name_map, true))
+                    .collect(),
+                associated_args: constr
+                    .associated_args
+                    .iter()
+                    .map(|arg| self.get_type_string_map(*arg, &name_map, true))
+                    .collect(),
+            })
+            .collect();
+
         ir::SchemeString {
             uninstantiated,
             forall,
+            constraints,
         }
     }
 

@@ -1,10 +1,11 @@
+use colored::Colorize;
+
+use super::EntityID;
 use crate::com::{
     loc::Loc,
     reporting::{Label, Report},
 };
 use std::{collections::HashSet, fmt::Display};
-
-use super::EntityID;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TypeID(pub usize);
@@ -21,6 +22,7 @@ pub struct TypeNode {
 pub struct Scheme {
     pub forall: HashSet<TypeID>,
     pub uninstantiated: TypeID,
+    pub constraints: Vec<Constraint>,
 }
 
 impl Scheme {
@@ -28,8 +30,16 @@ impl Scheme {
         Self {
             forall: HashSet::new(),
             uninstantiated: ty,
+            constraints: Vec::new(),
         }
     }
+}
+
+#[derive(Clone)]
+pub struct Constraint {
+    pub id: EntityID,
+    pub class_args: Box<[TypeID]>,
+    pub associated_args: Box<[TypeID]>,
 }
 
 #[derive(Clone, Debug)]
@@ -146,6 +156,14 @@ impl Display for TypeString {
 pub struct SchemeString {
     pub forall: Box<[String]>,
     pub uninstantiated: TypeString,
+    pub constraints: Box<[ConstraintString]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstraintString {
+    pub name: String,
+    pub class_args: Box<[TypeString]>,
+    pub associated_args: Box<[TypeString]>,
 }
 
 impl Display for SchemeString {
@@ -154,11 +172,43 @@ impl Display for SchemeString {
             return self.uninstantiated.fmt(f);
         }
 
-        write!(f, "forall")?;
+        write!(f, "{}", "forall".bold())?;
         for x in &self.forall {
             write!(f, " {x}")?;
         }
-        write!(f, ", {}", self.uninstantiated)?;
+        write!(f, ", {}", self.uninstantiated.to_string().underline())?;
+
+        if self.constraints.is_empty() {
+            return Ok(());
+        }
+
+        write!(f, ", {} ", "where".bold())?;
+        let mut iter = self.constraints.iter().peekable();
+        while let Some(constraint) = iter.next() {
+            write!(f, "[{}", constraint.name)?;
+
+            write!(f, "(")?;
+            let mut arg_iter = constraint.class_args.iter().peekable();
+            while let Some(arg) = arg_iter.next() {
+                write!(f, "{arg}")?;
+                if arg_iter.peek().is_some() {
+                    write!(f, ", ")?;
+                }
+            }
+            write!(f, ")")?;
+
+            if !constraint.associated_args.is_empty() {
+                write!(f, " of")?;
+                for arg in &constraint.associated_args {
+                    write!(f, " {arg}")?;
+                }
+            }
+
+            write!(f, "]")?;
+            if iter.peek().is_some() {
+                write!(f, ", ")?;
+            }
+        }
 
         Ok(())
     }

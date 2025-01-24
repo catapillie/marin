@@ -72,8 +72,9 @@ impl VariantInfo {
 }
 
 pub struct ClassInfo {
-    pub items: Box<[ClassItemInfo]>,
+    pub name: String,
     pub loc: Loc,
+    pub items: Box<[ClassItemInfo]>,
 }
 
 pub struct ClassItemInfo {
