@@ -55,14 +55,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         let union_type = self.create_type(ir::Type::Union(union_id, arg_ids), None);
         let union_scheme = self.generalize_type(union_type);
         let union_loc = span.wrap(self.file);
-        let info = ir::TypeInfo::Union(ir::UnionInfo {
+        let info = ir::Entity::Union(ir::UnionInfo {
             name: union_name.to_string(),
             type_args: arg_info,
             loc: union_loc,
             scheme: union_scheme,
             variants: Box::new([]),
         });
-        self.entities.push(ir::Entity::Type(info));
+        self.entities.push(info);
 
         // bind it to its name now so that it can be used recursively
         self.scope.insert(union_name, union_id);

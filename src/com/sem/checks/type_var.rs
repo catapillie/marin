@@ -15,18 +15,10 @@ impl<'src, 'e> Checker<'src, 'e> {
             return self.create_fresh_type(Some(t.span));
         };
 
-        let ir::Entity::Type(info) = &self.entities[id.0] else {
-            self.reports.push(
-                Report::error(Header::NotType(name.to_string()))
-                    .with_primary_label(Label::Empty, t.span.wrap(self.file)),
-            );
-            return self.create_fresh_type(Some(t.span));
-        };
-
-        use ir::TypeInfo as Info;
-        let id = match info {
-            Info::Type(ty) => self.clone_type_repr(*ty),
-            Info::Record(info) => match &info.type_args {
+        use ir::Entity as Ent;
+        let id = match &self.entities[id.0] {
+            Ent::Type(ty) => self.clone_type_repr(*ty),
+            Ent::Record(info) => match &info.type_args {
                 Some(type_args) => {
                     self.reports.push(
                         Report::error(Header::IncompleteType())
@@ -43,7 +35,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
                 None => self.instantiate_scheme(info.scheme.clone()),
             },
-            Info::Union(info) => match &info.type_args {
+            Ent::Union(info) => match &info.type_args {
                 Some(type_args) => {
                     self.reports.push(
                         Report::error(Header::IncompleteType())
@@ -60,6 +52,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
                 None => self.instantiate_scheme(info.scheme.clone()),
             },
+            _ => {
+                self.reports.push(
+                    Report::error(Header::NotType(name.to_string()))
+                        .with_primary_label(Label::Empty, t.span.wrap(self.file)),
+                );
+                return self.create_fresh_type(Some(t.span));
+            }
         };
 
         self.set_type_span(id, t.span);

@@ -249,14 +249,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         use ir::Entity as Ent;
-        use ir::TypeInfo as T;
         let field_names = fields.keys().copied().collect::<Vec<_>>();
         let mut record_types = self
             .entities
             .iter()
             .enumerate()
             .filter_map(|(i, ent)| match ent {
-                Ent::Type(T::Record(info)) => Some((ir::EntityID(i), info)),
+                Ent::Record(info) => Some((ir::EntityID(i), info)),
                 _ => None,
             })
             .filter(|(_, info)| Self::is_record_admissible(info, &field_names))

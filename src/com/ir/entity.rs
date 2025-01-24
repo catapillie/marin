@@ -7,18 +7,14 @@ pub struct EntityID(pub usize);
 pub enum Entity {
     Dummy,
     Variable(Variable),
-    Type(TypeInfo),
+    Type(TypeID),
+    Record(RecordInfo),
+    Union(UnionInfo),
 }
 
 pub struct Variable {
     pub scheme: Scheme,
     pub loc: Loc,
-}
-
-pub enum TypeInfo {
-    Type(TypeID),
-    Record(RecordInfo),
-    Union(UnionInfo),
 }
 
 pub struct RecordInfo {

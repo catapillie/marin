@@ -28,10 +28,10 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     pub fn create_native_type(&mut self, name: &'src str, ty: ir::Type) {
         let id = self.create_type(ty, None);
-        self.create_user_type(name, ir::TypeInfo::Type(id));
+        self.create_user_type(name, id);
     }
 
-    pub fn create_user_type(&mut self, name: &'src str, info: ir::TypeInfo) -> ir::EntityID {
+    pub fn create_user_type(&mut self, name: &'src str, info: ir::TypeID) -> ir::EntityID {
         let id = self.create_entity(ir::Entity::Type(info));
         self.scope.insert(name, id);
         id
@@ -44,7 +44,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let arg_span = e.span;
                 let arg_name = arg_span.lexeme(self.source);
                 let arg_id = self.create_fresh_type(Some(e.span));
-                self.create_user_type(arg_name, ir::TypeInfo::Type(arg_id));
+                self.create_user_type(arg_name, arg_id);
                 (arg_id, Some(arg_name.to_string()))
             }
             _ => {
@@ -59,28 +59,28 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     pub fn get_record_info(&self, id: ir::EntityID) -> &ir::RecordInfo {
         match self.get_entity(id) {
-            ir::Entity::Type(ir::TypeInfo::Record(info)) => info,
+            ir::Entity::Record(info) => info,
             _ => panic!("id '{}' is not that of a record type", id.0),
         }
     }
 
     pub fn get_record_info_mut(&mut self, id: ir::EntityID) -> &mut ir::RecordInfo {
         match self.get_entity_mut(id) {
-            ir::Entity::Type(ir::TypeInfo::Record(info)) => info,
+            ir::Entity::Record(info) => info,
             _ => panic!("id '{}' is not that of a record type", id.0),
         }
     }
 
     pub fn get_union_info(&self, id: ir::EntityID) -> &ir::UnionInfo {
         match self.get_entity(id) {
-            ir::Entity::Type(ir::TypeInfo::Union(info)) => info,
+            ir::Entity::Union(info) => info,
             _ => panic!("id '{}' is not that of a union type", id.0),
         }
     }
 
     pub fn get_union_info_mut(&mut self, id: ir::EntityID) -> &mut ir::UnionInfo {
         match self.get_entity_mut(id) {
-            ir::Entity::Type(ir::TypeInfo::Union(info)) => info,
+            ir::Entity::Union(info) => info,
             _ => panic!("id '{}' is not that of a union type", id.0),
         }
     }
@@ -487,7 +487,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             .iter()
             .map(|x| self.get_type_repr(*x))
             .collect::<Vec<_>>();
-        
+
         const NAMES: &str = "abcdefghijklmnopqrstuvwxyz";
         let name_map = domain
             .iter()

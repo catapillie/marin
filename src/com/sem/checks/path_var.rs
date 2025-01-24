@@ -18,13 +18,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         use ir::Entity as Ent;
-        use ir::TypeInfo as T;
         match self.get_entity(*id) {
             Ent::Dummy => unreachable!(),
             Ent::Variable(_) => Q::Expr(self.check_var(e)),
-            Ent::Type(T::Type(id)) => Q::Type(*id),
-            Ent::Type(T::Record(_)) => Q::Record(*id),
-            Ent::Type(T::Union(_)) => Q::Union(*id),
+            Ent::Type(id) => Q::Type(*id),
+            Ent::Record(_) => Q::Record(*id),
+            Ent::Union(_) => Q::Union(*id),
         }
     }
 }

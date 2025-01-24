@@ -55,14 +55,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         let record_type = self.create_type(ir::Type::Record(record_id, arg_ids), None);
         let record_scheme = self.generalize_type(record_type);
         let record_loc = span.wrap(self.file);
-        let info = ir::TypeInfo::Record(ir::RecordInfo {
+        let info = ir::Entity::Record(ir::RecordInfo {
             name: record_name.to_string(),
             type_args: arg_info,
             loc: record_loc,
             scheme: record_scheme,
             fields: Box::new([]),
         });
-        self.entities.push(ir::Entity::Type(info));
+        self.entities.push(info);
 
         // bind it to its name now so that it can be used recursively
         self.scope.insert(record_name, record_id);
