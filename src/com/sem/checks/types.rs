@@ -107,6 +107,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn get_class_item_info(&self, id: ir::EntityID, index: usize) -> &ir::ClassItemInfo {
+        match self.get_entity(id) {
+            ir::Entity::Class(info) => &info.items[index],
+            _ => panic!("id '{}' is not that of a class", id.0),
+        }
+    }
+
     pub fn add_type_provenance(&mut self, id: ir::TypeID, prov: TypeProvenance) {
         self.types[id.0].provenances.push(prov)
     }

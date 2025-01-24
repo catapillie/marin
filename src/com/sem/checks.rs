@@ -40,5 +40,6 @@ mod types;
 mod path;
 mod path_access;
 mod path_access_union;
+mod path_access_class;
 mod path_call;
 mod path_var;

@@ -43,6 +43,7 @@ pub enum Label {
     NoAdmissibleRecord(usize),
     MissingFields(Box<[String]>, String),
     WithinClassDefinition(String),
+    ClassDefinition(String),
     IncorrectClassConstantItemSyntax,
     IncorrectClassFunctionItemSyntax,
 }
@@ -160,6 +161,8 @@ impl Label {
                 => format!("record type '{record}' is missing fields: {}", fields.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
             L::WithinClassDefinition(name)
                 => format!("within the definition of class '{name}'"),
+            L::ClassDefinition(name)
+                => format!("class '{name}' is defined here"),
             L::IncorrectClassConstantItemSyntax
                 => format!("the annotation token should be {}, not {}", Token::Colon, Token::Maps),
             L::IncorrectClassFunctionItemSyntax

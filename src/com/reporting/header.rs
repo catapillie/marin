@@ -43,6 +43,7 @@ pub enum Header {
     UnknownBinding(String),
     UnknownType(String),
     UnknownVariant(String, String),
+    UnknownClassItem(String, String),
     NotVariable(String),
     NotType(String),
     TypeMismatch(TypeString, TypeString),
@@ -111,6 +112,7 @@ impl Header {
             H::UnknownBinding(..) => "unknown_binding",
             H::UnknownType(..) => "unknown_type",
             H::UnknownVariant(..) => "unknown_variant",
+            H::UnknownClassItem(..) => "unknown_class_item",
             H::NotVariable(..) => "not_variable",
             H::NotType(..) => "not_type",
             H::TypeMismatch(..) => "type_mismatch",
@@ -221,6 +223,8 @@ impl Header {
                 => format!("unknown type '{name}' in the current scope"),
             H::UnknownVariant(name, union_name)
                 => format!("unknown variant '{name}' in union type '{union_name}'"),
+            H::UnknownClassItem(name, class_name)
+                => format!("unknown item '{name}' in class '{class_name}'"),
             H::NotVariable(name)
                 => format!("identifier '{name}' does not refer to a variable in the current scope"),
             H::NotType(name)
