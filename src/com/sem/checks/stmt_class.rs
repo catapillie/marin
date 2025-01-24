@@ -58,48 +58,89 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         }
 
+        let mut items = Vec::new();
+
         use ast::ClassItem as K;
         use ast::Pattern as P;
         for (kind, lhs, rhs) in &e.items {
-            match self.check_pattern_or_type_signature(lhs) {
+            let item_span = Span::combine(lhs.span(), rhs.span());
+            let (item_name, item_type) = match self.check_pattern_or_type_signature(lhs) {
                 Either::Left(pattern) => {
                     let P::Binding(item_name_span) = pattern else {
-                        panic!("invalid constant item syntax in class");
+                        self.reports.push(
+                            Report::error(Header::InvalidPattern())
+                                .with_primary_label(Label::Empty, lhs.span().wrap(self.file))
+                                .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                                .with_note(Note::ClassConstantItemSyntax),
+                        );
+                        continue;
                     };
 
                     if !matches!(kind, K::Constant | K::Unknown) {
-                        panic!("invalid type syntax for constant item in class (must use ':', not '=>')")
+                        self.reports.push(
+                            Report::error(Header::InvalidTypeAnnotation())
+                                .with_primary_label(
+                                    Label::IncorrectClassConstantItemSyntax,
+                                    item_span.wrap(self.file),
+                                )
+                                .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                                .with_note(Note::ClassConstantItemSyntax),
+                        );
                     }
 
                     let item_name = item_name_span.lexeme(self.source);
                     let item_type = self.check_type(rhs);
 
-                    let scheme = self.generalize_type(item_type);
-                    println!(
-                        "{class_name}.{item_name} :: {}",
-                        self.get_scheme_string(&scheme)
-                    );
+                    (item_name, item_type)
                 }
                 Either::Right((signature, name_span)) => {
                     let Some(item_name_span) = name_span else {
-                        panic!("invalid function item syntax in class (no name)")
+                        self.reports.push(
+                            Report::error(Header::InvalidSignature())
+                                .with_primary_label(Label::Empty, lhs.span().wrap(self.file))
+                                .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                                .with_note(Note::ClassFunctionItemSyntax),
+                        );
+                        continue;
                     };
+
+                    if !matches!(kind, K::Function | K::Unknown) {
+                        self.reports.push(
+                            Report::error(Header::InvalidTypeAnnotation())
+                                .with_primary_label(
+                                    Label::IncorrectClassFunctionItemSyntax,
+                                    item_span.wrap(self.file),
+                                )
+                                .with_secondary_label(within_label.clone(), span.wrap(self.file))
+                                .with_note(Note::ClassFunctionItemSyntax),
+                        );
+                    }
 
                     let item_name = item_name_span.lexeme(self.source);
                     let (item_type, sig_ret_type) = self.declare_type_signature(&signature);
                     let ret_type = self.check_type(rhs);
                     self.unify(ret_type, sig_ret_type, &[]);
 
-                    let scheme = self.generalize_type(item_type);
-                    println!(
-                        "{class_name}.{item_name} :: {}",
-                        self.get_scheme_string(&scheme)
-                    );
+                    (item_name, item_type)
                 }
-            }
+            };
+
+            let scheme = self.generalize_type(item_type);
+
+            items.push(ir::ClassItemInfo {
+                name: item_name.to_string(),
+                loc: item_span.wrap(self.file),
+                scheme,
+            });
         }
 
+        let class_id = self.create_entity(ir::Entity::Class(ir::ClassInfo {
+            items: items.into(),
+            loc: span.wrap(self.file),
+        }));
+
         self.close_scope();
+        self.scope.insert(class_name, class_id);
 
         ir::Stmt::Nothing
     }

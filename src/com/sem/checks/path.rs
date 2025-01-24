@@ -14,6 +14,7 @@ pub enum PathQuery {
     Record(ir::EntityID),
     Union(ir::EntityID),
     Variant(ir::EntityID, usize),
+    Class(ir::EntityID),
 }
 
 use PathQuery as Q;

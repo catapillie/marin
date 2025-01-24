@@ -10,6 +10,7 @@ pub enum Entity {
     Type(TypeID),
     Record(RecordInfo),
     Union(UnionInfo),
+    Class(ClassInfo),
 }
 
 pub struct Variable {
@@ -22,7 +23,7 @@ pub struct RecordInfo {
     pub loc: Loc,
     pub scheme: Scheme,
     pub type_args: Option<Box<[RecordArgInfo]>>,
-    pub fields: Box<[RecordFieldInfo]>
+    pub fields: Box<[RecordFieldInfo]>,
 }
 
 pub struct RecordArgInfo {
@@ -68,4 +69,15 @@ impl VariantInfo {
     pub fn arity(&self) -> Option<usize> {
         self.type_args.as_ref().map(|args| args.len())
     }
+}
+
+pub struct ClassInfo {
+    pub items: Box<[ClassItemInfo]>,
+    pub loc: Loc,
+}
+
+pub struct ClassItemInfo {
+    pub name: String,
+    pub loc: Loc,
+    pub scheme: Scheme,
 }

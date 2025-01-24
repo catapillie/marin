@@ -11,6 +11,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Record(_) => todo!("access on record type"),
             Q::Union(id) => self.check_union_access_path(id, &e.accessor),
             Q::Variant(_, _) => todo!("access on variant"),
+            Q::Class(_) => todo!("access on class"),
         }
     }
 }

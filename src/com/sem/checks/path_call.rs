@@ -19,6 +19,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Type(_) => todo!("call on type"),
             Q::Record(id) => self.check_record_call_path(id, &e.args, e.span()),
             Q::Union(id) => self.check_union_call_path(id, &e.args, e.span()),
+            Q::Class(_) => todo!("call on class"),
         }
     }
 

@@ -1,4 +1,4 @@
-use crate::com::ir::TypeString;
+use crate::com::{ir::TypeString, Token};
 
 #[derive(Clone)]
 pub enum Label {
@@ -43,6 +43,8 @@ pub enum Label {
     NoAdmissibleRecord(usize),
     MissingFields(Box<[String]>, String),
     WithinClassDefinition(String),
+    IncorrectClassConstantItemSyntax,
+    IncorrectClassFunctionItemSyntax,
 }
 
 impl Label {
@@ -158,6 +160,10 @@ impl Label {
                 => format!("record type '{record}' is missing fields: {}", fields.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
             L::WithinClassDefinition(name)
                 => format!("within the definition of class '{name}'"),
+            L::IncorrectClassConstantItemSyntax
+                => format!("the annotation token should be {}, not {}", Token::Colon, Token::Maps),
+            L::IncorrectClassFunctionItemSyntax
+                => format!("the annotation token should be {}, not {}", Token::Maps, Token::Colon),
         }
     }
 }

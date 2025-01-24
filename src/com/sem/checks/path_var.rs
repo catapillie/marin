@@ -24,6 +24,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Ent::Type(id) => Q::Type(*id),
             Ent::Record(_) => Q::Record(*id),
             Ent::Union(_) => Q::Union(*id),
+            Ent::Class(_) => Q::Class(*id),
         }
     }
 }

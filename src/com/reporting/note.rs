@@ -1,3 +1,5 @@
+use crate::com::Token;
+
 pub enum Note {
     ConsiderStage(String),
     CyclicDependencies(Vec<String>),
@@ -6,6 +8,8 @@ pub enum Note {
     UnionSyntax,
     UnionVariantSyntax,
     ClassSyntax,
+    ClassConstantItemSyntax,
+    ClassFunctionItemSyntax,
     UseSimpleRecordSyntax(String),
     UseSimpleUnionSyntax(String),
     UseConstantUnionSyntax(String),
@@ -31,6 +35,10 @@ impl Note {
                 => "a union variant must have a name, and may optionally be followed by one or more arguments within parentheses".to_string(),    
             N::ClassSyntax
                 => "a class signature must have a name, and must be followed by one or more arguments within parentheses".to_string(),
+            N::ClassConstantItemSyntax
+                => format!("a constant item in a class definition must be an identifier, followed by {} and then a type expression", Token::Colon),
+            N::ClassFunctionItemSyntax
+                => format!("a function item in a class definition must be a named signature, followed by {} and then a type expression", Token::Maps),
             N::UseSimpleRecordSyntax(name)
                 => format!("consider removing the parentheses to make '{name}' a record type with no type arguments"),
             N::UseSimpleUnionSyntax(name)
