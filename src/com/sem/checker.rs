@@ -15,6 +15,8 @@ pub struct Checker<'src, 'e> {
     pub entities: Vec<ir::Entity>,
     pub labels: Vec<ir::Label>,
     pub types: Vec<ir::TypeNode>,
+
+    pub current_constraints: Vec<ir::Constraint>,
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -30,6 +32,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             entities: Vec::new(),
             labels: Vec::new(),
             types: Vec::new(),
+
+            current_constraints: Vec::new(),
         };
 
         // native type bindings

@@ -365,6 +365,12 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     pub fn instantiate_scheme(&mut self, scheme: ir::Scheme) -> ir::TypeID {
         let sub = self.build_type_substitution(scheme.forall);
+
+        for constraint in scheme.constraints {
+            let subbed = self.apply_constraint_substitution(constraint, &sub);
+            self.require_class_constraint(subbed);
+        }
+
         self.apply_type_substitution(scheme.uninstantiated, &sub)
     }
 
@@ -430,6 +436,26 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.create_type(T::Union(eid, Some(new_items)), None)
             }
             T::Union(_, None) => ty,
+        }
+    }
+
+    pub fn apply_constraint_substitution(
+        &mut self,
+        constraint: ir::Constraint,
+        sub: &HashMap<ir::TypeID, ir::TypeID>,
+    ) -> ir::Constraint {
+        ir::Constraint {
+            id: constraint.id,
+            class_args: constraint
+                .class_args
+                .iter()
+                .map(|arg| self.apply_type_substitution(*arg, sub))
+                .collect(),
+            associated_args: constraint
+                .associated_args
+                .iter()
+                .map(|arg| self.apply_type_substitution(*arg, sub))
+                .collect(),
         }
     }
 
@@ -545,19 +571,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         let constraints = scheme
             .constraints
             .iter()
-            .map(|constr| ir::ConstraintString {
-                name: self.get_class_info(constr.id).name.to_string(),
-                class_args: constr
-                    .class_args
-                    .iter()
-                    .map(|arg| self.get_type_string_map(*arg, &name_map, true))
-                    .collect(),
-                associated_args: constr
-                    .associated_args
-                    .iter()
-                    .map(|arg| self.get_type_string_map(*arg, &name_map, true))
-                    .collect(),
-            })
+            .map(|constr| self.get_constraint_string_map(constr, &name_map))
             .collect();
 
         ir::SchemeString {
@@ -565,6 +579,31 @@ impl<'src, 'e> Checker<'src, 'e> {
             forall,
             constraints,
         }
+    }
+
+    pub fn get_constraint_string_map(
+        &mut self,
+        constraint: &ir::Constraint,
+        name_map: &HashMap<ir::TypeID, String>,
+    ) -> ir::ConstraintString {
+        ir::ConstraintString {
+            name: self.get_class_info(constraint.id).name.to_string(),
+            class_args: constraint
+                .class_args
+                .iter()
+                .map(|arg| self.get_type_string_map(*arg, name_map, true))
+                .collect(),
+            associated_args: constraint
+                .associated_args
+                .iter()
+                .map(|arg| self.get_type_string_map(*arg, name_map, true))
+                .collect(),
+        }
+    }
+
+    pub fn get_constraint_string(&mut self, constraint: &ir::Constraint) -> ir::ConstraintString {
+        let name_map = Default::default();
+        self.get_constraint_string_map(constraint, &name_map)
     }
 
     pub fn check_type(&mut self, t: &ast::Expr) -> ir::TypeID {

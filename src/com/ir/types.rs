@@ -185,28 +185,32 @@ impl Display for SchemeString {
         write!(f, ", {} ", "where".bold())?;
         let mut iter = self.constraints.iter().peekable();
         while let Some(constraint) = iter.next() {
-            write!(f, "[{}", constraint.name)?;
-
-            write!(f, "(")?;
-            let mut arg_iter = constraint.class_args.iter().peekable();
-            while let Some(arg) = arg_iter.next() {
-                write!(f, "{arg}")?;
-                if arg_iter.peek().is_some() {
-                    write!(f, ", ")?;
-                }
-            }
-            write!(f, ")")?;
-
-            if !constraint.associated_args.is_empty() {
-                write!(f, " of")?;
-                for arg in &constraint.associated_args {
-                    write!(f, " {arg}")?;
-                }
-            }
-
-            write!(f, "]")?;
+            write!(f, "[{constraint}]")?;
             if iter.peek().is_some() {
                 write!(f, ", ")?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for ConstraintString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}(", self.name)?;
+        let mut iter = self.class_args.iter().peekable();
+        while let Some(arg) = iter.next() {
+            write!(f, "{arg}")?;
+            if iter.peek().is_some() {
+                write!(f, ", ")?;
+            }
+        }
+        write!(f, ")")?;
+
+        if !self.associated_args.is_empty() {
+            write!(f, " of")?;
+            for arg in &self.associated_args {
+                write!(f, " {arg}")?;
             }
         }
 
