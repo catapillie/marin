@@ -118,6 +118,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.types[id.0].provenances.push(prov)
     }
 
+    pub fn type_depth(&mut self, id: ir::TypeID) -> usize {
+        let id = self.get_type_repr(id);
+        self.types[id.0].depth
+    }
+
     pub fn set_type_span(&mut self, id: ir::TypeID, span: Span) {
         self.types[id.0].loc = Some(span.wrap(self.file))
     }
@@ -131,12 +136,14 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let loc = self.types[ty.0].loc;
         let provenances = self.types[ty.0].provenances.clone();
+        let depth = self.types[ty.0].depth;
 
         let new_ty = self.create_type(self.types[ty.0].ty.clone(), None);
         let new_node = &mut self.types[new_ty.0];
 
         new_node.loc = loc;
         new_node.provenances = provenances;
+        new_node.depth = depth;
         self.unify(ty, new_ty, &[]); // should never fail
 
         new_ty
@@ -154,6 +161,50 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     fn join_type_repr(&mut self, left: ir::TypeID, right: ir::TypeID) {
         self.types[left.0].parent = right;
+    }
+
+    pub fn is_concrete_type(&mut self, ty: ir::TypeID) -> bool {
+        let ty = self.get_type_repr(ty);
+        use ir::Type as T;
+        match self.types[ty.0].ty.clone() {
+            T::Var => false,
+            T::Int => true,
+            T::Float => true,
+            T::Bool => true,
+            T::String => true,
+            T::Tuple(items) => items.iter().all(|item| self.is_concrete_type(*item)),
+            T::Array(item) => self.is_concrete_type(item),
+            T::Lambda(args, ret) => {
+                args.iter().all(|arg| self.is_concrete_type(*arg)) && self.is_concrete_type(ret)
+            }
+            T::Record(_, None) => true,
+            T::Record(_, Some(items)) => items.iter().all(|item| self.is_concrete_type(*item)),
+            T::Union(_, None) => true,
+            T::Union(_, Some(items)) => items.iter().all(|item| self.is_concrete_type(*item)),
+        }
+    }
+
+    pub fn is_relevant_type(&mut self, ty: ir::TypeID) -> bool {
+        let ty = self.get_type_repr(ty);
+        let node = &self.types[ty.0];
+
+        use ir::Type as T;
+        match node.ty.clone() {
+            T::Var => node.depth >= self.scope.depth(),
+            T::Int => false,
+            T::Float => false,
+            T::Bool => false,
+            T::String => false,
+            T::Tuple(items) => items.iter().any(|item| self.is_relevant_type(*item)),
+            T::Array(item) => self.is_concrete_type(item),
+            T::Lambda(args, ret) => {
+                args.iter().any(|arg| self.is_concrete_type(*arg)) || self.is_concrete_type(ret)
+            }
+            T::Record(_, None) => true,
+            T::Record(_, Some(items)) => items.iter().any(|item| self.is_concrete_type(*item)),
+            T::Union(_, None) => true,
+            T::Union(_, Some(items)) => items.iter().any(|item| self.is_concrete_type(*item)),
+        }
     }
 
     fn occurs_in_type(&mut self, left: ir::TypeID, right: ir::TypeID) -> bool {
@@ -190,7 +241,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ir::Type as T;
         match (left.ty.clone(), right.ty.clone()) {
             (T::Var, T::Var) => {
-                self.join_type_repr(repr_left, repr_right);
+                // join types by descending depth
+                let depth_left = self.type_depth(repr_left);
+                let depth_right = self.type_depth(repr_right);
+                if depth_left >= depth_right {
+                    self.join_type_repr(repr_left, repr_right)
+                } else {
+                    self.join_type_repr(repr_right, repr_left)
+                }
                 return;
             }
 
@@ -568,11 +626,11 @@ impl<'src, 'e> Checker<'src, 'e> {
             .map(|id| name_map.get(id).unwrap().clone())
             .collect();
 
-        let constraints = scheme
-            .constraints
-            .iter()
-            .map(|constr| self.get_constraint_string_map(constr, &name_map))
-            .collect();
+        let mut constraints = HashSet::new();
+        for constraint in &scheme.constraints {
+            constraints.insert(self.get_constraint_string_map(constraint, &name_map));
+        }
+        let constraints = constraints.into_iter().collect();
 
         ir::SchemeString {
             uninstantiated,
@@ -601,6 +659,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_constraint_string(&mut self, constraint: &ir::Constraint) -> ir::ConstraintString {
         let name_map = Default::default();
         self.get_constraint_string_map(constraint, &name_map)

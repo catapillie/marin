@@ -8,6 +8,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         span: Span,
     ) -> ir::EntityID {
         let id = self.create_entity(ir::Entity::Variable(ir::Variable {
+            name: name.to_string(),
             scheme,
             loc: span.wrap(self.file),
         }));

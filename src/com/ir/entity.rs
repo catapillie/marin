@@ -14,6 +14,7 @@ pub enum Entity {
 }
 
 pub struct Variable {
+    pub name: String,
     pub scheme: Scheme,
     pub loc: Loc,
 }

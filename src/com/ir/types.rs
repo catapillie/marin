@@ -62,7 +62,7 @@ impl Type {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeString {
     Hidden,
     Name(String),
@@ -159,7 +159,7 @@ pub struct SchemeString {
     pub constraints: Box<[ConstraintString]>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstraintString {
     pub name: String,
     pub class_args: Box<[TypeString]>,

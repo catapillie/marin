@@ -39,11 +39,19 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let (pattern, pattern_type) = self.declare_pattern(&pattern);
 
                 self.unify(ty, pattern_type, &[]);
+                let relevant_constraints = self.solve_constraints();
 
                 let bindings = pattern.get_binding_ids();
                 for var_id in bindings {
                     let ty = self.get_variable(var_id).scheme.uninstantiated;
-                    let scheme = self.generalize_type(ty);
+
+                    let mut scheme = self.generalize_type(ty);
+                    for constraint in relevant_constraints.clone() {
+                        self.add_class_constraint(&mut scheme, constraint);
+                    }
+                    let name = self.get_variable(var_id).name.clone();
+                    println!("{name} :: {}", self.get_scheme_string(&scheme));
+
                     self.get_variable_mut(var_id).scheme = scheme.clone();
                 }
 
@@ -75,6 +83,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
                 let (val, val_type) = self.check_expression(&e.value);
                 self.unify(val_type, ret_type, &[]);
+                let relevant_contraints = self.solve_constraints();
 
                 self.close_scope();
 
@@ -90,7 +99,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                     return ir::Stmt::Missing;
                 };
 
-                let scheme = self.generalize_type(sig_type);
+                let mut scheme = self.generalize_type(sig_type);
+                for constraint in relevant_contraints {
+                    self.add_class_constraint(&mut scheme, constraint);
+                }
+
+                println!("{name} :: {}", self.get_scheme_string(&scheme));
+
                 let id = self.create_variable_poly(name, scheme, name_span);
                 let pattern = ir::Pattern::Binding(id);
                 let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
