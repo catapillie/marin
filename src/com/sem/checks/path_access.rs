@@ -28,7 +28,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Missing => Q::Missing,
             Q::Expr(_) => todo!("access on expr"),
             Q::Type(_) => todo!("access on type"),
-            Q::Record(_) => todo!("access on record type"),
+            Q::Record(id) => self.check_record_access_path(id, &e.accessor),
             Q::Union(id) => self.check_union_access_path(id, &e.accessor),
             Q::Variant(_, _) => todo!("access on variant"),
             Q::Class(id) => self.check_class_access_path(id, &e.accessor, e.span()),

@@ -116,6 +116,7 @@ impl<'a> Walker<'a> {
             E::Call(callee, args) => self.eval_call(callee, args),
             E::Variant(tag, items) => self.eval_variant(*tag, items),
             E::Record(values) => self.eval_record(values),
+            E::Access(rec, tag) => self.eval_access(rec, *tag),
         }
     }
 
@@ -385,6 +386,14 @@ impl<'a> Walker<'a> {
             values.push(self.eval_expression(field)?);
         }
         Ok(Value::Record(values.into()))
+    }
+
+    fn eval_access(&mut self, rec: &'a ir::Expr, tag: usize) -> Result<'a, Value<'a>> {
+        let rec = self.eval_expression(rec)?;
+        match rec {
+            Value::Record(items) => Ok(items[tag].clone()),
+            _ => Err(State::Error(Error::InvalidState)),
+        }
     }
 }
 

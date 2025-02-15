@@ -70,6 +70,15 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn get_record_field_info(
+        &self,
+        id: ir::EntityID,
+        tag: usize,
+    ) -> (&ir::RecordInfo, &ir::RecordFieldInfo) {
+        let info = self.get_record_info(id);
+        (info, &info.fields[tag])
+    }
+
     pub fn get_union_info(&self, id: ir::EntityID) -> &ir::UnionInfo {
         match self.get_entity(id) {
             ir::Entity::Union(info) => info,

@@ -20,4 +20,5 @@ pub enum Expr {
     Call(Box<Expr>, Box<[Expr]>),
     Variant(usize, Option<Box<[Expr]>>),
     Record(Box<[Expr]>),
+    Access(Box<Expr>, usize),
 }
