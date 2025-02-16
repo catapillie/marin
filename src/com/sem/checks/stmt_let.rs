@@ -20,6 +20,10 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn check_let(&mut self, e: &ast::Let) -> ir::Stmt {
+        self.check_let_bindings(e).0
+    }
+
+    pub fn check_let_bindings(&mut self, e: &ast::Let) -> (ir::Stmt, Vec<ir::EntityID>) {
         let binding_span = Span::combine(e.let_kw, e.pattern.span());
         let lhs = self.check_pattern_or_signature(&e.pattern);
         match lhs {
@@ -42,7 +46,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let relevant_constraints = self.solve_constraints();
 
                 let bindings = pattern.get_binding_ids();
-                for var_id in bindings {
+                for var_id in bindings.iter().copied() {
                     let ty = self.get_variable(var_id).scheme.uninstantiated;
 
                     let mut scheme = self.generalize_type(ty);
@@ -55,7 +59,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     self.get_variable_mut(var_id).scheme = scheme.clone();
                 }
 
-                ir::Stmt::Let(pattern, value)
+                (ir::Stmt::Let(pattern, value), bindings)
             }
             Either::Right(signature) => {
                 for arg_pattern in signature.arg_patterns() {
@@ -96,7 +100,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                             ),
                         );
                     }
-                    return ir::Stmt::Missing;
+                    return (ir::Stmt::Missing, vec![]);
                 };
 
                 let mut scheme = self.generalize_type(sig_type);
@@ -110,7 +114,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let pattern = ir::Pattern::Binding(id);
                 let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
 
-                ir::Stmt::Let(pattern, lambda)
+                (ir::Stmt::Let(pattern, lambda), vec![id])
             }
         }
     }

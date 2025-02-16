@@ -74,6 +74,11 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         }
         E::Union(..) => {}
         E::Class(..) => {}
+        E::Have(e) => {
+            for item in &e.items {
+                walk_expr(item, nodes);
+            }
+        }
     }
 }
 

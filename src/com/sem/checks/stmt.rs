@@ -14,6 +14,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Record(e) => self.check_record(e),
             E::Union(e) => self.check_union(e),
             E::Class(e) => self.check_class(e),
+            E::Have(e) => self.check_have(e),
             _ => {
                 let (expr, ty) = self.check_expression(e);
                 ir::Stmt::Expr(expr, ty)

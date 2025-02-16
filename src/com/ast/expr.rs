@@ -27,6 +27,7 @@ pub enum Expr {
     RecordValue(RecordValue),
     Union(Union),
     Class(Class),
+    Have(Have),
 }
 
 #[derive(Debug, Clone)]
@@ -213,6 +214,14 @@ pub struct Class {
     pub items: Box<[(ClassItem, Expr, Expr)]>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Have {
+    pub have_kw: Span,
+    pub end_kw: Span,
+    pub name: Span,
+    pub items: Box<[Expr]>,
+}
+
 impl Tuple {
     pub fn span(&self) -> Span {
         mix_spans([self.left_paren, item_spans(&self.items), self.right_paren])
@@ -372,6 +381,17 @@ impl Class {
     }
 }
 
+impl Have {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.have_kw,
+            self.name,
+            item_spans(&self.items),
+            self.end_kw,
+        ])
+    }
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -399,6 +419,7 @@ impl Expr {
             Self::RecordValue(e) => e.span(),
             Self::Union(e) => e.span(),
             Self::Class(e) => e.span(),
+            Self::Have(e) => e.span(),
         }
     }
 }

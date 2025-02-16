@@ -7,6 +7,7 @@ mod variables;
 
 mod stmt;
 mod stmt_class;
+mod stmt_have;
 mod stmt_let;
 mod stmt_record;
 mod stmt_union;
@@ -41,7 +42,7 @@ mod types;
 mod path;
 mod path_access;
 mod path_access_class;
-mod path_access_union;
 mod path_access_record;
+mod path_access_union;
 mod path_call;
 mod path_var;

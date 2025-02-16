@@ -47,6 +47,7 @@ pub enum Label {
     ClassItemDefinition(String),
     IncorrectClassConstantItemSyntax,
     IncorrectClassFunctionItemSyntax,
+    WithinClassInstantiation(String),
 }
 
 impl Label {
@@ -170,6 +171,8 @@ impl Label {
                 => format!("the annotation token should be {}, not {}", Token::Colon, Token::Maps),
             L::IncorrectClassFunctionItemSyntax
                 => format!("the annotation token should be {}, not {}", Token::Maps, Token::Colon),
+            L::WithinClassInstantiation(name)
+                => format!("within an instantiation of class '{name}'"),
         }
     }
 }

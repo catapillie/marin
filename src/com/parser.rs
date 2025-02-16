@@ -193,6 +193,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Record => self.try_parse_record_expression(),
             Token::Union => self.try_parse_union_expression(),
             Token::Class => self.try_parse_class_expression(),
+            Token::Have => self.try_parse_have_expression(),
             _ => None,
         }?;
 
@@ -639,6 +640,20 @@ impl<'src, 'e> Parser<'src, 'e> {
             signature: Box::new(signature),
             associated,
             items: items.into(),
+        }))
+    }
+
+    fn try_parse_have_expression(&mut self) -> Option<ast::Expr> {
+        let have_kw = self.try_expect_token(Token::Have)?;
+        let name = self.expect_token(Token::Ident);
+        let items = self.parse_newline_separated_items();
+        let end_kw = self.expect_token(Token::End);
+
+        Some(ast::Expr::Have(ast::Have {
+            have_kw,
+            name,
+            end_kw,
+            items,
         }))
     }
 
