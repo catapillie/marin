@@ -76,6 +76,7 @@ pub struct ClassInfo {
     pub name: String,
     pub loc: Loc,
     pub items: Box<[ClassItemInfo]>,
+    pub arity: (usize, usize),
 }
 
 pub struct ClassItemInfo {

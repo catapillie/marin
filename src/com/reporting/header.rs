@@ -64,6 +64,7 @@ pub enum Header {
     UnmatchedFields(String),
     RequiredFieldValue(),
     ClassNoArgs(String),
+    UninstantiatedItems(String),
 }
 
 impl Header {
@@ -133,6 +134,7 @@ impl Header {
             H::UnmatchedFields(..) => "unmatched_fields",
             H::RequiredFieldValue(..) => "required_fields_value",
             H::ClassNoArgs(..) => "class_no_args",
+            H::UninstantiatedItems(..) => "uninstantiated_items",
         }
     }
 
@@ -271,6 +273,8 @@ impl Header {
                 => "record field requires a value to be initialized".to_string(),
             H::ClassNoArgs(name)
                 => format!("class '{name}' has no type arguments"),
+            H::UninstantiatedItems(class_name)
+                => format!("instantiation of class '{class_name}' is incomplete"),
         }
     }
 }

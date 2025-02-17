@@ -1,3 +1,4 @@
+use colored::Colorize;
 use either::Either;
 
 use crate::com::{
@@ -20,7 +21,20 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn check_let(&mut self, e: &ast::Let) -> ir::Stmt {
-        self.check_let_bindings(e).0
+        let (stmt, bindings) = self.check_let_bindings(e);
+
+        for binding in bindings {
+            let info = self.get_variable(binding);
+            let name = info.name.clone();
+            let scheme = info.scheme.clone();
+            println!(
+                "{} {name} :: {}",
+                "let".bold(),
+                self.get_scheme_string(&scheme)
+            );
+        }
+
+        stmt
     }
 
     pub fn check_let_bindings(&mut self, e: &ast::Let) -> (ir::Stmt, Vec<ir::EntityID>) {
@@ -53,8 +67,6 @@ impl<'src, 'e> Checker<'src, 'e> {
                     for constraint in relevant_constraints.clone() {
                         self.add_class_constraint(&mut scheme, constraint);
                     }
-                    let name = self.get_variable(var_id).name.clone();
-                    println!("{name} :: {}", self.get_scheme_string(&scheme));
 
                     self.get_variable_mut(var_id).scheme = scheme.clone();
                 }
@@ -107,8 +119,6 @@ impl<'src, 'e> Checker<'src, 'e> {
                 for constraint in relevant_contraints {
                     self.add_class_constraint(&mut scheme, constraint);
                 }
-
-                println!("{name} :: {}", self.get_scheme_string(&scheme));
 
                 let id = self.create_variable_poly(name, scheme, name_span);
                 let pattern = ir::Pattern::Binding(id);

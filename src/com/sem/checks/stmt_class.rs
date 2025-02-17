@@ -4,6 +4,7 @@ use crate::com::{
     reporting::{Header, Label, Note, Report},
     Checker,
 };
+use colored::Colorize;
 use either::Either;
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -58,10 +59,13 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         }
 
+        let arity = (arg_ids.len(), associated_arg_ids.len());
+
         let class_id = self.create_entity(ir::Entity::Class(ir::ClassInfo {
             name: class_name.to_string(),
             loc: span.wrap(self.file),
             items: Default::default(),
+            arity,
         }));
 
         let mut items = Vec::new();
@@ -139,11 +143,6 @@ impl<'src, 'e> Checker<'src, 'e> {
             let mut scheme = self.generalize_type(item_type);
             self.add_class_constraint(&mut scheme, constraint.clone());
 
-            println!(
-                "{class_name}.{item_name} :: {}",
-                self.get_scheme_string(&scheme)
-            );
-
             items.push(ir::ClassItemInfo {
                 name: item_name.to_string(),
                 loc: item_span.wrap(self.file),
@@ -156,6 +155,24 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         self.close_scope();
         self.scope.insert(class_name, class_id);
+
+        let items = self
+            .get_class_info(class_id)
+            .items
+            .iter()
+            .map(|item| (item.name.clone(), item.scheme.clone()))
+            .collect::<Vec<_>>();
+        println!("{} {}", "class".bold(), class_name);
+        for (item_name, scheme) in items {
+            println!(
+                "    {} {}.{} :: {}",
+                "let".bold(),
+                class_name,
+                item_name,
+                self.get_scheme_string(&scheme)
+            );
+        }
+        println!("{}", "end".bold());
 
         ir::Stmt::Nothing
     }

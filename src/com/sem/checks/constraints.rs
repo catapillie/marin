@@ -28,7 +28,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 continue;
             }
 
-            // if not, it might still relevant
+            // if not, it might still be relevant
             // which means intuitively that it constrains at least one type variable
             // living deeper than were the contraints are being solved
             if self.is_relevant_constraint(&constraint) {
@@ -36,7 +36,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 continue;
             }
 
-            // otherwise, forget about it
+            // otherwise, fort about it
             // it'll be solved later
             remaining.push(constraint);
         }

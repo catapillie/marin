@@ -14,6 +14,7 @@ pub enum Note {
     UseSimpleUnionSyntax(String),
     UseConstantUnionSyntax(String),
     FieldValueSyntax,
+    InstanceSyntax,
 }
 
 impl Note {
@@ -47,6 +48,8 @@ impl Note {
                 => format!("consider removing the parentheses to make '{name}' a constant union variant"),
             N::FieldValueSyntax
                 => "the field name should be followed by '=' and an expression".to_string(),
+            N::InstanceSyntax
+                => "'have' blocks must only contain 'let' statements that instantiates items of a given class".to_string(),
         }
     }
 }

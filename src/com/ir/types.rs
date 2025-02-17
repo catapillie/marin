@@ -36,6 +36,13 @@ impl Scheme {
 }
 
 #[derive(Clone)]
+pub struct InstanceScheme {
+    pub forall: HashSet<TypeID>,
+    pub constraint: Constraint,
+    pub required_constraints: Vec<Constraint>,
+}
+
+#[derive(Clone)]
 pub struct Constraint {
     pub id: EntityID,
     pub class_args: Box<[TypeID]>,
@@ -159,6 +166,13 @@ pub struct SchemeString {
     pub constraints: Box<[ConstraintString]>,
 }
 
+#[derive(Debug, Clone)]
+pub struct InstanceSchemeString {
+    pub forall: Box<[String]>,
+    pub constraint: ConstraintString,
+    pub required_constraints: Box<[ConstraintString]>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstraintString {
     pub name: String,
@@ -184,6 +198,40 @@ impl Display for SchemeString {
 
         write!(f, ", {} ", "where".bold())?;
         let mut iter = self.constraints.iter().peekable();
+        while let Some(constraint) = iter.next() {
+            write!(f, "[{constraint}]")?;
+            if iter.peek().is_some() {
+                write!(f, ", ")?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for InstanceSchemeString {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if !self.forall.is_empty() {
+            write!(f, "{}", "forall".bold())?;
+            for x in &self.forall {
+                write!(f, " {x}")?;
+            }
+            write!(f, ", ")?;
+        };
+
+        write!(
+            f,
+            "{} [{}]",
+            "have".bold(),
+            self.constraint.to_string().underline()
+        )?;
+
+        if self.required_constraints.is_empty() {
+            return Ok(());
+        }
+
+        write!(f, ", {} ", "where".bold())?;
+        let mut iter = self.required_constraints.iter().peekable();
         while let Some(constraint) = iter.next() {
             write!(f, "[{constraint}]")?;
             if iter.peek().is_some() {

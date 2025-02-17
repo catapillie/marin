@@ -372,6 +372,22 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.reports.push(report);
     }
 
+    pub fn unify_constraint(&mut self, left: &ir::Constraint, right: &ir::Constraint) {
+        debug_assert_eq!(
+            left.id, right.id,
+            "attempt to unify constraints of different classes"
+        );
+        debug_assert_eq!(left.class_args.len(), right.class_args.len());
+        debug_assert_eq!(left.associated_args.len(), right.associated_args.len());
+
+        for (left, right) in left.class_args.iter().zip(&right.class_args) {
+            self.unify(*left, *right, &[]);
+        }
+        for (left, right) in left.associated_args.iter().zip(&right.associated_args) {
+            self.unify(*left, *right, &[]);
+        }
+    }
+
     fn collect_type_variables(&mut self, ty: ir::TypeID, ids: &mut HashSet<ir::TypeID>) {
         let id = self.get_type_repr(ty);
         let node = &self.types[id.0];
@@ -414,6 +430,19 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn collect_constraint_variables(
+        &mut self,
+        constraint: &ir::Constraint,
+        ids: &mut HashSet<ir::TypeID>,
+    ) {
+        for arg in &constraint.class_args {
+            self.collect_type_variables(*arg, ids);
+        }
+        for arg in &constraint.associated_args {
+            self.collect_type_variables(*arg, ids);
+        }
+    }
+
     pub fn generalize_type(&mut self, ty: ir::TypeID) -> ir::Scheme {
         let mut scheme = ir::Scheme::mono(ty);
         self.collect_type_variables(ty, &mut scheme.forall);
@@ -421,12 +450,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn add_class_constraint(&mut self, scheme: &mut ir::Scheme, constraint: ir::Constraint) {
-        for arg in &constraint.class_args {
-            self.collect_type_variables(*arg, &mut scheme.forall);
-        }
-        for arg in &constraint.associated_args {
-            self.collect_type_variables(*arg, &mut scheme.forall);
-        }
+        self.collect_constraint_variables(&constraint, &mut scheme.forall);
         scheme.constraints.push(constraint);
     }
 
@@ -439,6 +463,24 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         self.apply_type_substitution(scheme.uninstantiated, &sub)
+    }
+
+    pub fn instantiate_scheme_keep_constraints(
+        &mut self,
+        scheme: ir::Scheme,
+    ) -> (ir::TypeID, Vec<ir::Constraint>) {
+        let sub = self.build_type_substitution(scheme.forall);
+
+        let mut subbed_constraints = Vec::new();
+        for constraint in scheme.constraints {
+            let subbed = self.apply_constraint_substitution(constraint, &sub);
+            subbed_constraints.push(subbed);
+        }
+
+        (
+            self.apply_type_substitution(scheme.uninstantiated, &sub),
+            subbed_constraints,
+        )
     }
 
     pub fn build_type_substitution(
@@ -602,11 +644,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.get_type_string_map(id, &HashMap::new(), false)
     }
 
-    #[allow(dead_code)]
-    pub fn get_scheme_string(&mut self, scheme: &ir::Scheme) -> ir::SchemeString {
+    fn create_domain_name_map(
+        &mut self,
+        domain: &HashSet<ir::TypeID>,
+    ) -> (HashMap<ir::TypeID, String>, Vec<ir::TypeID>) {
         // update the domain to use representant types
-        let domain = scheme
-            .forall
+        let domain = domain
             .iter()
             .map(|x| self.get_type_repr(*x))
             .collect::<Vec<_>>();
@@ -628,6 +671,11 @@ impl<'src, 'e> Checker<'src, 'e> {
             })
             .collect();
 
+        (name_map, domain)
+    }
+
+    pub fn get_scheme_string(&mut self, scheme: &ir::Scheme) -> ir::SchemeString {
+        let (name_map, domain) = self.create_domain_name_map(&scheme.forall);
         let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map, true);
 
         let forall = domain
@@ -645,6 +693,31 @@ impl<'src, 'e> Checker<'src, 'e> {
             uninstantiated,
             forall,
             constraints,
+        }
+    }
+
+    pub fn get_instance_scheme_string(
+        &mut self,
+        scheme: &ir::InstanceScheme,
+    ) -> ir::InstanceSchemeString {
+        let (name_map, domain) = self.create_domain_name_map(&scheme.forall);
+        let constraint = self.get_constraint_string_map(&scheme.constraint, &name_map);
+
+        let forall = domain
+            .iter()
+            .map(|id| name_map.get(id).unwrap().clone())
+            .collect();
+
+        let mut required_constraints = HashSet::new();
+        for constraint in &scheme.required_constraints {
+            required_constraints.insert(self.get_constraint_string_map(constraint, &name_map));
+        }
+        let required_constraints = required_constraints.into_iter().collect();
+
+        ir::InstanceSchemeString {
+            forall,
+            constraint,
+            required_constraints,
         }
     }
 

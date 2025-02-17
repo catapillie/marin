@@ -48,6 +48,7 @@ pub enum Label {
     IncorrectClassConstantItemSyntax,
     IncorrectClassFunctionItemSyntax,
     WithinClassInstantiation(String),
+    MissingItems(Box<[String]>, String),
 }
 
 impl Label {
@@ -173,6 +174,10 @@ impl Label {
                 => format!("the annotation token should be {}, not {}", Token::Maps, Token::Colon),
             L::WithinClassInstantiation(name)
                 => format!("within an instantiation of class '{name}'"),
+            L::MissingItems(items, class) if items.len() == 1
+                => format!("instantiation of '{class}' is missing item: '{}'", &items[0]),
+            L::MissingItems(items, class) 
+                => format!("instantiation of '{class}' is missing items: {}", items.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
         }
     }
 }
