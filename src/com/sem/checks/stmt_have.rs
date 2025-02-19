@@ -113,6 +113,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.close_scope();
         self.close_scope();
 
+        self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
+            loc: span.wrap(self.file),
+            scheme,
+        }));
+
         ir::Stmt::Nothing
     }
 }

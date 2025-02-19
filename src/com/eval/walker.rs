@@ -4,7 +4,7 @@ use crate::com::{ir, scope::Scope};
 type Result<'a, T> = std::result::Result<T, State<'a>>;
 
 pub struct Walker<'a> {
-    variables: Scope<usize, Value<'a>>,
+    variables: Scope<usize, (), Value<'a>>,
 }
 
 impl<'a> Walker<'a> {

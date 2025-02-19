@@ -42,11 +42,26 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         for constraint in concrete {
-            println!("  check {}", self.get_constraint_string(&constraint));
+            self.check_constraint(constraint);
         }
 
         self.restore_constraint_context(remaining);
         relevant
+    }
+
+    fn get_known_instances(&self) -> Vec<&ir::InstanceInfo> {
+        self.scope
+            .infos()
+            .flatten()
+            .map(|id| self.get_instance_info(*id))
+            .collect::<Vec<_>>()
+    }
+
+    fn check_constraint(&mut self, constraint: ir::Constraint) {
+        println!("    * check {}", self.get_constraint_string(&constraint));
+        // for instance in self.get_known_instances() {
+        //     println!("      ? -> {}", self.get_instance_scheme_string(&instance.scheme));
+        // }
     }
 
     fn is_concrete_constraint(&mut self, constraint: &ir::Constraint) -> bool {

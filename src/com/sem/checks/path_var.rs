@@ -25,6 +25,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Ent::Record(_) => Q::Record(*id),
             Ent::Union(_) => Q::Union(*id),
             Ent::Class(_) => Q::Class(*id),
+            Ent::Instance(_) => unreachable!(),
         }
     }
 }

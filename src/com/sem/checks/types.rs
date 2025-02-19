@@ -123,6 +123,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn get_instance_info(&self, id: ir::EntityID) -> &ir::InstanceInfo {
+        match self.get_entity(id) {
+            ir::Entity::Instance(info) => info,
+            _ => panic!("id '{}' is not that of an instance", id.0),
+        }
+    }
+
     pub fn add_type_provenance(&mut self, id: ir::TypeID, prov: TypeProvenance) {
         self.types[id.0].provenances.push(prov)
     }
@@ -166,6 +173,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         let r = self.get_type_repr(self.types[id.0].parent);
         self.types[id.0].parent = r;
         r
+    }
+
+    fn get_type_repr_immut(&self, id: ir::TypeID) -> ir::TypeID {
+        match self.types[id.0].parent == id {
+            true => id,
+            false => self.get_type_repr_immut(self.types[id.0].parent),
+        }
     }
 
     fn join_type_repr(&mut self, left: ir::TypeID, right: ir::TypeID) {

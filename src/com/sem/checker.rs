@@ -4,13 +4,15 @@ use crate::com::{
     scope::Scope,
 };
 
+pub type Instances = Vec<ir::EntityID>;
+
 pub struct Checker<'src, 'e> {
     pub source: &'src str,
     pub file: usize,
     pub reports: &'e mut Vec<Report>,
 
-    pub scope: Scope<&'src str, ir::EntityID>,
-    pub label_scope: Scope<&'src str, ir::LabelID>,
+    pub scope: Scope<&'src str, Instances, ir::EntityID>,
+    pub label_scope: Scope<&'src str, (), ir::LabelID>,
 
     pub entities: Vec<ir::Entity>,
     pub labels: Vec<ir::Label>,

@@ -1,4 +1,4 @@
-use super::{Expr, Scheme, TypeID};
+use super::{Expr, InstanceScheme, Scheme, TypeID};
 use crate::com::loc::Loc;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -11,6 +11,7 @@ pub enum Entity {
     Record(RecordInfo),
     Union(UnionInfo),
     Class(ClassInfo),
+    Instance(InstanceInfo),
 }
 
 pub struct Variable {
@@ -83,4 +84,9 @@ pub struct ClassItemInfo {
     pub name: String,
     pub loc: Loc,
     pub scheme: Scheme,
+}
+
+pub struct InstanceInfo {
+    pub loc: Loc,
+    pub scheme: InstanceScheme,
 }

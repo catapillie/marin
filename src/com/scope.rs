@@ -1,24 +1,28 @@
 use std::{collections::HashMap, hash::Hash, mem};
 
 #[derive(Debug, Clone)]
-pub struct Scope<K, T>
+pub struct Scope<K, I, T>
 where
     K: Eq + Hash,
+    I: Default,
 {
-    parent: Option<Box<Scope<K, T>>>,
+    parent: Option<Box<Scope<K, I, T>>>,
     bindings: HashMap<K, T>,
+    info: I,
     blocking: bool,
     depth: usize,
 }
 
-impl<K, T> Scope<K, T>
+impl<K, I, T> Scope<K, I, T>
 where
     K: Eq + Hash,
+    I: Default,
 {
     fn new(blocking: bool, depth: usize) -> Self {
         Self {
             parent: None,
             bindings: HashMap::new(),
+            info: I::default(),
             blocking,
             depth,
         }
@@ -28,6 +32,7 @@ where
         Self {
             parent: None,
             bindings: HashMap::new(),
+            info: I::default(),
             blocking: false,
             depth: 0,
         }
@@ -71,5 +76,32 @@ where
 
     pub fn insert(&mut self, key: K, val: T) -> Option<T> {
         self.bindings.insert(key, val)
+    }
+
+    pub fn infos(&self) -> ScopeInfoInterator<K, I, T> {
+        ScopeInfoInterator { scope: Some(self) }
+    }
+}
+
+pub struct ScopeInfoInterator<'a, K, I, T>
+where
+    K: Eq + Hash,
+    I: Default,
+{
+    scope: Option<&'a Scope<K, I, T>>,
+}
+
+impl<'a, K, I, T> Iterator for ScopeInfoInterator<'a, K, I, T>
+where
+    K: Eq + Hash,
+    I: Default,
+{
+    type Item = &'a I;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let scope = self.scope?;
+        let i = Some(&scope.info);
+        self.scope = scope.parent.as_deref();
+        i
     }
 }
