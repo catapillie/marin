@@ -12,6 +12,7 @@ pub enum Entity {
     Union(UnionInfo),
     Class(ClassInfo),
     Instance(InstanceInfo),
+    Import(ImportInfo),
 }
 
 pub struct Variable {
@@ -90,4 +91,8 @@ pub struct ClassItemInfo {
 pub struct InstanceInfo {
     pub loc: Loc,
     pub scheme: InstanceScheme,
+}
+
+pub struct ImportInfo {
+    pub file: usize,
 }

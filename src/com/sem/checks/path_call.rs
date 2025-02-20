@@ -20,6 +20,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Record(id) => self.check_record_call_path(id, &e.args, e.span()),
             Q::Union(id) => self.check_union_call_path(id, &e.args, e.span()),
             Q::Class(_) => todo!("call on class"),
+            Q::Import(_) => todo!("call on import"),
         }
     }
 

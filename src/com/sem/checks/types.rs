@@ -130,6 +130,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    pub fn get_import_info(&self, id: ir::EntityID) -> &ir::ImportInfo {
+        match self.get_entity(id) {
+            ir::Entity::Import(info) => info,
+            _ => panic!("id '{}' is not that of an import", id.0),
+        }
+    }
+
     pub fn add_type_provenance(&mut self, id: ir::TypeID, prov: TypeProvenance) {
         self.types[id.0].provenances.push(prov)
     }

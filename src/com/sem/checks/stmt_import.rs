@@ -36,6 +36,10 @@ impl<'src, 'e> Checker<'src, 'e> {
                 "import".bold(),
                 "as".bold()
             );
+
+            let import_id =
+                self.create_entity(ir::Entity::Import(ir::ImportInfo { file: dep_file }));
+            self.scope.insert(import_name, import_id);
         }
 
         ir::Stmt::Nothing
