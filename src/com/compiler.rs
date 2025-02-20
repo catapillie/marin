@@ -1,7 +1,8 @@
 use super::{
     ast, ir,
     reporting::{Header, Report},
-    sem, Checker, Parser,
+    sem::{self, DepGraph},
+    Checker, Parser,
 };
 use codespan_reporting::{
     files::{self, SimpleFile},
@@ -143,8 +144,14 @@ impl Compiler<Source> {
 }
 
 impl Compiler<Parsed> {
-    fn check_file(file: &File, id: usize, ast: &ast::File, reports: &mut Vec<Report>) -> ir::File {
-        let mut checker = Checker::new(file.source(), id, reports);
+    fn check_file(
+        file: &File,
+        id: usize,
+        ast: &ast::File,
+        deps: &DepGraph,
+        reports: &mut Vec<Report>,
+    ) -> ir::File {
+        let mut checker = Checker::new(file.source(), id, deps, reports);
         checker.check_file(ast)
     }
 
@@ -166,9 +173,9 @@ impl Compiler<Parsed> {
             for id in scc {
                 let (file, path, Parsed(ast)) = files[id].take().unwrap();
                 let name = file.name();
-                eprintln!("--> checking {} ...", name);
+                eprintln!("\n--> checking '{}' ...", name);
 
-                let ir = Self::check_file(&file, id, &ast, &mut reports);
+                let ir = Self::check_file(&file, id, &ast, &deps, &mut reports);
                 checked[id] = Some((file, path, Checked(ir)))
             }
         }

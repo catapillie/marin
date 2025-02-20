@@ -1,3 +1,4 @@
+use super::deps;
 use crate::com::{
     ir::{self},
     reporting::Report,
@@ -9,6 +10,7 @@ pub type Instances = Vec<ir::EntityID>;
 pub struct Checker<'src, 'e> {
     pub source: &'src str,
     pub file: usize,
+    pub deps: &'e deps::DepGraph,
     pub reports: &'e mut Vec<Report>,
 
     pub scope: Scope<&'src str, Instances, ir::EntityID>,
@@ -22,10 +24,16 @@ pub struct Checker<'src, 'e> {
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn new(source: &'src str, file: usize, reports: &'e mut Vec<Report>) -> Self {
+    pub fn new(
+        source: &'src str,
+        file: usize,
+        deps: &'e deps::DepGraph,
+        reports: &'e mut Vec<Report>,
+    ) -> Self {
         let mut checker = Self {
             source,
             file,
+            deps,
             reports,
 
             scope: Scope::root(),

@@ -8,6 +8,7 @@ mod variables;
 mod stmt;
 mod stmt_class;
 mod stmt_have;
+mod stmt_import;
 mod stmt_let;
 mod stmt_record;
 mod stmt_union;

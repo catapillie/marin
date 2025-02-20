@@ -173,7 +173,14 @@ pub struct Fun {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub import_kw: Span,
-    pub queries: Box<[Expr]>,
+    pub queries: Box<[ImportQuery]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportQuery {
+    pub uid: usize,
+    pub query: Box<Expr>,
+    pub alias: Option<Span>,
 }
 
 #[derive(Debug, Clone)]
@@ -327,7 +334,13 @@ impl Fun {
 
 impl Import {
     pub fn span(&self) -> Span {
-        mix_spans([self.import_kw, item_spans(&self.queries)])
+        mix_spans([
+            self.import_kw,
+            mix_spans(self.queries.iter().map(|q| match q.alias {
+                Some(alias) => mix_spans([q.query.span(), alias]),
+                None => q.query.span(),
+            })),
+        ])
     }
 }
 

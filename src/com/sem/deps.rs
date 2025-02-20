@@ -1,6 +1,6 @@
 use petgraph::{algo, prelude::DiGraphMap};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
@@ -12,7 +12,8 @@ use crate::com::{
     reporting::{Header, Label, Note, Report},
 };
 
-pub type DepGraph = DiGraphMap<usize, ()>;
+pub type QueryUIDs = HashSet<usize>;
+pub type DepGraph = DiGraphMap<usize, QueryUIDs>;
 
 pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) -> DepGraph {
     let mut graph = DepGraph::with_capacity(files.0.len(), 0);
@@ -28,7 +29,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         .expect("couldn't normalize current directory");
 
     for (file_id, (file, path, Parsed(ast::File(ast)))) in files.0.iter().enumerate() {
-        graph.add_edge(file_id, file_id, ());
+        graph.add_edge(file_id, file_id, HashSet::new());
 
         let source = file.source();
         let file_name = file.name();
@@ -41,7 +42,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         }
 
         let mut import_spans = HashMap::<_, Span>::new();
-        for (query, span) in queries {
+        for (query, uid, span) in queries {
             if query.0.len() > 2 {
                 for i in 1..(query.0.len() - 1) {
                     let curr = &query.0[i];
@@ -111,6 +112,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                         span.wrap(file_id),
                     ),
                 );
+                continue;
             } else if let Some(first_span) = import_spans.get(&dep_id) {
                 reports.push(
                     Report::warning(Header::FileReimported(short_dep_path.display().to_string()))
@@ -123,7 +125,16 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
             }
 
             import_spans.entry(dep_id).or_insert(span);
-            graph.add_edge(file_id, dep_id, ());
+            match graph.edge_weight_mut(file_id, dep_id) {
+                Some(uids) => {
+                    uids.insert(uid);
+                }
+                None => {
+                    let mut uids = HashSet::new();
+                    uids.insert(uid);
+                    graph.add_edge(file_id, dep_id, uids);
+                }
+            };
         }
     }
 
@@ -160,14 +171,14 @@ fn process_import(
     file_id: usize,
     source: &str,
     reports: &mut Vec<Report>,
-    queries: &mut Vec<(Query, Span)>,
+    queries: &mut Vec<(Query, usize, Span)>,
 ) {
     let ast::Expr::Import(import) = expr else {
         return;
     };
 
     for query in &import.queries {
-        let Some(parts) = process_import_query(query, source) else {
+        let Some(parts) = process_import_query(&query.query, source) else {
             reports.push(
                 Report::error(Header::InvalidImportQuery())
                     .with_primary_label(Label::Empty, expr.span().wrap(file_id)),
@@ -175,7 +186,7 @@ fn process_import(
             return;
         };
 
-        queries.push((parts, query.span()));
+        queries.push((parts, query.uid, query.query.span()));
     }
 }
 

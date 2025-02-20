@@ -14,6 +14,7 @@ pub struct Parser<'src, 'e> {
     lexer: Peekable<SpannedIter<'src, Token>>,
     prev: Token,
     bounds: (usize, usize),
+    uid: usize,
     reports: &'e mut Vec<Report>,
 }
 
@@ -25,11 +26,17 @@ impl<'src, 'e> Parser<'src, 'e> {
             lexer: Token::lexer(source).spanned().peekable(),
             prev: Token::Eof,
             bounds: (0, 0),
+            uid: 0,
             reports,
         };
 
         p.peek();
         p
+    }
+
+    fn next_uid(&mut self) -> usize {
+        self.uid += 1;
+        self.uid
     }
 
     fn pos_from(&self) -> usize {
@@ -537,7 +544,22 @@ impl<'src, 'e> Parser<'src, 'e> {
 
     fn try_parse_import_expression(&mut self) -> Option<ast::Expr> {
         let import_kw = self.try_expect_token(Token::Import)?;
-        let queries = self.parse_strictly_comma_separated_items();
+
+        let mut queries = Vec::new();
+        while let Some(item) = self.try_parse_expression() {
+            let alias = self
+                .try_expect_token(Token::As)
+                .map(|_| self.expect_token(Token::Ident));
+            queries.push(ast::ImportQuery {
+                uid: self.next_uid(),
+                query: Box::new(item),
+                alias,
+            });
+
+            if self.try_expect_token(Token::Comma).is_none() {
+                break;
+            }
+        }
 
         if queries.is_empty() {
             self.reports.push(
@@ -547,7 +569,10 @@ impl<'src, 'e> Parser<'src, 'e> {
             );
         }
 
-        Some(ast::Expr::Import(ast::Import { import_kw, queries }))
+        Some(ast::Expr::Import(ast::Import {
+            import_kw,
+            queries: queries.into(),
+        }))
     }
 
     fn try_parse_super_expression(&mut self) -> Option<ast::Expr> {
