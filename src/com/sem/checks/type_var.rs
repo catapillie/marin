@@ -33,7 +33,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     );
                     self.create_fresh_type(None)
                 }
-                None => self.instantiate_scheme(info.scheme.clone()),
+                None => self.instantiate_scheme(info.scheme.clone(), None),
             },
             Ent::Union(info) => match &info.type_args {
                 Some(type_args) => {
@@ -50,7 +50,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     );
                     self.create_fresh_type(None)
                 }
-                None => self.instantiate_scheme(info.scheme.clone()),
+                None => self.instantiate_scheme(info.scheme.clone(), None),
             },
             _ => {
                 self.reports.push(

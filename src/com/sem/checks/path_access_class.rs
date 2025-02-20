@@ -45,7 +45,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let scheme = item_info.scheme.clone();
 
-        let item_ty = self.instantiate_scheme(scheme);
+        let item_ty = self.instantiate_scheme(scheme, Some(span.wrap(self.file)));
         let item_ty = self.clone_type_repr(item_ty);
         self.set_type_span(item_ty, span);
         self.add_type_provenance(

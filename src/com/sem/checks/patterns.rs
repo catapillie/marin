@@ -212,7 +212,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     return self.declare_missing_pattern();
                 };
 
-                let ty = self.instantiate_scheme(info.scheme.clone());
+                let ty = self.instantiate_scheme(info.scheme.clone(), None);
                 self.set_type_span(ty, span);
                 (I::Variant(id, tag, None), ty)
             }

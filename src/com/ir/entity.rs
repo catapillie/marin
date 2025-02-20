@@ -86,6 +86,7 @@ pub struct ClassItemInfo {
     pub scheme: Scheme,
 }
 
+#[derive(Clone)]
 pub struct InstanceInfo {
     pub loc: Loc,
     pub scheme: InstanceScheme,

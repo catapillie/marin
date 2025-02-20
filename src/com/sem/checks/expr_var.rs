@@ -26,7 +26,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let loc = var.loc;
-        let instantiated = self.instantiate_scheme(var.scheme.clone());
+        let instantiated =
+            self.instantiate_scheme(var.scheme.clone(), Some(e.span.wrap(self.file)));
         let ty = self.clone_type_repr(instantiated);
         self.set_type_span(ty, e.span);
         self.add_type_provenance(

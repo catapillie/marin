@@ -78,7 +78,11 @@ where
         self.bindings.insert(key, val)
     }
 
-    pub fn infos(&self) -> ScopeInfoInterator<K, I, T> {
+    pub fn infos_mut(&mut self) -> &mut I {
+        &mut self.info
+    }
+
+    pub fn infos_iter(&self) -> ScopeInfoInterator<K, I, T> {
         ScopeInfoInterator { scope: Some(self) }
     }
 }

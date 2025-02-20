@@ -255,6 +255,16 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn unify(&mut self, left: ir::TypeID, right: ir::TypeID, provenances: &[Provenance]) {
+        self.try_unify(left, right, provenances, false);
+    }
+
+    pub fn try_unify(
+        &mut self,
+        left: ir::TypeID,
+        right: ir::TypeID,
+        provenances: &[Provenance],
+        quiet: bool,
+    ) -> bool {
         let repr_left = self.get_type_repr(left);
         let repr_right = self.get_type_repr(right);
 
@@ -272,82 +282,89 @@ impl<'src, 'e> Checker<'src, 'e> {
                 } else {
                     self.join_type_repr(repr_right, repr_left)
                 }
-                return;
+                return true;
             }
 
             (_, T::Var) => {
                 if !self.occurs_in_type(repr_right, repr_left) {
                     self.join_type_repr(repr_right, repr_left);
-                    return;
+                    return true;
                 }
             }
             (T::Var, _) => {
                 if !self.occurs_in_type(repr_left, repr_right) {
                     self.join_type_repr(repr_left, repr_right);
-                    return;
+                    return true;
                 }
             }
 
-            (T::Int, T::Int) => return,
-            (T::Float, T::Float) => return,
-            (T::String, T::String) => return,
-            (T::Bool, T::Bool) => return,
+            (T::Int, T::Int) => return true,
+            (T::Float, T::Float) => return true,
+            (T::String, T::String) => return true,
+            (T::Bool, T::Bool) => return true,
 
             (T::Tuple(left_items), T::Tuple(right_items)) => {
                 if left_items.len() == right_items.len() {
+                    let mut all = true;
                     for (&left_item, &right_item) in left_items.iter().zip(right_items.iter()) {
-                        self.unify(left_item, right_item, provenances);
+                        all &= self.try_unify(left_item, right_item, provenances, quiet);
                     }
-                    return;
+                    return all;
                 }
             }
 
             (T::Array(left_item), T::Array(right_item)) => {
-                self.unify(left_item, right_item, provenances);
-                return;
+                return self.try_unify(left_item, right_item, provenances, quiet);
             }
 
             (T::Lambda(left_args, left_ret), T::Lambda(right_args, right_ret)) => {
                 if left_args.len() == right_args.len() {
+                    let mut all = true;
                     for (&left_arg, &right_arg) in left_args.iter().zip(right_args.iter()) {
-                        self.unify(right_arg, left_arg, provenances);
+                        all &= self.try_unify(right_arg, left_arg, provenances, quiet);
                     }
-                    self.unify(left_ret, right_ret, provenances);
-                    return;
+                    all &= self.try_unify(left_ret, right_ret, provenances, quiet);
+                    return all;
                 }
             }
 
             (T::Record(left_rec, Some(left_items)), T::Record(right_rec, Some(right_items)))
                 if left_rec.0 == right_rec.0 =>
             {
+                let mut all = true;
                 for (left_item, right_item) in left_items.iter().zip(right_items.iter()) {
-                    self.unify(*left_item, *right_item, provenances);
+                    all &= self.try_unify(*left_item, *right_item, provenances, quiet);
                 }
-                return;
+                return all;
             }
 
             (T::Record(left_rec, None), T::Record(right_rec, None))
                 if left_rec.0 == right_rec.0 =>
             {
-                return;
+                return true;
             }
 
             (T::Union(left_union, Some(left_items)), T::Union(right_union, Some(right_items)))
                 if left_union.0 == right_union.0 =>
             {
+                let mut all = true;
                 for (left_item, right_item) in left_items.iter().zip(right_items.iter()) {
-                    self.unify(*left_item, *right_item, provenances);
+                    all &= self.try_unify(*left_item, *right_item, provenances, quiet);
                 }
-                return;
+                return all;
             }
 
             (T::Union(left_union, None), T::Union(right_union, None))
                 if left_union.0 == right_union.0 =>
             {
-                return;
+                return true;
             }
 
             _ => {}
+        }
+
+        if quiet {
+            return false;
         }
 
         let left_string = self.get_type_string(repr_left);
@@ -384,6 +401,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         self.reports.push(report);
+        false
     }
 
     pub fn unify_constraint(&mut self, left: &ir::Constraint, right: &ir::Constraint) {
@@ -400,6 +418,25 @@ impl<'src, 'e> Checker<'src, 'e> {
         for (left, right) in left.associated_args.iter().zip(&right.associated_args) {
             self.unify(*left, *right, &[]);
         }
+    }
+
+    pub fn try_unify_constraint_args(
+        &mut self,
+        left: &ir::Constraint,
+        right: &ir::Constraint,
+    ) -> bool {
+        debug_assert_eq!(
+            left.id, right.id,
+            "attempt to unify constraints of different classes"
+        );
+        debug_assert_eq!(left.class_args.len(), right.class_args.len());
+        debug_assert_eq!(left.associated_args.len(), right.associated_args.len());
+
+        let mut all = true;
+        for (left, right) in left.class_args.iter().zip(&right.class_args) {
+            all &= self.try_unify(*left, *right, &[], true);
+        }
+        all
     }
 
     fn collect_type_variables(&mut self, ty: ir::TypeID, ids: &mut HashSet<ir::TypeID>) {
@@ -468,11 +505,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         scheme.constraints.push(constraint);
     }
 
-    pub fn instantiate_scheme(&mut self, scheme: ir::Scheme) -> ir::TypeID {
+    pub fn instantiate_scheme(&mut self, scheme: ir::Scheme, constraint_loc: Option<Loc>) -> ir::TypeID {
         let sub = self.build_type_substitution(scheme.forall);
 
         for constraint in scheme.constraints {
-            let subbed = self.apply_constraint_substitution(constraint, &sub);
+            let mut subbed = self.apply_constraint_substitution(constraint, &sub);
+            subbed.loc = constraint_loc.unwrap_or(subbed.loc);
             self.require_class_constraint(subbed);
         }
 
@@ -495,6 +533,22 @@ impl<'src, 'e> Checker<'src, 'e> {
             self.apply_type_substitution(scheme.uninstantiated, &sub),
             subbed_constraints,
         )
+    }
+
+    pub fn instantiate_instance_scheme(
+        &mut self,
+        scheme: ir::InstanceScheme,
+    ) -> (ir::Constraint, Vec<ir::Constraint>) {
+        let sub = self.build_type_substitution(scheme.forall);
+
+        let mut subbed_constraints = Vec::new();
+        for constraint in scheme.required_constraints {
+            let subbed = self.apply_constraint_substitution(constraint, &sub);
+            subbed_constraints.push(subbed);
+        }
+
+        let subbed = self.apply_constraint_substitution(scheme.constraint, &sub);
+        (subbed, subbed_constraints)
     }
 
     pub fn build_type_substitution(
@@ -569,6 +623,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     ) -> ir::Constraint {
         ir::Constraint {
             id: constraint.id,
+            loc: constraint.loc,
             class_args: constraint
                 .class_args
                 .iter()
@@ -583,15 +638,15 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn get_type_string_map(
-        &mut self,
+        &self,
         id: ir::TypeID,
         name_map: &HashMap<ir::TypeID, String>,
         hide: bool,
     ) -> ir::TypeString {
         use ir::Type as T;
         use ir::TypeString as S;
-        let repr = self.get_type_repr(id);
-        match self.types[repr.0].ty.clone() {
+        let repr = self.get_type_repr_immut(id);
+        match &self.types[repr.0].ty {
             T::Var => match name_map.get(&repr) {
                 Some(name) => S::Name(name.clone()),
                 None if hide => S::Hidden,
@@ -607,15 +662,15 @@ impl<'src, 'e> Checker<'src, 'e> {
                     .map(|item| self.get_type_string_map(*item, name_map, hide))
                     .collect(),
             ),
-            T::Array(item) => S::Array(Box::new(self.get_type_string_map(item, name_map, hide))),
+            T::Array(item) => S::Array(Box::new(self.get_type_string_map(*item, name_map, hide))),
             T::Lambda(args, ret) => S::Lambda(
                 args.iter()
                     .map(|arg| self.get_type_string_map(*arg, name_map, hide))
                     .collect(),
-                Box::new(self.get_type_string_map(ret, name_map, hide)),
+                Box::new(self.get_type_string_map(*ret, name_map, hide)),
             ),
             T::Record(eid, Some(items)) => {
-                let info = self.get_record_info(eid);
+                let info = self.get_record_info(*eid);
                 let name = info.name.clone();
                 S::Constructor(
                     name,
@@ -626,12 +681,12 @@ impl<'src, 'e> Checker<'src, 'e> {
                 )
             }
             T::Record(eid, None) => {
-                let info = self.get_record_info(eid);
+                let info = self.get_record_info(*eid);
                 let name = info.name.clone();
                 S::Name(name)
             }
             T::Union(eid, Some(items)) => {
-                let info = self.get_union_info(eid);
+                let info = self.get_union_info(*eid);
                 let name = info.name.clone();
                 S::Constructor(
                     name,
@@ -642,30 +697,30 @@ impl<'src, 'e> Checker<'src, 'e> {
                 )
             }
             T::Union(eid, None) => {
-                let info = self.get_union_info(eid);
+                let info = self.get_union_info(*eid);
                 let name = info.name.clone();
                 S::Name(name)
             }
         }
     }
 
-    pub fn get_type_string(&mut self, id: ir::TypeID) -> ir::TypeString {
+    pub fn get_type_string(&self, id: ir::TypeID) -> ir::TypeString {
         self.get_type_string_map(id, &HashMap::new(), true)
     }
 
     #[allow(dead_code)]
-    pub fn get_type_string_detailed(&mut self, id: ir::TypeID) -> ir::TypeString {
+    pub fn get_type_string_detailed(&self, id: ir::TypeID) -> ir::TypeString {
         self.get_type_string_map(id, &HashMap::new(), false)
     }
 
     fn create_domain_name_map(
-        &mut self,
+        &self,
         domain: &HashSet<ir::TypeID>,
     ) -> (HashMap<ir::TypeID, String>, Vec<ir::TypeID>) {
         // update the domain to use representant types
         let domain = domain
             .iter()
-            .map(|x| self.get_type_repr(*x))
+            .map(|x| self.get_type_repr_immut(*x))
             .collect::<Vec<_>>();
 
         const NAMES: &str = "abcdefghijklmnopqrstuvwxyz";
@@ -688,7 +743,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         (name_map, domain)
     }
 
-    pub fn get_scheme_string(&mut self, scheme: &ir::Scheme) -> ir::SchemeString {
+    pub fn get_scheme_string(&self, scheme: &ir::Scheme) -> ir::SchemeString {
         let (name_map, domain) = self.create_domain_name_map(&scheme.forall);
         let uninstantiated = self.get_type_string_map(scheme.uninstantiated, &name_map, true);
 
@@ -711,7 +766,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn get_instance_scheme_string(
-        &mut self,
+        &self,
         scheme: &ir::InstanceScheme,
     ) -> ir::InstanceSchemeString {
         let (name_map, domain) = self.create_domain_name_map(&scheme.forall);
@@ -736,7 +791,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn get_constraint_string_map(
-        &mut self,
+        &self,
         constraint: &ir::Constraint,
         name_map: &HashMap<ir::TypeID, String>,
     ) -> ir::ConstraintString {
@@ -756,7 +811,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     #[allow(dead_code)]
-    pub fn get_constraint_string(&mut self, constraint: &ir::Constraint) -> ir::ConstraintString {
+    pub fn get_constraint_string(&self, constraint: &ir::Constraint) -> ir::ConstraintString {
         let name_map = Default::default();
         self.get_constraint_string_map(constraint, &name_map)
     }

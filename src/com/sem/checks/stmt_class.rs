@@ -69,8 +69,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         }));
 
         let mut items = Vec::new();
-        let constraint = ir::Constraint {
+        let mut constraint = ir::Constraint {
             id: class_id,
+            loc: span.wrap(self.file),
             class_args: arg_ids.into(),
             associated_args: associated_arg_ids.into(),
         };
@@ -79,7 +80,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ast::Pattern as P;
         for (kind, lhs, rhs) in &e.items {
             let item_span = Span::combine(lhs.span(), rhs.span());
-            let (item_name, item_type) = match self.check_pattern_or_type_signature(lhs) {
+            let (item_name, item_name_span, item_type) = match self
+                .check_pattern_or_type_signature(lhs)
+            {
                 Either::Left(pattern) => {
                     let P::Binding(item_name_span) = pattern else {
                         self.reports.push(
@@ -106,7 +109,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     let item_name = item_name_span.lexeme(self.source);
                     let item_type = self.check_type(rhs);
 
-                    (item_name, item_type)
+                    (item_name, item_name_span, item_type)
                 }
                 Either::Right((signature, name_span)) => {
                     let Some(item_name_span) = name_span else {
@@ -136,11 +139,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                     let ret_type = self.check_type(rhs);
                     self.unify(ret_type, sig_ret_type, &[]);
 
-                    (item_name, item_type)
+                    (item_name, item_name_span, item_type)
                 }
             };
 
             let mut scheme = self.generalize_type(item_type);
+
+            constraint.loc = item_name_span.wrap(self.file);
             self.add_class_constraint(&mut scheme, constraint.clone());
 
             items.push(ir::ClassItemInfo {

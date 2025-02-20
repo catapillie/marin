@@ -45,6 +45,7 @@ pub struct InstanceScheme {
 #[derive(Clone)]
 pub struct Constraint {
     pub id: EntityID,
+    pub loc: Loc,
     pub class_args: Box<[TypeID]>,
     pub associated_args: Box<[TypeID]>,
 }

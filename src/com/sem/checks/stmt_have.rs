@@ -78,12 +78,13 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let current_constraint = ir::Constraint {
             id: class_id,
+            loc: e.name.wrap(self.file),
             class_args: (0..arity.0).map(|_| self.create_fresh_type(None)).collect(),
             associated_args: (0..arity.1).map(|_| self.create_fresh_type(None)).collect(),
         };
 
         for (wanted_scheme, found_scheme) in instantiated_items {
-            let found_type = self.instantiate_scheme(found_scheme);
+            let found_type = self.instantiate_scheme(found_scheme, Some(e.span().wrap(self.file)));
             let (expected_type, current_contraints) =
                 self.instantiate_scheme_keep_constraints(wanted_scheme);
             debug_assert_eq!(current_contraints.len(), 1);
@@ -113,10 +114,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.close_scope();
         self.close_scope();
 
-        self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
+        let instance_id = self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
             loc: span.wrap(self.file),
             scheme,
         }));
+        self.scope.infos_mut().push(instance_id);
 
         ir::Stmt::Nothing
     }

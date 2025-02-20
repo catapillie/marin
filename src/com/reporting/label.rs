@@ -1,4 +1,4 @@
-use crate::com::{ir::TypeString, Token};
+use crate::com::{ir::{ConstraintString, TypeString}, Token};
 
 #[derive(Clone)]
 pub enum Label {
@@ -49,6 +49,9 @@ pub enum Label {
     IncorrectClassFunctionItemSyntax,
     WithinClassInstantiation(String),
     MissingItems(Box<[String]>, String),
+    ConstraintOrigin(ConstraintString),
+    MatchingInstances(ConstraintString),
+    SuchInstance,
 }
 
 impl Label {
@@ -178,6 +181,12 @@ impl Label {
                 => format!("instantiation of '{class}' is missing item: '{}'", &items[0]),
             L::MissingItems(items, class) 
                 => format!("instantiation of '{class}' is missing items: {}", items.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
+            L::ConstraintOrigin(constraint)
+                => format!("unsatisfied constraint [{constraint}] originating from here"),
+            L::MatchingInstances(constraint)
+                => format!("there are more than one instance of [{constraint}] in the current scope"),
+            L::SuchInstance
+                => "this instance matches".to_string(),
         }
     }
 }

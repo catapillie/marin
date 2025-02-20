@@ -1,4 +1,7 @@
-use crate::com::{ir::TypeString, Token};
+use crate::com::{
+    ir::{ConstraintString, TypeString},
+    Token,
+};
 
 pub enum Header {
     #[allow(dead_code)]
@@ -65,6 +68,8 @@ pub enum Header {
     RequiredFieldValue(),
     ClassNoArgs(String),
     UninstantiatedItems(String),
+    UnsatisfiedContraint(ConstraintString),
+    AmbiguousConstraintSolution(ConstraintString),
 }
 
 impl Header {
@@ -135,6 +140,8 @@ impl Header {
             H::RequiredFieldValue(..) => "required_fields_value",
             H::ClassNoArgs(..) => "class_no_args",
             H::UninstantiatedItems(..) => "uninstantiated_items",
+            H::UnsatisfiedContraint(..) => "unsatisfied_contraint",
+            H::AmbiguousConstraintSolution(..) => "ambiguous_constraint_solution",
         }
     }
 
@@ -275,6 +282,10 @@ impl Header {
                 => format!("class '{name}' has no type arguments"),
             H::UninstantiatedItems(class_name)
                 => format!("instantiation of class '{class_name}' is incomplete"),
+            H::UnsatisfiedContraint(constraint)
+                => format!("unsatisfied constraint [{constraint}]"),
+            H::AmbiguousConstraintSolution(constraint)
+                => format!("ambiguous solution for constraint [{constraint}]"),
         }
     }
 }

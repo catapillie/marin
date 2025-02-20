@@ -43,7 +43,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let arity = type_args.len();
-        let union_ty = self.instantiate_scheme(info.scheme.clone());
+        let union_ty = self.instantiate_scheme(info.scheme.clone(), None);
         let union_ty = self.clone_type_repr(union_ty);
         self.set_type_span(union_ty, span);
 
@@ -86,7 +86,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let arity = type_args.len();
-        let record_ty = self.instantiate_scheme(info.scheme.clone());
+        let record_ty = self.instantiate_scheme(info.scheme.clone(), None);
         let record_ty = self.clone_type_repr(record_ty);
         self.set_type_span(record_ty, span);
 

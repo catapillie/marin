@@ -62,7 +62,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         );
 
         let expr = variant.expr.clone();
-        let ty = self.instantiate_scheme(variant.scheme.clone());
+        let ty = self.instantiate_scheme(variant.scheme.clone(), None);
         let ty = self.clone_type_repr(ty);
         self.set_type_span(ty, span);
         self.add_type_provenance(ty, provenance);
