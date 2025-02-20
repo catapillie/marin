@@ -5,9 +5,9 @@ use crate::com::{
     loc::Loc,
     reporting::{Label, Report},
 };
-use std::{collections::HashSet, fmt::Display};
+use std::{collections::BTreeSet, fmt::Display};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeID(pub usize);
 
 pub struct TypeNode {
@@ -20,7 +20,7 @@ pub struct TypeNode {
 
 #[derive(Clone)]
 pub struct Scheme {
-    pub forall: HashSet<TypeID>,
+    pub forall: BTreeSet<TypeID>,
     pub uninstantiated: TypeID,
     pub constraints: Vec<Constraint>,
 }
@@ -28,7 +28,7 @@ pub struct Scheme {
 impl Scheme {
     pub fn mono(ty: TypeID) -> Self {
         Self {
-            forall: HashSet::new(),
+            forall: BTreeSet::new(),
             uninstantiated: ty,
             constraints: Vec::new(),
         }
@@ -37,7 +37,7 @@ impl Scheme {
 
 #[derive(Clone)]
 pub struct InstanceScheme {
-    pub forall: HashSet<TypeID>,
+    pub forall: BTreeSet<TypeID>,
     pub constraint: Constraint,
     pub required_constraints: Vec<Constraint>,
 }

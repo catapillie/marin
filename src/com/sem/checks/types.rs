@@ -6,7 +6,7 @@ use crate::com::{
     sem::provenance::Provenance,
     Checker,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn create_type(&mut self, ty: ir::Type, span: Option<Span>) -> ir::TypeID {
@@ -439,7 +439,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         all
     }
 
-    fn collect_type_variables(&mut self, ty: ir::TypeID, ids: &mut HashSet<ir::TypeID>) {
+    fn collect_type_variables(&mut self, ty: ir::TypeID, ids: &mut BTreeSet<ir::TypeID>) {
         let id = self.get_type_repr(ty);
         let node = &self.types[id.0];
 
@@ -484,7 +484,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     pub fn collect_constraint_variables(
         &mut self,
         constraint: &ir::Constraint,
-        ids: &mut HashSet<ir::TypeID>,
+        ids: &mut BTreeSet<ir::TypeID>,
     ) {
         for arg in &constraint.class_args {
             self.collect_type_variables(*arg, ids);
@@ -505,7 +505,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         scheme.constraints.push(constraint);
     }
 
-    pub fn instantiate_scheme(&mut self, scheme: ir::Scheme, constraint_loc: Option<Loc>) -> ir::TypeID {
+    pub fn instantiate_scheme(
+        &mut self,
+        scheme: ir::Scheme,
+        constraint_loc: Option<Loc>,
+    ) -> ir::TypeID {
         let sub = self.build_type_substitution(scheme.forall);
 
         for constraint in scheme.constraints {
@@ -553,8 +557,8 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     pub fn build_type_substitution(
         &mut self,
-        domain: HashSet<ir::TypeID>,
-    ) -> HashMap<ir::TypeID, ir::TypeID> {
+        domain: BTreeSet<ir::TypeID>,
+    ) -> BTreeMap<ir::TypeID, ir::TypeID> {
         domain
             .into_iter()
             .map(|id| (self.get_type_repr(id), self.create_fresh_type(None)))
@@ -564,7 +568,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     pub fn apply_type_substitution(
         &mut self,
         ty: ir::TypeID,
-        sub: &HashMap<ir::TypeID, ir::TypeID>,
+        sub: &BTreeMap<ir::TypeID, ir::TypeID>,
     ) -> ir::TypeID {
         let ty = self.get_type_repr(ty);
 
@@ -619,7 +623,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     pub fn apply_constraint_substitution(
         &mut self,
         constraint: ir::Constraint,
-        sub: &HashMap<ir::TypeID, ir::TypeID>,
+        sub: &BTreeMap<ir::TypeID, ir::TypeID>,
     ) -> ir::Constraint {
         ir::Constraint {
             id: constraint.id,
@@ -640,7 +644,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn get_type_string_map(
         &self,
         id: ir::TypeID,
-        name_map: &HashMap<ir::TypeID, String>,
+        name_map: &BTreeMap<ir::TypeID, String>,
         hide: bool,
     ) -> ir::TypeString {
         use ir::Type as T;
@@ -705,18 +709,18 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn get_type_string(&self, id: ir::TypeID) -> ir::TypeString {
-        self.get_type_string_map(id, &HashMap::new(), true)
+        self.get_type_string_map(id, &BTreeMap::new(), true)
     }
 
     #[allow(dead_code)]
     pub fn get_type_string_detailed(&self, id: ir::TypeID) -> ir::TypeString {
-        self.get_type_string_map(id, &HashMap::new(), false)
+        self.get_type_string_map(id, &BTreeMap::new(), false)
     }
 
     fn create_domain_name_map(
         &self,
-        domain: &HashSet<ir::TypeID>,
-    ) -> (HashMap<ir::TypeID, String>, Vec<ir::TypeID>) {
+        domain: &BTreeSet<ir::TypeID>,
+    ) -> (BTreeMap<ir::TypeID, String>, Vec<ir::TypeID>) {
         // update the domain to use representant types
         let domain = domain
             .iter()
@@ -754,7 +758,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let mut constraints = HashSet::new();
         for constraint in &scheme.constraints {
-            constraints.insert(self.get_constraint_string_map(constraint, &name_map));
+            constraints.insert(self.get_constraint_string_map(constraint, &name_map, true));
         }
         let constraints = constraints.into_iter().collect();
 
@@ -770,7 +774,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         scheme: &ir::InstanceScheme,
     ) -> ir::InstanceSchemeString {
         let (name_map, domain) = self.create_domain_name_map(&scheme.forall);
-        let constraint = self.get_constraint_string_map(&scheme.constraint, &name_map);
+        let constraint = self.get_constraint_string_map(&scheme.constraint, &name_map, true);
 
         let forall = domain
             .iter()
@@ -779,7 +783,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let mut required_constraints = HashSet::new();
         for constraint in &scheme.required_constraints {
-            required_constraints.insert(self.get_constraint_string_map(constraint, &name_map));
+            required_constraints.insert(self.get_constraint_string_map(constraint, &name_map, true));
         }
         let required_constraints = required_constraints.into_iter().collect();
 
@@ -793,27 +797,36 @@ impl<'src, 'e> Checker<'src, 'e> {
     pub fn get_constraint_string_map(
         &self,
         constraint: &ir::Constraint,
-        name_map: &HashMap<ir::TypeID, String>,
+        name_map: &BTreeMap<ir::TypeID, String>,
+        hide: bool,
     ) -> ir::ConstraintString {
         ir::ConstraintString {
             name: self.get_class_info(constraint.id).name.to_string(),
             class_args: constraint
                 .class_args
                 .iter()
-                .map(|arg| self.get_type_string_map(*arg, name_map, true))
+                .map(|arg| self.get_type_string_map(*arg, name_map, hide))
                 .collect(),
             associated_args: constraint
                 .associated_args
                 .iter()
-                .map(|arg| self.get_type_string_map(*arg, name_map, true))
+                .map(|arg| self.get_type_string_map(*arg, name_map, hide))
                 .collect(),
         }
     }
 
-    #[allow(dead_code)]
     pub fn get_constraint_string(&self, constraint: &ir::Constraint) -> ir::ConstraintString {
         let name_map = Default::default();
-        self.get_constraint_string_map(constraint, &name_map)
+        self.get_constraint_string_map(constraint, &name_map, true)
+    }
+
+    #[allow(dead_code)]
+    pub fn get_constraint_string_detailed(
+        &self,
+        constraint: &ir::Constraint,
+    ) -> ir::ConstraintString {
+        let name_map = Default::default();
+        self.get_constraint_string_map(constraint, &name_map, false)
     }
 
     pub fn check_type(&mut self, t: &ast::Expr) -> ir::TypeID {

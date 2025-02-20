@@ -21,8 +21,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         let mut current_constraints = self.take_constraint_context();
         let mut irrelevant = Vec::new();
 
-        let mut is_unsolved = true;
-        while is_unsolved && !current_constraints.is_empty() {
+        loop {
             let mut partial = Vec::new();
             let mut concrete = Vec::new();
 
@@ -53,13 +52,17 @@ impl<'src, 'e> Checker<'src, 'e> {
             // so we put them back in the current constraint list
             current_constraints = partial;
 
+            // if this iteration of solving did not yield any new concrete constraints
+            // then we are done (otherwise we would loop forever)
+            if concrete.is_empty() {
+                break;
+            }
+
             // each concrete constraint is checked to have a matching instance
             // which may generate additional constraints
             // so we need to decide whether to continue the loop or not
-            is_unsolved = false;
             for constraint in concrete {
                 if let Some(mut additional) = self.check_constraint(constraint) {
-                    is_unsolved |= !additional.is_empty();
                     current_constraints.append(&mut additional);
                 }
             }
@@ -70,8 +73,6 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn check_constraint(&mut self, constraint: ir::Constraint) -> Option<Vec<ir::Constraint>> {
-        // println!("    * check {}", self.get_constraint_string(&constraint));
-
         // get available instances
         let mut matching_instances = Vec::new();
         for (instance_id, instance) in self.get_known_instances() {
@@ -121,6 +122,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         // retrieve the matching instance
         // unify the associated type arguments
+
         let (_, matching_constraint, additional_constraints) = matching_instances.pop().unwrap();
         self.unify_constraint(&constraint, &matching_constraint);
 

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap};
 
 use crate::com::{
     ast, ir,
@@ -93,7 +93,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             self.unify_constraint(&current_constraint, current_contraints.first().unwrap());
         }
 
-        let mut instantiation_domain = HashSet::new();
+        let mut instantiation_domain = BTreeSet::new();
         self.collect_constraint_variables(&current_constraint, &mut instantiation_domain);
 
         let instantiation_constraints = self.solve_constraints();
