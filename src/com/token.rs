@@ -83,6 +83,8 @@ pub enum Token {
     #[token("have")]
     Have,
 
+    #[regex(r"_+")]
+    Underscores,
     #[regex(r"[^\W\d_]\w*")]
     Ident,
     #[regex(r"\d+")]
@@ -138,6 +140,7 @@ impl Display for Token {
             Token::Of => write!(f, "'of' keyword"),
             Token::Have => write!(f, "'have' keyword"),
 
+            Token::Underscores => write!(f, "underscores"),
             Token::Ident => write!(f, "identifier"),
             Token::Int => write!(f, "integer literal"),
             Token::Float => write!(f, "floating-point literal"),

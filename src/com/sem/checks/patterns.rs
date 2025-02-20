@@ -15,6 +15,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ast::Pattern as P;
         match e {
             E::Missing(e) => P::Missing(e.span),
+            E::Underscores(e) => P::Discard(e.span),
             E::Var(e) => P::Binding(e.span),
             E::Int(e) => P::Int(e.span),
             E::Float(e) => P::Float(e.span),
@@ -73,6 +74,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         let span = p.span();
         match p {
             P::Missing(_) => self.declare_missing_pattern(),
+            P::Discard(_) => (I::Discard, self.create_fresh_type(Some(span))),
             P::Binding(_) => {
                 let name = span.lexeme(self.source);
                 let ty = self.create_fresh_type(Some(span));

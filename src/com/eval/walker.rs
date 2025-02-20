@@ -48,6 +48,7 @@ impl<'a> Walker<'a> {
         match (p, v) {
             (P::Missing, _) => Err(State::Error(Error::Missing)),
 
+            (P::Discard, _) => Ok(true),
             (P::Binding(id), v) => {
                 self.variables.insert(id.0, v);
                 Ok(true)

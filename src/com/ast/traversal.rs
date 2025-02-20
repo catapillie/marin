@@ -17,6 +17,7 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         E::String(..) => {}
         E::True(..) => {}
         E::False(..) => {}
+        E::Underscores(..) => {}
         E::Var(..) => {}
         E::Tuple(e) => {
             for item in &e.items {

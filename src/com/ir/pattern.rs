@@ -3,6 +3,7 @@ use super::EntityID;
 #[derive(Debug, Clone)]
 pub enum Pattern {
     Missing,
+    Discard,
     Binding(EntityID),
     Int(i64),
     Float(f64),
@@ -29,6 +30,7 @@ impl Pattern {
     pub fn is_exhaustive(&self) -> bool {
         match self {
             Self::Missing => false,
+            Self::Discard => true,
             Self::Binding(_) => true,
             Self::Int(_) => false,
             Self::Float(_) => false,
@@ -44,6 +46,7 @@ impl Pattern {
         use Constructor as C;
         match self {
             Self::Missing => C::Missing,
+            Self::Discard => C::Missing, // discards are not constructors
             Self::Binding(_) => C::Missing, // bindings are not constructors
             Self::Int(i) => C::Int(*i),
             Self::Float(f) => C::Float(*f),
@@ -58,6 +61,7 @@ impl Pattern {
     pub fn constructor_args(&self) -> Vec<Pattern> {
         match self {
             Self::Missing => vec![],
+            Self::Discard => vec![],
             Self::Binding(_) => vec![],
             Self::Int(_) => vec![],
             Self::Float(_) => vec![],
@@ -77,6 +81,7 @@ impl Pattern {
             Self::Float(_) => {}
             Self::String(_) => {}
             Self::Bool(_) => {}
+            Self::Discard => {}
             Self::Binding(id) => bindings.push(*id),
             Self::Tuple(items) => {
                 for item in items {
