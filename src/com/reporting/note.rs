@@ -15,6 +15,7 @@ pub enum Note {
     UseConstantUnionSyntax(String),
     FieldValueSyntax,
     InstanceSyntax,
+    PubExpression,
 }
 
 impl Note {
@@ -50,6 +51,8 @@ impl Note {
                 => "the field name should be followed by '=' and an expression".to_string(),
             N::InstanceSyntax
                 => "'have' blocks must only contain 'let' statements that instantiates items of a given class".to_string(),
+            N::PubExpression
+                => "if you meant to write an expression, remove the leading 'pub' keyword".to_string(),
         }
     }
 }

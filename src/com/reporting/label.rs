@@ -53,6 +53,7 @@ pub enum Label {
     MatchingInstances(ConstraintString),
     SuchInstance,
     CannotAliasExpression,
+    PublicStatement,
 }
 
 impl Label {
@@ -190,6 +191,8 @@ impl Label {
                 => "this instance matches".to_string(),
             L::CannotAliasExpression
                 => "aliasing an expression is not allowed".to_string(),
+            L::PublicStatement
+                => "this looks like the beginning of a public statement".to_string(),
         }
     }
 }
