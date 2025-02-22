@@ -42,7 +42,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         }
 
         let mut import_spans = HashMap::<_, Span>::new();
-        for (query, uid, span) in queries {
+        for (query, is_total, uid, span) in queries {
             if query.0.len() > 2 {
                 for i in 1..(query.0.len() - 1) {
                     let curr = &query.0[i];
@@ -114,17 +114,26 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                 );
                 continue;
             } else if let Some(first_span) = import_spans.get(&dep_id) {
-                reports.push(
-                    Report::warning(Header::FileReimported(short_dep_path.display().to_string()))
+                // no need to warning if this is only a partial reimport
+                // for example, it's okay to reimport in order to set aliases
+                if !is_total {
+                    reports.push(
+                        Report::warning(Header::FileReimported(
+                            short_dep_path.display().to_string(),
+                        ))
                         .with_primary_label(Label::Empty, span.wrap(file_id))
                         .with_secondary_label(
                             Label::FirstImportHere(short_dep_path.display().to_string()),
                             first_span.wrap(file_id),
                         ),
-                );
+                    );
+                }
             }
 
-            import_spans.entry(dep_id).or_insert(span);
+            if is_total {
+                import_spans.entry(dep_id).or_insert(span);
+            }
+
             match graph.edge_weight_mut(file_id, dep_id) {
                 Some(uids) => {
                     uids.insert(uid);
@@ -171,22 +180,39 @@ fn process_import(
     file_id: usize,
     source: &str,
     reports: &mut Vec<Report>,
-    queries: &mut Vec<(Query, usize, Span)>,
+    queries: &mut Vec<(Query, bool, usize, Span)>,
 ) {
-    let ast::Expr::Import(import) = expr else {
-        return;
-    };
+    match expr {
+        ast::Expr::Import(import) => {
+            for query in &import.queries {
+                let Some(parts) = process_import_query(&query.query, source) else {
+                    reports.push(
+                        Report::error(Header::InvalidImportQuery())
+                            .with_primary_label(Label::Empty, expr.span().wrap(file_id)),
+                    );
+                    return;
+                };
 
-    for query in &import.queries {
-        let Some(parts) = process_import_query(&query.query, source) else {
-            reports.push(
-                Report::error(Header::InvalidImportQuery())
-                    .with_primary_label(Label::Empty, expr.span().wrap(file_id)),
-            );
-            return;
-        };
+                queries.push((parts, true, query.uid, query.query.span()));
+            }
+        }
+        ast::Expr::ImportFrom(import) => {
+            let Some(parts) = process_import_query(&import.path_query, source) else {
+                reports.push(
+                    Report::error(Header::InvalidImportQuery())
+                        .with_primary_label(Label::Empty, expr.span().wrap(file_id)),
+                );
+                return;
+            };
 
-        queries.push((parts, query.uid, query.query.span()));
+            queries.push((
+                parts,
+                false,
+                import.path_query_uid,
+                import.path_query.span(),
+            ));
+        }
+        _ => {}
     }
 }
 

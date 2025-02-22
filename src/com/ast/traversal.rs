@@ -67,6 +67,7 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         }
         E::Alias(..) => {}
         E::Import(..) => {}
+        E::ImportFrom(..) => {}
         E::Super(..) => {}
         E::Record(..) => {}
         E::RecordValue(e) => {

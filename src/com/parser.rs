@@ -595,9 +595,21 @@ impl<'src, 'e> Parser<'src, 'e> {
             );
         }
 
-        Some(ast::Expr::Import(ast::Import {
+        let Some(from_kw) = self.try_expect_token(Token::From) else {
+            return Some(ast::Expr::Import(ast::Import {
+                import_kw,
+                queries: queries.into(),
+            }));
+        };
+
+        let path = self.expect_expression();
+
+        Some(ast::Expr::ImportFrom(ast::ImportFrom {
             import_kw,
             queries: queries.into(),
+            from_kw,
+            path_query: Box::new(path),
+            path_query_uid: self.next_uid(),
         }))
     }
 

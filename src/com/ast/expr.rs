@@ -25,6 +25,7 @@ pub enum Expr {
     Fun(Fun),
     Alias(Alias),
     Import(Import),
+    ImportFrom(ImportFrom),
     Super(Lexeme),
     Record(Record),
     RecordValue(RecordValue),
@@ -190,6 +191,15 @@ pub struct Alias {
 pub struct Import {
     pub import_kw: Span,
     pub queries: Box<[ImportQuery]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportFrom {
+    pub import_kw: Span,
+    pub from_kw: Span,
+    pub queries: Box<[ImportQuery]>,
+    pub path_query: Box<Expr>,
+    pub path_query_uid: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -372,6 +382,20 @@ impl Import {
     }
 }
 
+impl ImportFrom {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.import_kw,
+            mix_spans(self.queries.iter().map(|q| match q.alias {
+                Some(alias) => mix_spans([q.query.span(), alias]),
+                None => q.query.span(),
+            })),
+            self.from_kw,
+            self.path_query.span(),
+        ])
+    }
+}
+
 impl Record {
     pub fn span(&self) -> Span {
         mix_spans([
@@ -459,6 +483,7 @@ impl Expr {
             Self::Fun(e) => e.span(),
             Self::Alias(e) => e.span(),
             Self::Import(e) => e.span(),
+            Self::ImportFrom(e) => e.span(),
             Self::Super(e) => e.span,
             Self::Record(e) => e.span(),
             Self::RecordValue(e) => e.span(),

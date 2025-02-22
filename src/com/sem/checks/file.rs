@@ -28,10 +28,10 @@ impl<'src, 'e> Checker<'src, 'e> {
         if !exports.is_empty() || !instances.is_empty() {
             eprintln!("{}", "\nexport".bold());
             for id in exports.values() {
-                eprintln!(" {}", self.get_entity_display(*id))
+                eprintln!("    {}", self.get_entity_display(*id))
             }
             for id in &instances {
-                eprintln!(" {}", self.get_entity_display(*id))
+                eprintln!("    {}", self.get_entity_display(*id))
             }
             eprintln!("{}", "end".bold());
         }

@@ -16,6 +16,7 @@ pub enum Note {
     FieldValueSyntax,
     InstanceSyntax,
     PubExpression,
+    ItemQuerySyntax,
 }
 
 impl Note {
@@ -53,6 +54,8 @@ impl Note {
                 => "'have' blocks must only contain 'let' statements that instantiates items of a given class".to_string(),
             N::PubExpression
                 => "if you meant to write an expression, remove the leading 'pub' keyword".to_string(),
+            N::ItemQuerySyntax
+                => "an imported item from an 'import-from' statement must be an identifier".to_string(),
         }
     }
 }

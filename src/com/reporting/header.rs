@@ -25,6 +25,7 @@ pub enum Header {
     ExpectedTypeAnnotation(Token),
     EmptyImport(),
     InvalidImportQuery(),
+    InvalidItemQuery(),
     RedundantSuper(),
     FileReimported(String),
     InvalidInteger(),
@@ -91,6 +92,7 @@ impl Header {
             H::ExpectedTypeAnnotation(..) => "expected_type_annotation",
             H::EmptyImport(..) => "empty_import",
             H::InvalidImportQuery(..) => "invalid_import_query",
+            H::InvalidItemQuery(..) => "invalid_item_query",
             H::RedundantSuper(..) => "redundant_super",
             H::FileReimported(..) => "file_reimported",
             H::InvalidInteger(..) => "invalid_integer",
@@ -177,6 +179,8 @@ impl Header {
                 => "empty import expression".to_string(),
             H::InvalidImportQuery()
                 => "invalid import query syntax".to_string(),
+            H::InvalidItemQuery()
+                => "invalid item import query syntax".to_string(),
             H::RedundantSuper()
                 => "redundant use of the 'super' path".to_string(),
             H::FileReimported(path)
