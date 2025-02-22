@@ -84,7 +84,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 .check_pattern_or_type_signature(lhs)
             {
                 Either::Left(pattern) => {
-                    let P::Binding(item_name_span) = pattern else {
+                    let P::Var(item_name_span) = pattern else {
                         self.reports.push(
                             Report::error(Header::InvalidPattern())
                                 .with_primary_label(Label::Empty, lhs.span().wrap(self.file))

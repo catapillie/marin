@@ -16,7 +16,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match e {
             E::Missing(e) => P::Missing(e.span),
             E::Underscores(e) => P::Discard(e.span),
-            E::Var(e) => P::Binding(e.span),
+            E::Var(e) => P::Var(e.span),
             E::Int(e) => P::Int(e.span),
             E::Float(e) => P::Float(e.span),
             E::String(e) => P::String(e.span),
@@ -75,11 +75,17 @@ impl<'src, 'e> Checker<'src, 'e> {
         match p {
             P::Missing(_) => self.declare_missing_pattern(),
             P::Discard(_) => (I::Discard, self.create_fresh_type(Some(span))),
-            P::Binding(_) => {
-                let name = span.lexeme(self.source);
-                let ty = self.create_fresh_type(Some(span));
-                let id = self.create_variable_mono(name, ty, span, false);
-                (I::Binding(id), ty)
+            P::Var(span) => {
+                let lexeme = ast::Lexeme { span: *span };
+                match self.try_check_var_path(&lexeme) {
+                    Some(q) => self.check_path_into_declare_pattern(q, *span),
+                    None => {
+                        let name = span.lexeme(self.source);
+                        let ty = self.create_fresh_type(Some(*span));
+                        let id = self.create_variable_mono(name, ty, *span, false);
+                        (I::Binding(id), ty)
+                    }
+                }
             }
             P::Int(_) => (
                 self.read_source_int(span).map(I::Int).unwrap_or(I::Missing),
@@ -243,7 +249,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             let field_name = name_span.lexeme(self.source);
             let field_pattern = match pat {
                 Some(pat) => pat,
-                None => &ast::Pattern::Binding(*name_span),
+                None => &ast::Pattern::Var(*name_span),
             };
 
             let pat = self.declare_pattern(field_pattern);
@@ -336,7 +342,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         )
     }
 
-    fn declare_missing_pattern(&mut self) -> (ir::Pattern, ir::TypeID) {
+    pub fn declare_missing_pattern(&mut self) -> (ir::Pattern, ir::TypeID) {
         (ir::Pattern::Missing, self.create_fresh_type(None))
     }
 }

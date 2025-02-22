@@ -5,7 +5,7 @@ use crate::com::loc::Span;
 pub enum Pattern {
     Missing(Span),
     Discard(Span),
-    Binding(Span),
+    Var(Span),
     Int(Span),
     Float(Span),
     String(Span),
@@ -23,7 +23,7 @@ impl Pattern {
         match self {
             P::Missing(span) => *span,
             P::Discard(span) => *span,
-            P::Binding(span) => *span,
+            P::Var(span) => *span,
             P::Int(span) => *span,
             P::Float(span) => *span,
             P::String(span) => *span,
@@ -45,7 +45,7 @@ impl Pattern {
         match self {
             P::Missing(_) => true,
             P::Discard(_) => true,
-            P::Binding(_) => true,
+            P::Var(_) => true,
             P::Int(_) => false,
             P::Float(_) => false,
             P::String(_) => false,
