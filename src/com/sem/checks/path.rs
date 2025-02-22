@@ -96,47 +96,4 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         }
     }
-
-    pub fn check_path_into_declare_pattern(
-        &mut self,
-        q: Q,
-        span: Span,
-    ) -> (ir::Pattern, ir::TypeID) {
-        match q {
-            Q::Missing => self.declare_missing_pattern(),
-            Q::Variant(id, tag) => {
-                let (info, variant) = self.get_union_variant_info(id, tag);
-
-                if let Some(variant_args) = &variant.type_args {
-                    self.reports.push(
-                        Report::error(Header::IncompleteVariant(variant.name.to_string()))
-                            .with_primary_label(Label::Empty, span.wrap(self.file))
-                            .with_secondary_label(
-                                Label::VariantArgCount(
-                                    variant.name.to_string(),
-                                    variant_args.len(),
-                                ),
-                                variant.loc,
-                            )
-                            .with_secondary_label(
-                                Label::UnionDefinition(info.name.to_string()),
-                                info.loc,
-                            ),
-                    );
-                    return self.declare_missing_pattern();
-                };
-
-                let ty = self.instantiate_scheme(info.scheme.clone(), None);
-                self.set_type_span(ty, span);
-                (ir::Pattern::Variant(id, tag, None), ty)
-            }
-            _ => {
-                self.reports.push(
-                    Report::error(Header::InvalidPattern())
-                        .with_primary_label(Label::NotAPattern, span.wrap(self.file)),
-                );
-                self.declare_missing_pattern()
-            }
-        }
-    }
 }

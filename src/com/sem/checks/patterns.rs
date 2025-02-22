@@ -78,8 +78,10 @@ impl<'src, 'e> Checker<'src, 'e> {
             P::Var(span) => {
                 let lexeme = ast::Lexeme { span: *span };
                 match self.try_check_var_path(&lexeme) {
-                    Some(q) => self.check_path_into_declare_pattern(q, *span),
-                    None => {
+                    Some(Q::Variant(id, tag)) => {
+                        self.declare_argless_variant_pattern(id, tag, *span)
+                    }
+                    _ => {
                         let name = span.lexeme(self.source);
                         let ty = self.create_fresh_type(Some(*span));
                         let id = self.create_variable_mono(name, ty, *span, false);
@@ -201,34 +203,8 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn declare_access_pattern(&mut self, e: &ast::Expr, span: Span) -> (ir::Pattern, ir::TypeID) {
-        use ir::Pattern as I;
         match self.check_path_or_expr(e) {
-            Q::Variant(id, tag) => {
-                let (info, variant) = self.get_union_variant_info(id, tag);
-
-                if let Some(variant_args) = &variant.type_args {
-                    self.reports.push(
-                        Report::error(Header::IncompleteVariant(variant.name.to_string()))
-                            .with_primary_label(Label::Empty, span.wrap(self.file))
-                            .with_secondary_label(
-                                Label::VariantArgCount(
-                                    variant.name.to_string(),
-                                    variant_args.len(),
-                                ),
-                                variant.loc,
-                            )
-                            .with_secondary_label(
-                                Label::UnionDefinition(info.name.to_string()),
-                                info.loc,
-                            ),
-                    );
-                    return self.declare_missing_pattern();
-                };
-
-                let ty = self.instantiate_scheme(info.scheme.clone(), None);
-                self.set_type_span(ty, span);
-                (I::Variant(id, tag, None), ty)
-            }
+            Q::Variant(id, tag) => self.declare_argless_variant_pattern(id, tag, span),
             Q::Missing => self.declare_missing_pattern(),
             _ => {
                 self.reports.push(
@@ -238,6 +214,32 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.declare_missing_pattern()
             }
         }
+    }
+
+    fn declare_argless_variant_pattern(
+        &mut self,
+        id: ir::EntityID,
+        tag: usize,
+        span: Span,
+    ) -> (ir::Pattern, ir::TypeID) {
+        let (info, variant) = self.get_union_variant_info(id, tag);
+
+        if let Some(variant_args) = &variant.type_args {
+            self.reports.push(
+                Report::error(Header::IncompleteVariant(variant.name.to_string()))
+                    .with_primary_label(Label::Empty, span.wrap(self.file))
+                    .with_secondary_label(
+                        Label::VariantArgCount(variant.name.to_string(), variant_args.len()),
+                        variant.loc,
+                    )
+                    .with_secondary_label(Label::UnionDefinition(info.name.to_string()), info.loc),
+            );
+            return self.declare_missing_pattern();
+        };
+
+        let ty = self.instantiate_scheme(info.scheme.clone(), None);
+        self.set_type_span(ty, span);
+        (ir::Pattern::Variant(id, tag, None), ty)
     }
 
     fn declare_record_pattern(
