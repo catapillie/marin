@@ -5,7 +5,7 @@ use crate::com::{
     Checker,
 };
 
-use super::path::PathQuery as Q;
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_class_access_path(

@@ -6,19 +6,7 @@ use crate::com::{
     Checker,
 };
 
-#[allow(dead_code)]
-pub enum PathQuery {
-    Missing,
-    Expr(ir::CheckedExpr),
-    Type(ir::TypeID),
-    Record(ir::EntityID),
-    Union(ir::EntityID),
-    Variant(ir::EntityID, usize),
-    Class(ir::EntityID),
-    Import(ir::EntityID),
-}
-
-use PathQuery as Q;
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_path(&mut self, e: &ast::Expr) -> Q {

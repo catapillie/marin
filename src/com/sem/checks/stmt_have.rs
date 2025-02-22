@@ -12,7 +12,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         let class_name = e.name.lexeme(self.source);
         let within_label = Label::WithinClassInstantiation(class_name.to_string());
 
-        use super::path::PathQuery as Q;
+        use ir::PathQuery as Q;
         let lexeme = ast::Lexeme { span: e.name };
         let class_id = match self.check_var_path(&lexeme) {
             Q::Class(id) => id,

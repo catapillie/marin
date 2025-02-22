@@ -1,10 +1,10 @@
-use super::path::PathQuery as Q;
 use crate::com::{
     ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
     Checker,
 };
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_call_path(&mut self, e: &ast::Call) -> Q {
@@ -14,8 +14,8 @@ impl<'src, 'e> Checker<'src, 'e> {
 
             // should be handled by other functions
             Q::Expr(_) => todo!("call on expr"),
+            Q::Var(_) => todo!("call on var"),
             Q::Variant(_, _) => todo!("call on variant"),
-
             Q::Type(_) => todo!("call on type"),
             Q::Record(id) => self.check_record_call_path(id, &e.args, e.span()),
             Q::Union(id) => self.check_union_call_path(id, &e.args, e.span()),

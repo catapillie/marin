@@ -6,6 +6,7 @@ mod signatures;
 mod variables;
 
 mod stmt;
+mod stmt_alias;
 mod stmt_class;
 mod stmt_have;
 mod stmt_import;

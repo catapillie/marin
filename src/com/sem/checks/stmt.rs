@@ -5,6 +5,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ast::Expr as E;
         match e {
             E::Let(e) => self.check_let(e),
+            E::Alias(e) => self.check_alias(e),
             E::Import(e) => self.check_import(e),
             E::Record(e) => self.check_record(e),
             E::Union(e) => self.check_union(e),

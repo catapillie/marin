@@ -197,6 +197,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Let => return self.try_parse_let_expression(),
             Token::Pub => return self.try_parse_pub_expression(),
 
+            Token::Alias => return self.try_parse_alias_expression(),
             Token::Import => return self.try_parse_import_expression(),
             Token::Super => self.try_parse_super_expression(),
             Token::Record => self.try_parse_record_expression(),
@@ -551,6 +552,20 @@ impl<'src, 'e> Parser<'src, 'e> {
         } else {
             (Some(self.expect_token(token)), self.expect_expression())
         }
+    }
+
+    fn try_parse_alias_expression(&mut self) -> Option<ast::Expr> {
+        let alias_kw = self.try_expect_token(Token::Alias)?;
+        let path = self.expect_primary_expression();
+        let as_kw = self.expect_token(Token::As);
+        let name = self.expect_token(Token::Ident);
+
+        Some(ast::Expr::Alias(ast::Alias {
+            alias_kw,
+            as_kw,
+            path: Box::new(path),
+            name,
+        }))
     }
 
     fn try_parse_import_expression(&mut self) -> Option<ast::Expr> {

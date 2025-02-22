@@ -74,6 +74,8 @@ pub enum Token {
     Import,
     #[token("as")]
     As,
+    #[token("alias")]
+    Alias,
     #[token("super")]
     Super,
     #[token("record")]
@@ -139,6 +141,7 @@ impl Display for Token {
             Token::False => write!(f, "'false' keyword"),
             Token::Import => write!(f, "'import' keyword"),
             Token::As => write!(f, "'as' keyword"),
+            Token::Alias => write!(f, "'alias' keyword"),
             Token::Super => write!(f, "'super' keyword"),
             Token::Record => write!(f, "'record' keyword"),
             Token::Union => write!(f, "'union' keyword"),

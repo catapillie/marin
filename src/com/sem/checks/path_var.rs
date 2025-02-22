@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-use super::path::PathQuery as Q;
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_var_path(&mut self, e: &ast::Lexeme) -> Q {
@@ -20,13 +20,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ir::Entity as Ent;
         match self.get_entity(*id) {
             Ent::Dummy => unreachable!(),
-            Ent::Variable(_) => Q::Expr(self.check_var(e)),
+            Ent::Variable(_) => Q::Var(*id),
             Ent::Type(id) => Q::Type(*id),
             Ent::Record(_) => Q::Record(*id),
             Ent::Union(_) => Q::Union(*id),
             Ent::Class(_) => Q::Class(*id),
             Ent::Instance(_) => unreachable!(),
             Ent::Import(_) => Q::Import(*id),
+            Ent::Alias(_) => todo!("resolve alias"),
         }
     }
 }

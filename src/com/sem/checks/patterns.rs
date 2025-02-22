@@ -1,4 +1,4 @@
-use super::path::PathQuery as Q;
+use ir::PathQuery as Q;
 use crate::com::{
     ast, ir,
     loc::Span,

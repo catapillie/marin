@@ -1,4 +1,4 @@
-use super::{Expr, InstanceScheme, Scheme, TypeID};
+use super::{Expr, InstanceScheme, PathQuery, Scheme, TypeID};
 use crate::com::loc::Loc;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -13,6 +13,7 @@ pub enum Entity {
     Class(ClassInfo),
     Instance(InstanceInfo),
     Import(ImportInfo),
+    Alias(AliasInfo),
 }
 
 pub struct Variable {
@@ -98,4 +99,9 @@ pub struct InstanceInfo {
 
 pub struct ImportInfo {
     pub file: usize,
+}
+
+pub struct AliasInfo {
+    pub loc: Loc,
+    pub path: PathQuery,
 }

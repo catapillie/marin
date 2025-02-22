@@ -65,6 +65,7 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
             walk_expr(&e.signature, nodes);
             walk_expr(&e.value, nodes);
         }
+        E::Alias(..) => {}
         E::Import(..) => {}
         E::Super(..) => {}
         E::Record(..) => {}

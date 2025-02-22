@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, Checker};
 
-use super::path::PathQuery as Q;
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_import_access_path(&mut self, id: ir::EntityID, accessor: &ast::Expr) -> Q {

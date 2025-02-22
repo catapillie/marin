@@ -23,6 +23,7 @@ pub enum Expr {
     Let(Let),
     Pub(Pub),
     Fun(Fun),
+    Alias(Alias),
     Import(Import),
     Super(Lexeme),
     Record(Record),
@@ -175,6 +176,14 @@ pub struct Fun {
     pub maps: Option<Span>,
     pub signature: Box<Expr>,
     pub value: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Alias {
+    pub alias_kw: Span,
+    pub as_kw: Span,
+    pub path: Box<Expr>,
+    pub name: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -345,6 +354,12 @@ impl Fun {
     }
 }
 
+impl Alias {
+    pub fn span(&self) -> Span {
+        mix_spans([self.alias_kw, self.path.span(), self.as_kw, self.name])
+    }
+}
+
 impl Import {
     pub fn span(&self) -> Span {
         mix_spans([
@@ -442,6 +457,7 @@ impl Expr {
             Self::Let(e) => e.span(),
             Self::Pub(e) => e.span(),
             Self::Fun(e) => e.span(),
+            Self::Alias(e) => e.span(),
             Self::Import(e) => e.span(),
             Self::Super(e) => e.span,
             Self::Record(e) => e.span(),

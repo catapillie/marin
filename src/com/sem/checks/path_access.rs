@@ -1,11 +1,11 @@
 use crate::com::{
-    ast,
+    ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
     Checker,
 };
 
-use super::path::PathQuery as Q;
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_identifier_accessor(&mut self, e: &ast::Expr) -> Option<(&'src str, Span)> {
@@ -27,6 +27,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         match q {
             Q::Missing => Q::Missing,
             Q::Expr(_) => todo!("access on expr"),
+            Q::Var(_) => todo!("access on var"),
             Q::Type(_) => todo!("access on type"),
             Q::Record(id) => self.check_record_access_path(id, &e.accessor),
             Q::Union(id) => self.check_union_access_path(id, &e.accessor),
