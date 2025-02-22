@@ -15,9 +15,10 @@ use codespan_reporting::{
 use colored::Colorize;
 use std::path::{Path, PathBuf};
 
-pub struct Compiler<Stage> {
+pub struct Compiler<Stage, Info> {
     reports: Vec<Report>,
     files: Files<Stage>,
+    info: Info,
 }
 
 // compiler stage
@@ -26,17 +27,30 @@ pub struct Source;
 pub struct Parsed(pub ast::File);
 pub struct Checked(pub ir::File);
 
+// compiler info
+pub struct StagedInfo;
+pub struct SourceInfo;
+pub struct ParsedInfo;
+pub struct CheckedInfo {
+    pub evaluation_order: Vec<usize>,
+}
+
 // compiler initialization
-pub fn init() -> Compiler<Staged> {
+pub fn init() -> Compiler<Staged, StagedInfo> {
     Compiler {
         reports: Vec::new(),
         files: Files::default(),
+        info: StagedInfo,
     }
 }
 
-impl<T> Compiler<T> {
+impl<T, I> Compiler<T, I> {
     pub fn file_contents(&self) -> Box<[&T]> {
         self.files.0.iter().map(|(_, _, t)| t).collect()
+    }
+
+    pub fn info(&self) -> &I {
+        &self.info
     }
 
     pub fn emit_reports(&self, color: ColorChoice, config: &Config) -> Result<(), files::Error> {
@@ -53,7 +67,7 @@ impl<T> Compiler<T> {
     }
 }
 
-impl Compiler<Staged> {
+impl Compiler<Staged, StagedInfo> {
     pub fn add_file(&mut self, path: impl AsRef<Path>) {
         let path = path.as_ref();
         let path_display = path.display().to_string();
@@ -96,7 +110,7 @@ impl Compiler<Staged> {
         File::new(file_path, source)
     }
 
-    pub fn read_sources(mut self) -> Compiler<Source> {
+    pub fn read_sources(mut self) -> Compiler<Source, SourceInfo> {
         if self.files.0.is_empty() {
             self.reports.push(Report::error(Header::CompilerNoInput()));
         }
@@ -113,17 +127,18 @@ impl Compiler<Staged> {
         Compiler {
             reports: self.reports,
             files: Files(source_files),
+            info: SourceInfo,
         }
     }
 }
 
-impl Compiler<Source> {
+impl Compiler<Source, SourceInfo> {
     fn parse_file(file: &File, id: usize, reports: &mut Vec<Report>) -> Parsed {
         let mut parser = Parser::new(file.source(), id, reports);
         Parsed(parser.parse_file())
     }
 
-    pub fn parse(mut self) -> Compiler<Parsed> {
+    pub fn parse(mut self) -> Compiler<Parsed, ParsedInfo> {
         let mut reports = Vec::new();
         let parsed_files = self
             .files
@@ -140,12 +155,13 @@ impl Compiler<Source> {
         Compiler {
             reports: self.reports,
             files: Files(parsed_files),
+            info: ParsedInfo,
         }
     }
 }
 
-impl Compiler<Parsed> {
-    pub fn check(mut self) -> Compiler<Checked> {
+impl Compiler<Parsed, ParsedInfo> {
+    pub fn check(mut self) -> Compiler<Checked, CheckedInfo> {
         let deps = sem::build_dependency_graph(&self.files, &mut self.reports);
         let order = sem::sort_dependencies(&deps, &self.files, &mut self.reports);
 
@@ -156,8 +172,9 @@ impl Compiler<Parsed> {
         let mut reports = Vec::new();
         let mut checker = Checker::new(files.len(), &deps, &mut reports);
 
-        for scc in order {
+        for scc in &order {
             for id in scc {
+                let id = *id;
                 let (file, _, Parsed(ast)) = &files[id];
 
                 eprintln!(
@@ -181,9 +198,12 @@ impl Compiler<Parsed> {
             })
             .collect();
 
+        let evaluation_order = order.into_iter().flatten().collect();
+
         Compiler {
             reports: self.reports,
             files: Files(checked_files),
+            info: CheckedInfo { evaluation_order },
         }
     }
 }

@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 mod com;
 
 fn main() {
@@ -18,16 +20,15 @@ fn main() {
         .expect("failed to emit reports");
 
     let contents = compiler.file_contents();
-    if contents.is_empty() {
-        return;
-    } else if contents.len() > 1 {
-        eprintln!("\nTODO: evaluation with multiple files");
-        return;
-    }
+    let info = compiler.info();
 
-    let file_ir = &contents[0].0;
+    eprintln!("\n--- {} ---", "EVALUATION".bold());
+    
     let mut walker = com::Walker::new();
-    if let Err(e) = walker.eval_file(file_ir) {
-        eprintln!("error: {e:?}")
+    for file_id in &info.evaluation_order {
+        let file_ir = &contents[*file_id].0;
+        if let Err(e) = walker.eval_file(file_ir) {
+            eprintln!("error: {e:?}")
+        }
     }
 }
