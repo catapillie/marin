@@ -154,7 +154,7 @@ impl Compiler<Parsed> {
         irs.resize_with(files.len(), || None);
 
         let mut reports = Vec::new();
-        let mut checker = Checker::new(&deps, &mut reports);
+        let mut checker = Checker::new(files.len(), &deps, &mut reports);
 
         for scc in order {
             for id in scc {

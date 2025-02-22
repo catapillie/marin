@@ -39,9 +39,19 @@ impl<'src, 'e> Checker<'src, 'e> {
 
             let import_id = self.create_entity(ir::Entity::Import(ir::ImportInfo {
                 name: import_name.to_string(),
+                loc: e.span().wrap(self.file),
                 file: dep_file,
             }));
             self.scope.insert(import_name, import_id);
+
+            // import all instances of classes in our scope
+            // make sure to copy them and reset them to private so they aren't exported from this file
+            let dep_instances = self.exports[dep_file].instances.clone();
+            for id in dep_instances {
+                let instance_info = self.get_instance_info(id).clone();
+                let instance_id = self.create_entity(ir::Entity::Instance(instance_info));
+                self.scope.infos_mut().push(instance_id);
+            }
         }
 
         ir::Stmt::Nothing

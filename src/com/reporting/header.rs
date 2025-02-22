@@ -45,6 +45,7 @@ pub enum Header {
     UnknownBinding(String),
     UnknownVariant(String, String),
     UnknownClassItem(String, String),
+    UnknownExport(String, String),
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
     RefutablePattern(),
@@ -110,6 +111,7 @@ impl Header {
             H::UnknownBinding(..) => "unknown_binding",
             H::UnknownVariant(..) => "unknown_variant",
             H::UnknownClassItem(..) => "unknown_class_item",
+            H::UnknownExport(_, _) => "unknown_export",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
             H::RefutablePattern(..) => "refutable_pattern",
@@ -219,6 +221,8 @@ impl Header {
                 => format!("unknown variant '{name}' in union type '{union_name}'"),
             H::UnknownClassItem(name, class_name)
                 => format!("unknown item '{name}' in class '{class_name}'"),
+            H::UnknownExport(item_name, name)
+                => format!("unknown exported item '{item_name}' in imported module '{name}'"),
             H::TypeMismatch(left, right)
                 => format!("type mismatch between {left} and {right}"),
             H::UnreachableConditionalBranches(1)

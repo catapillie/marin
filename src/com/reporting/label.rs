@@ -54,6 +54,7 @@ pub enum Label {
     SuchInstance,
     CannotAliasExpression,
     PublicStatement,
+    ImportedHere(String),
 }
 
 impl Label {
@@ -193,6 +194,8 @@ impl Label {
                 => "aliasing an expression is not allowed".to_string(),
             L::PublicStatement
                 => "this looks like the beginning of a public statement".to_string(),
+            L::ImportedHere(name)
+                => format!("module '{name}' is imported here"),
         }
     }
 }

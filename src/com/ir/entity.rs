@@ -99,6 +99,7 @@ pub struct InstanceInfo {
 
 pub struct ImportInfo {
     pub name: String,
+    pub loc: Loc,
     pub file: usize,
 }
 
