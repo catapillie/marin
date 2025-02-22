@@ -17,6 +17,8 @@ pub struct Checker<'src, 'e> {
     pub label_scope: Scope<&'src str, (), ir::LabelID>,
 
     pub entities: Vec<ir::Entity>,
+    pub entity_public: Vec<bool>,
+
     pub labels: Vec<ir::Label>,
     pub types: Vec<ir::TypeNode>,
 
@@ -35,6 +37,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             label_scope: Scope::root(),
 
             entities: Vec::new(),
+            entity_public: Vec::new(),
+
             labels: Vec::new(),
             types: Vec::new(),
 

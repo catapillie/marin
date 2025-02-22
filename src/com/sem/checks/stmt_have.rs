@@ -7,7 +7,7 @@ use crate::com::{
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_have(&mut self, e: &ast::Have) -> ir::Stmt {
+    pub fn check_have(&mut self, e: &ast::Have, public: bool) -> ir::Stmt {
         let span = e.span();
         let class_name = e.name.lexeme(self.source);
         let within_label = Label::WithinClassInstantiation(class_name.to_string());
@@ -34,7 +34,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 continue;
             };
 
-            let (_, bindings) = self.check_let_bindings(item);
+            let (_, bindings) = self.check_let_bindings(item, false);
             for binding in bindings {
                 let binding_info = self.get_variable(binding);
                 registered.insert(binding_info.name.clone(), binding);
@@ -114,11 +114,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.close_scope();
         self.close_scope();
 
-        let instance_id = self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
-            loc: span.wrap(self.file),
-            scheme,
-        }));
-        self.scope.infos_mut().push(instance_id);
+        if is_complete {
+            let instance_id = self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
+                loc: span.wrap(self.file),
+                scheme,
+            }));
+            self.scope.infos_mut().push(instance_id);
+            self.set_entity_public(instance_id, public);
+        }
 
         ir::Stmt::Nothing
     }

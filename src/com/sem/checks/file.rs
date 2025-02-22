@@ -1,3 +1,5 @@
+use colored::Colorize;
+
 use crate::com::{ast, ir, Checker};
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -18,8 +20,39 @@ impl<'src, 'e> Checker<'src, 'e> {
             panic!("unsolved constraints remain in the file");
         }
 
+        let (exports, instances) = self.get_public_exports_and_instances();
         self.close_scope();
 
+        if !exports.is_empty() || !instances.is_empty() {
+            eprintln!("{}", "\nexport".bold());
+            for id in &exports {
+                eprintln!(" {}", self.get_entity_display(*id))
+            }
+            for id in &instances {
+                eprintln!(" {}", self.get_entity_display(*id))
+            }
+            eprintln!("{}", "end".bold());
+        }
+
         ir::File { stmts }
+    }
+
+    // (exports, instances)
+    fn get_public_exports_and_instances(&self) -> (Vec<ir::EntityID>, Vec<ir::EntityID>) {
+        let mut exports = Vec::new();
+        for (_, id) in self.scope.iter() {
+            if self.is_entity_public(*id) {
+                exports.push(*id);
+            }
+        }
+
+        let mut instances = Vec::new();
+        for id in self.scope.infos_iter().flatten() {
+            if self.is_entity_public(*id) {
+                instances.push(*id);
+            }
+        }
+
+        (exports, instances)
     }
 }

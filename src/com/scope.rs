@@ -1,4 +1,8 @@
-use std::{collections::HashMap, hash::Hash, mem};
+use std::{
+    collections::{hash_map, HashMap},
+    hash::Hash,
+    mem,
+};
 
 #[derive(Debug, Clone)]
 pub struct Scope<K, I, T>
@@ -76,6 +80,10 @@ where
 
     pub fn insert(&mut self, key: K, val: T) -> Option<T> {
         self.bindings.insert(key, val)
+    }
+
+    pub fn iter(&self) -> hash_map::Iter<K, T> {
+        self.bindings.iter()
     }
 
     pub fn infos_mut(&mut self) -> &mut I {

@@ -5,7 +5,7 @@ use crate::com::{
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_record(&mut self, e: &ast::Record) -> ir::Stmt {
+    pub fn check_record(&mut self, e: &ast::Record, public: bool) -> ir::Stmt {
         // ensure the record's signature syntax is valid
         let span = e.span();
         let Some((name_span, args)) = Self::extract_simple_signature(&e.signature) else {
@@ -51,7 +51,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         // register the record type now
         // allows for recursion
-        let record_id = self.next_entity_id();
+        let record_id = self.create_entity_dummy();
         let record_type = self.create_type(ir::Type::Record(record_id, arg_ids), None);
         let record_scheme = self.generalize_type(record_type);
         let record_loc = span.wrap(self.file);
@@ -62,7 +62,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             scheme: record_scheme,
             fields: Box::new([]),
         });
-        self.entities.push(info);
+        *self.get_entity_mut(record_id) = info;
+        self.set_entity_public(record_id, public);
 
         // bind it to its name now so that it can be used recursively
         self.scope.insert(record_name, record_id);

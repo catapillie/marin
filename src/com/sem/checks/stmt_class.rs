@@ -19,7 +19,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    pub fn check_class(&mut self, e: &ast::Class) -> ir::Stmt {
+    pub fn check_class(&mut self, e: &ast::Class, public: bool) -> ir::Stmt {
         let span = e.span();
         let Some((class_name_span, args)) = Self::extract_simple_signature_with_args(&e.signature)
         else {
@@ -67,6 +67,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             items: Default::default(),
             arity,
         }));
+        self.set_entity_public(class_id, public);
 
         let mut items = Vec::new();
         let mut constraint = ir::Constraint {

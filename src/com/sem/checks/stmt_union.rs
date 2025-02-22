@@ -5,7 +5,7 @@ use crate::com::{
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_union(&mut self, e: &ast::Union) -> ir::Stmt {
+    pub fn check_union(&mut self, e: &ast::Union, public: bool) -> ir::Stmt {
         // ensure the union's signature syntax is valid
         let span = e.span();
         let Some((name_span, args)) = Self::extract_simple_signature(&e.signature) else {
@@ -51,7 +51,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         // register the union type now
         // allows for recursion
-        let union_id = self.next_entity_id();
+        let union_id = self.create_entity_dummy();
         let union_type = self.create_type(ir::Type::Union(union_id, arg_ids), None);
         let union_scheme = self.generalize_type(union_type);
         let union_loc = span.wrap(self.file);
@@ -62,7 +62,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             scheme: union_scheme,
             variants: Box::new([]),
         });
-        self.entities.push(info);
+        *self.get_entity_mut(union_id) = info;
+        self.set_entity_public(union_id, public);
 
         // bind it to its name now so that it can be used recursively
         self.scope.insert(union_name, union_id);

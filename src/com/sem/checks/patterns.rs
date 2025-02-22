@@ -68,7 +68,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    pub fn declare_pattern(&mut self, p: &ast::Pattern) -> (ir::Pattern, ir::TypeID) {
+    pub fn declare_pattern(&mut self, p: &ast::Pattern, public: bool) -> (ir::Pattern, ir::TypeID) {
         use ast::Pattern as P;
         use ir::Pattern as I;
         let span = p.span();
@@ -104,16 +104,18 @@ impl<'src, 'e> Checker<'src, 'e> {
             P::True(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
             P::False(_) => (I::Bool(false), self.create_type(ir::Type::Bool, Some(span))),
             P::Tuple(_, _, items) => {
-                let (items, item_types): (Vec<_>, Vec<_>) =
-                    items.iter().map(|item| self.declare_pattern(item)).unzip();
+                let (items, item_types): (Vec<_>, Vec<_>) = items
+                    .iter()
+                    .map(|item| self.declare_pattern(item, public))
+                    .unzip();
                 (
                     I::Tuple(items.into()),
                     self.create_type(ir::Type::Tuple(item_types.into()), Some(span)),
                 )
             }
-            P::Call(_, _, e, args) => self.declare_call_pattern(e, args, span),
+            P::Call(_, _, e, args) => self.declare_call_pattern(e, args, span, public),
             P::Access(e) => self.declare_access_pattern(e, span),
-            P::Record(_, _, fields) => self.declare_record_pattern(fields, span),
+            P::Record(_, _, fields) => self.declare_record_pattern(fields, span, public),
         }
     }
 
@@ -122,10 +124,13 @@ impl<'src, 'e> Checker<'src, 'e> {
         e: &ast::Expr,
         args: &[ast::Pattern],
         span: Span,
+        public: bool,
     ) -> (ir::Pattern, ir::TypeID) {
         let q = self.check_path_or_expr(e);
-        let (args, arg_types): (Vec<_>, Vec<_>) =
-            args.iter().map(|item| self.declare_pattern(item)).unzip();
+        let (args, arg_types): (Vec<_>, Vec<_>) = args
+            .iter()
+            .map(|item| self.declare_pattern(item, public))
+            .unzip();
 
         use ir::Pattern as I;
         match q {
@@ -239,6 +244,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         &mut self,
         field_pats: &[(Option<Span>, Option<ast::Pattern>)],
         span: Span,
+        public: bool,
     ) -> (ir::Pattern, ir::TypeID) {
         let mut fields = HashMap::new();
         for (name, pat) in field_pats {
@@ -252,7 +258,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 None => &ast::Pattern::Var(*name_span),
             };
 
-            let pat = self.declare_pattern(field_pattern);
+            let pat = self.declare_pattern(field_pattern, public);
             fields.insert(field_name, pat);
         }
 

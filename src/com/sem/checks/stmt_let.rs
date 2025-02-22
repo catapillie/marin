@@ -20,8 +20,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    pub fn check_let(&mut self, e: &ast::Let) -> ir::Stmt {
-        let (stmt, bindings) = self.check_let_bindings(e);
+    pub fn check_let(&mut self, e: &ast::Let, public: bool) -> ir::Stmt {
+        let (stmt, bindings) = self.check_let_bindings(e, public);
 
         for binding in bindings {
             let info = self.get_variable(binding);
@@ -37,7 +37,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         stmt
     }
 
-    pub fn check_let_bindings(&mut self, e: &ast::Let) -> (ir::Stmt, Vec<ir::EntityID>) {
+    pub fn check_let_bindings(
+        &mut self,
+        e: &ast::Let,
+        public: bool,
+    ) -> (ir::Stmt, Vec<ir::EntityID>) {
         let binding_span = Span::combine(e.let_kw, e.pattern.span());
         let lhs = self.check_pattern_or_signature(&e.pattern);
         match lhs {
@@ -54,7 +58,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
 
                 let (value, ty) = self.check_expression(&e.value);
-                let (pattern, pattern_type) = self.declare_pattern(&pattern);
+                let (pattern, pattern_type) = self.declare_pattern(&pattern, public);
 
                 self.unify(ty, pattern_type, &[]);
                 let relevant_constraints = self.solve_constraints();
@@ -69,6 +73,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     }
 
                     self.get_variable_mut(var_id).scheme = scheme.clone();
+                    self.set_entity_public(var_id, public);
                 }
 
                 (ir::Stmt::Let(pattern, value), bindings)
@@ -121,6 +126,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
 
                 let id = self.create_variable_poly(name, scheme, name_span, false);
+                self.set_entity_public(id, public);
                 let pattern = ir::Pattern::Binding(id);
                 let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
 

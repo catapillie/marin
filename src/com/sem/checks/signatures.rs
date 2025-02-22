@@ -107,8 +107,10 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
             S::Args(patterns, next) => {
                 let (sig, sig_type, ret_type, _) = self.declare_signature(next);
-                let (arg_patterns, arg_types): (Vec<_>, Vec<_>) =
-                    patterns.iter().map(|arg| self.declare_pattern(arg)).unzip();
+                let (arg_patterns, arg_types): (Vec<_>, Vec<_>) = patterns
+                    .iter()
+                    .map(|arg| self.declare_pattern(arg, false))
+                    .unzip();
                 (
                     I::Args(arg_patterns.into(), Box::new(sig)),
                     self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),

@@ -8,7 +8,7 @@ use colored::Colorize;
 use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_alias(&mut self, e: &ast::Alias) -> ir::Stmt {
+    pub fn check_alias(&mut self, e: &ast::Alias, public: bool) -> ir::Stmt {
         let path = self.check_path_or_type(&e.path);
         match path {
             Q::Missing => return ir::Stmt::Nothing,
@@ -42,8 +42,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let alias_name = e.name.lexeme(self.source);
-        let alias_id = self.create_entity(ir::Entity::Alias(ir::AliasInfo { path }));
+        let alias_id = self.create_entity(ir::Entity::Alias(ir::AliasInfo {
+            name: alias_name.to_string(),
+            path,
+        }));
         self.scope.insert(alias_name, alias_id);
+        self.set_entity_public(alias_id, public);
 
         eprintln!(
             "{}{entity_desc} {} {alias_name}",

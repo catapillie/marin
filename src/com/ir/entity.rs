@@ -103,5 +103,6 @@ pub struct ImportInfo {
 }
 
 pub struct AliasInfo {
+    pub name: String,
     pub path: PathQuery,
 }

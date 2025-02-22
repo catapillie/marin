@@ -9,12 +9,12 @@ impl<'src, 'e> Checker<'src, 'e> {
         use ast::Expr as E;
         match e {
             E::Pub(e) => match &*e.expr {
-                E::Let(e) => self.check_let(e),
-                E::Alias(e) => self.check_alias(e),
-                E::Record(e) => self.check_record(e),
-                E::Union(e) => self.check_union(e),
-                E::Class(e) => self.check_class(e),
-                E::Have(e) => self.check_have(e),
+                E::Let(e) => self.check_let(e, true),
+                E::Alias(e) => self.check_alias(e, true),
+                E::Record(e) => self.check_record(e, true),
+                E::Union(e) => self.check_union(e, true),
+                E::Class(e) => self.check_class(e, true),
+                E::Have(e) => self.check_have(e, true),
                 _ => {
                     self.reports.push(
                         Report::error(Header::InvalidExpression())
@@ -26,13 +26,13 @@ impl<'src, 'e> Checker<'src, 'e> {
                 }
             },
 
-            E::Let(e) => self.check_let(e),
-            E::Alias(e) => self.check_alias(e),
+            E::Let(e) => self.check_let(e, false),
+            E::Alias(e) => self.check_alias(e, false),
             E::Import(e) => self.check_import(e),
-            E::Record(e) => self.check_record(e),
-            E::Union(e) => self.check_union(e),
-            E::Class(e) => self.check_class(e),
-            E::Have(e) => self.check_have(e),
+            E::Record(e) => self.check_record(e, false),
+            E::Union(e) => self.check_union(e, false),
+            E::Class(e) => self.check_class(e, false),
+            E::Have(e) => self.check_have(e, false),
             _ => {
                 let (expr, ty) = self.check_expression(e);
                 ir::Stmt::Expr(expr, ty)
