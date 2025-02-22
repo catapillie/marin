@@ -8,7 +8,7 @@ use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_call_path(&mut self, e: &ast::Call) -> Q {
-        let q = self.check_path(&e.callee);
+        let q = self.check_path_or_expr(&e.callee);
         match q {
             Q::Missing => Q::Missing,
 

@@ -31,14 +31,16 @@ impl<'src, 'e> Checker<'src, 'e> {
                 continue;
             };
 
-            println!(
+            eprintln!(
                 "{} {file_name} {} '{import_name}'",
                 "import".bold(),
                 "as".bold()
             );
 
-            let import_id =
-                self.create_entity(ir::Entity::Import(ir::ImportInfo { file: dep_file }));
+            let import_id = self.create_entity(ir::Entity::Import(ir::ImportInfo {
+                name: import_name.to_string(),
+                file: dep_file,
+            }));
             self.scope.insert(import_name, import_id);
         }
 

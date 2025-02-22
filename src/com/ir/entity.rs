@@ -98,6 +98,7 @@ pub struct InstanceInfo {
 }
 
 pub struct ImportInfo {
+    pub name: String,
     pub file: usize,
 }
 

@@ -167,9 +167,9 @@ impl<'src, 'e> Checker<'src, 'e> {
             .iter()
             .map(|item| (item.name.clone(), item.scheme.clone()))
             .collect::<Vec<_>>();
-        println!("{} {}", "class".bold(), class_name);
+        eprintln!("{} {}", "class".bold(), class_name);
         for (item_name, scheme) in items {
-            println!(
+            eprintln!(
                 "    {} {}.{} :: {}",
                 "let".bold(),
                 class_name,
@@ -177,7 +177,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.get_scheme_string(&scheme)
             );
         }
-        println!("{}", "end".bold());
+        eprintln!("{}", "end".bold());
 
         ir::Stmt::Nothing
     }

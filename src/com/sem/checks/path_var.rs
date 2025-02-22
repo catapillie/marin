@@ -27,7 +27,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Ent::Class(_) => Q::Class(*id),
             Ent::Instance(_) => unreachable!(),
             Ent::Import(_) => Q::Import(*id),
-            Ent::Alias(_) => todo!("resolve alias"),
+            Ent::Alias(info) => info.path.clone(),
         }
     }
 }

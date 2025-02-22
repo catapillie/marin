@@ -31,7 +31,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             let info = self.get_variable(binding);
             let name = info.name.clone();
             let scheme = info.scheme.clone();
-            println!(
+            eprintln!(
                 "{} {name} :: {}",
                 "let".bold(),
                 self.get_scheme_string(&scheme)

@@ -42,12 +42,10 @@ pub enum Header {
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
     UnallowedSignatureName(),
-    UnknownVariable(String),
     UnknownBinding(String),
     UnknownType(String),
     UnknownVariant(String, String),
     UnknownClassItem(String, String),
-    NotVariable(String),
     NotType(String),
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
@@ -113,12 +111,10 @@ impl Header {
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
             H::UnallowedSignatureName(..) => "unallowed_signature_name",
-            H::UnknownVariable(..) => "unknown_variable",
             H::UnknownBinding(..) => "unknown_binding",
             H::UnknownType(..) => "unknown_type",
             H::UnknownVariant(..) => "unknown_variant",
             H::UnknownClassItem(..) => "unknown_class_item",
-            H::NotVariable(..) => "not_variable",
             H::NotType(..) => "not_type",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
@@ -225,8 +221,6 @@ impl Header {
                 => "unallowed signature name".to_string(),
             H::InvalidSkip(Some(name))
                 => format!("invalid skip in label '{name}'"),
-            H::UnknownVariable(name)
-                => format!("unknown variable '{name}' in the current scope"),
             H::UnknownBinding(name)
                 => format!("unknown binding '{name}' in the current scope"),
             H::UnknownType(name)
@@ -235,8 +229,6 @@ impl Header {
                 => format!("unknown variant '{name}' in union type '{union_name}'"),
             H::UnknownClassItem(name, class_name)
                 => format!("unknown item '{name}' in class '{class_name}'"),
-            H::NotVariable(name)
-                => format!("identifier '{name}' does not refer to a variable in the current scope"),
             H::NotType(name)
                 => format!("identifier '{name}' does not refer to a type in the current scope"),
             H::TypeMismatch(left, right)

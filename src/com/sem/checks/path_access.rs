@@ -23,7 +23,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     pub fn check_access_path(&mut self, e: &ast::Access) -> Q {
-        let q = self.check_path(&e.accessed);
+        let q = self.check_path_or_expr(&e.accessed);
         match q {
             Q::Missing => Q::Missing,
             Q::Expr(_) => todo!("access on expr"),

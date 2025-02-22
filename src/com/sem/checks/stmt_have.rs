@@ -108,7 +108,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         if is_complete {
-            println!("{}", self.get_instance_scheme_string(&scheme));
+            eprintln!("{}", self.get_instance_scheme_string(&scheme));
         }
 
         self.close_scope();

@@ -21,7 +21,7 @@ fn main() {
     if contents.is_empty() {
         return;
     } else if contents.len() > 1 {
-        eprintln!("TODO: evaluation with multiple files");
+        eprintln!("\nTODO: evaluation with multiple files");
         return;
     }
 

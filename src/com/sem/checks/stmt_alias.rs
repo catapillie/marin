@@ -4,11 +4,12 @@ use crate::com::{
     Checker,
 };
 
+use colored::Colorize;
 use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_alias(&mut self, e: &ast::Alias) -> ir::Stmt {
-        let path = self.check_path(&e.path);
+        let path = self.check_path_or_type(&e.path);
         match path {
             Q::Missing => return ir::Stmt::Nothing,
             Q::Expr(_) => {
@@ -25,9 +26,30 @@ impl<'src, 'e> Checker<'src, 'e> {
             _ => {}
         };
 
+        let entity_desc = match &path {
+            Q::Missing => unreachable!(),
+            Q::Expr(_) => unreachable!(),
+            Q::Var(id) => format!("({}) {}", "variable".bold(), self.get_variable(*id).name),
+            Q::Type(id) => format!("({}) {}", "type".bold(), self.get_type_string(*id)),
+            Q::Record(id) => format!("({}) {}", "record".bold(), self.get_record_info(*id).name),
+            Q::Union(id) => format!("({}) {}", "union".bold(), self.get_union_info(*id).name),
+            Q::Variant(id, tag) => {
+                let (info, variant_info) = self.get_union_variant_info(*id, *tag);
+                format!("({}) {}.{}", "variant".bold(), info.name, variant_info.name,)
+            }
+            Q::Class(id) => format!("({}) {}", "class".bold(), self.get_class_info(*id).name),
+            Q::Import(id) => format!("({}) {}", "import".bold(), self.get_import_info(*id).name),
+        };
+
         let alias_name = e.name.lexeme(self.source);
         let alias_id = self.create_entity(ir::Entity::Alias(ir::AliasInfo { path }));
         self.scope.insert(alias_name, alias_id);
+
+        eprintln!(
+            "{}{entity_desc} {} {alias_name}",
+            "alias".bold(),
+            "as".bold()
+        );
 
         ir::Stmt::Nothing
     }

@@ -12,6 +12,7 @@ use codespan_reporting::{
         Config,
     },
 };
+use colored::Colorize;
 use std::path::{Path, PathBuf};
 
 pub struct Compiler<Stage> {
@@ -173,7 +174,7 @@ impl Compiler<Parsed> {
             for id in scc {
                 let (file, path, Parsed(ast)) = files[id].take().unwrap();
                 let name = file.name();
-                eprintln!("\n--> checking '{}' ...", name);
+                eprintln!("{}", format!("\n=== checking '{}' ===", name).underline());
 
                 let ir = Self::check_file(&file, id, &ast, &deps, &mut reports);
                 checked[id] = Some((file, path, Checked(ir)))

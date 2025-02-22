@@ -146,7 +146,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         args: &[ast::Pattern],
         span: Span,
     ) -> (ir::Pattern, ir::TypeID) {
-        let q = self.check_path(e);
+        let q = self.check_path_or_expr(e);
         let (args, arg_types): (Vec<_>, Vec<_>) = args
             .iter()
             .map(|item| self.declare_pattern_with_protection(item, Protection::Disallowed))
@@ -222,7 +222,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     fn declare_access_pattern(&mut self, e: &ast::Expr, span: Span) -> (ir::Pattern, ir::TypeID) {
         use ir::Pattern as I;
-        match self.check_path(e) {
+        match self.check_path_or_expr(e) {
             Q::Variant(id, tag) => {
                 let (info, variant) = self.get_union_variant_info(id, tag);
 
