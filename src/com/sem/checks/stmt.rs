@@ -39,15 +39,4 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
         }
     }
-
-    pub fn check_file(&mut self, ast: &ast::File) -> ir::File {
-        let stmts = ast.0.iter().map(|e| self.check_statement(e)).collect();
-
-        let constraints = self.solve_constraints();
-        if !constraints.is_empty() {
-            panic!("unsolved constraints remain in the module");
-        }
-
-        ir::File { stmts }
-    }
 }

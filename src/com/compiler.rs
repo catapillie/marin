@@ -1,7 +1,7 @@
 use super::{
     ast, ir,
     reporting::{Header, Report},
-    sem::{self, DepGraph},
+    sem::{self},
     Checker, Parser,
 };
 use codespan_reporting::{
@@ -145,44 +145,42 @@ impl Compiler<Source> {
 }
 
 impl Compiler<Parsed> {
-    fn check_file(
-        file: &File,
-        id: usize,
-        ast: &ast::File,
-        deps: &DepGraph,
-        reports: &mut Vec<Report>,
-    ) -> ir::File {
-        let mut checker = Checker::new(file.source(), id, deps, reports);
-        checker.check_file(ast)
-    }
-
     pub fn check(mut self) -> Compiler<Checked> {
         let deps = sem::build_dependency_graph(&self.files, &mut self.reports);
         let order = sem::sort_dependencies(&deps, &self.files, &mut self.reports);
 
-        let mut files = self
-            .files
-            .0
-            .into_iter()
-            .map(Option::Some)
-            .collect::<Vec<_>>();
-        let mut checked = Vec::new();
-        checked.resize_with(files.len(), || None);
+        let files = self.files.0;
+        let mut irs = Vec::new();
+        irs.resize_with(files.len(), || None);
 
         let mut reports = Vec::new();
+        let mut checker = Checker::new(&deps, &mut reports);
+
         for scc in order {
             for id in scc {
-                let (file, path, Parsed(ast)) = files[id].take().unwrap();
-                let name = file.name();
-                eprintln!("{}", format!("\n=== checking '{}' ===", name).underline());
+                let (file, _, Parsed(ast)) = &files[id];
 
-                let ir = Self::check_file(&file, id, &ast, &deps, &mut reports);
-                checked[id] = Some((file, path, Checked(ir)))
+                eprintln!(
+                    "{}",
+                    format!("\n=== checking '{}' ===", file.name()).underline()
+                );
+
+                let ir = checker.check_file(id, file.source(), ast);
+                irs[id] = Some(Checked(ir))
             }
         }
         self.reports.append(&mut reports);
 
-        let checked_files = checked.into_iter().map(Option::unwrap).collect();
+        let checked_files = files
+            .into_iter()
+            .zip(irs)
+            .map(|((file, path, _), ir)| {
+                let ir =
+                    ir.unwrap_or_else(|| panic!("file '{}' was left unchecked", &path.display()));
+                (file, path, ir)
+            })
+            .collect();
+
         Compiler {
             reports: self.reports,
             files: Files(checked_files),

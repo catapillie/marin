@@ -24,15 +24,10 @@ pub struct Checker<'src, 'e> {
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn new(
-        source: &'src str,
-        file: usize,
-        deps: &'e deps::DepGraph,
-        reports: &'e mut Vec<Report>,
-    ) -> Self {
+    pub fn new(deps: &'e deps::DepGraph, reports: &'e mut Vec<Report>) -> Self {
         let mut checker = Self {
-            source,
-            file,
+            source: "",
+            file: 0,
             deps,
             reports,
 
