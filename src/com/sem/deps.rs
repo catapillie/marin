@@ -116,7 +116,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
             } else if let Some(first_span) = import_spans.get(&dep_id) {
                 // no need to warning if this is only a partial reimport
                 // for example, it's okay to reimport in order to set aliases
-                if !is_total {
+                if is_total {
                     reports.push(
                         Report::warning(Header::FileReimported(
                             short_dep_path.display().to_string(),
