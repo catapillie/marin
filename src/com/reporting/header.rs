@@ -43,16 +43,13 @@ pub enum Header {
     InvalidSkip(Option<String>),
     UnallowedSignatureName(),
     UnknownBinding(String),
-    UnknownType(String),
     UnknownVariant(String, String),
     UnknownClassItem(String, String),
-    NotType(String),
     TypeMismatch(TypeString, TypeString),
     UnreachableConditionalBranches(usize),
     RefutablePattern(),
     UnionNoArgs(String),
     UnionVariantNoArgs(String),
-    IncompleteType(),
     IncompleteVariant(String),
     IncorrectVariantArgs(String),
     IncorrectVariantArgCount(String, usize, usize),
@@ -111,16 +108,13 @@ impl Header {
             H::InvalidSkip(..) => "invalid_skip",
             H::UnallowedSignatureName(..) => "unallowed_signature_name",
             H::UnknownBinding(..) => "unknown_binding",
-            H::UnknownType(..) => "unknown_type",
             H::UnknownVariant(..) => "unknown_variant",
             H::UnknownClassItem(..) => "unknown_class_item",
-            H::NotType(..) => "not_type",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
             H::RefutablePattern(..) => "refutable_pattern",
             H::UnionNoArgs(..) => "union_no_args",
             H::UnionVariantNoArgs(..) => "union_variant_no_args",
-            H::IncompleteType(..) => "incomplete_type",
             H::IncompleteVariant(_) => "incomplete_variant",
             H::IncorrectVariantArgs(..) => "incorrect_variant_args",
             H::IncorrectVariantArgCount(..) => "incorrect_variant_arg_count",
@@ -221,14 +215,10 @@ impl Header {
                 => format!("invalid skip in label '{name}'"),
             H::UnknownBinding(name)
                 => format!("unknown binding '{name}' in the current scope"),
-            H::UnknownType(name)
-                => format!("unknown type '{name}' in the current scope"),
             H::UnknownVariant(name, union_name)
                 => format!("unknown variant '{name}' in union type '{union_name}'"),
             H::UnknownClassItem(name, class_name)
                 => format!("unknown item '{name}' in class '{class_name}'"),
-            H::NotType(name)
-                => format!("identifier '{name}' does not refer to a type in the current scope"),
             H::TypeMismatch(left, right)
                 => format!("type mismatch between {left} and {right}"),
             H::UnreachableConditionalBranches(1)
@@ -241,8 +231,6 @@ impl Header {
                 => format!("non-constant union type '{name}' has no arguments"),
             H::UnionVariantNoArgs(name)
                 => format!("non-constant union variant '{name}' has no arguments"),
-            H::IncompleteType()
-                => "incomplete type expression".to_string(),
             H::IncompleteVariant(name)
                 => format!("variant pattern '{name}' is incomplete"),
             H::IncorrectVariantArgs(name)
