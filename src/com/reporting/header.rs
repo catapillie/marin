@@ -68,7 +68,6 @@ pub enum Header {
     UninstantiatedItems(String),
     UnsatisfiedContraint(ConstraintString),
     AmbiguousConstraintSolution(ConstraintString),
-    DisallowedPub(),
     ExpressionAlias(),
 }
 
@@ -137,7 +136,6 @@ impl Header {
             H::UninstantiatedItems(..) => "uninstantiated_items",
             H::UnsatisfiedContraint(..) => "unsatisfied_contraint",
             H::AmbiguousConstraintSolution(..) => "ambiguous_constraint_solution",
-            H::DisallowedPub(..) => "disallowed_pub",
             H::ExpressionAlias(..) => "expression_alias",
         }
     }
@@ -279,8 +277,6 @@ impl Header {
                 => format!("unsatisfied constraint [{constraint}]"),
             H::AmbiguousConstraintSolution(constraint)
                 => format!("ambiguous solution for constraint [{constraint}]"),
-            H::DisallowedPub()
-                => "disallowed usage of the 'pub' access modifier".to_string(),
             H::ExpressionAlias()
                 => "disallowed usage of 'alias' for an expression".to_string(),
         }

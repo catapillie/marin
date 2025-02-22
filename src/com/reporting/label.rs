@@ -52,7 +52,6 @@ pub enum Label {
     ConstraintOrigin(ConstraintString),
     MatchingInstances(ConstraintString),
     SuchInstance,
-    CannotBePublic,
     CannotAliasExpression,
 }
 
@@ -189,8 +188,6 @@ impl Label {
                 => format!("there are more than one instance of [{constraint}] in the current scope"),
             L::SuchInstance
                 => "this instance matches".to_string(),
-            L::CannotBePublic
-                => "none of the inner patterns here are allowed to be marked public".to_string(),
             L::CannotAliasExpression
                 => "aliasing an expression is not allowed".to_string(),
         }

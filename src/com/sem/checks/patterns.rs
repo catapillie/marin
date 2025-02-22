@@ -1,4 +1,3 @@
-use ir::PathQuery as Q;
 use crate::com::{
     ast, ir,
     loc::Span,
@@ -6,8 +5,9 @@ use crate::com::{
     sem::provenance::Provenance,
     Checker,
 };
-
 use std::collections::HashMap;
+
+use ir::PathQuery as Q;
 
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_pattern(&mut self, e: &ast::Expr) -> ast::Pattern {
@@ -22,7 +22,6 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::String(e) => P::String(e.span),
             E::True(e) => P::True(e.span),
             E::False(e) => P::False(e.span),
-            E::Pub(e) => P::Pub(e.pub_kw, Box::new(self.check_pattern(&e.expr))),
             E::Tuple(e) if e.items.len() == 1 => self.check_pattern(&e.items[0]),
             E::Tuple(e) => P::Tuple(
                 e.left_paren,
@@ -69,24 +68,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
-    /// Allows 'pub' to be used
     pub fn declare_pattern(&mut self, p: &ast::Pattern) -> (ir::Pattern, ir::TypeID) {
-        self.declare_pattern_with_protection(p, Protection::Allowed(false))
-    }
-
-    /// Prevents 'pub' from being used
-    pub fn declare_pattern_unprotected(&mut self, p: &ast::Pattern) -> (ir::Pattern, ir::TypeID) {
-        self.declare_pattern_with_protection(p, Protection::Disallowed)
-    }
-
-    fn declare_pattern_with_protection(
-        &mut self,
-        p: &ast::Pattern,
-        prot: Protection,
-    ) -> (ir::Pattern, ir::TypeID) {
         use ast::Pattern as P;
         use ir::Pattern as I;
-        use Protection as Prot;
         let span = p.span();
         match p {
             P::Missing(_) => self.declare_missing_pattern(),
@@ -94,7 +78,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             P::Binding(_) => {
                 let name = span.lexeme(self.source);
                 let ty = self.create_fresh_type(Some(span));
-                let id = self.create_variable_mono(name, ty, span, prot.get_modifier());
+                let id = self.create_variable_mono(name, ty, span, false);
                 (I::Binding(id), ty)
             }
             P::Int(_) => (
@@ -113,22 +97,9 @@ impl<'src, 'e> Checker<'src, 'e> {
             ),
             P::True(_) => (I::Bool(true), self.create_type(ir::Type::Bool, Some(span))),
             P::False(_) => (I::Bool(false), self.create_type(ir::Type::Bool, Some(span))),
-            P::Pub(pub_span, pat) => match prot {
-                Prot::Allowed(_) => self.declare_pattern_with_protection(pat, Prot::Allowed(true)),
-                Prot::Disallowed => {
-                    self.reports.push(
-                        Report::error(Header::DisallowedPub())
-                            .with_primary_label(Label::Empty, pub_span.wrap(self.file))
-                            .with_secondary_label(Label::CannotBePublic, span.wrap(self.file)),
-                    );
-                    self.declare_pattern_unprotected(pat)
-                }
-            },
             P::Tuple(_, _, items) => {
-                let (items, item_types): (Vec<_>, Vec<_>) = items
-                    .iter()
-                    .map(|item| self.declare_pattern_with_protection(item, prot))
-                    .unzip();
+                let (items, item_types): (Vec<_>, Vec<_>) =
+                    items.iter().map(|item| self.declare_pattern(item)).unzip();
                 (
                     I::Tuple(items.into()),
                     self.create_type(ir::Type::Tuple(item_types.into()), Some(span)),
@@ -136,7 +107,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             }
             P::Call(_, _, e, args) => self.declare_call_pattern(e, args, span),
             P::Access(e) => self.declare_access_pattern(e, span),
-            P::Record(_, _, fields) => self.declare_record_pattern(fields, span, prot),
+            P::Record(_, _, fields) => self.declare_record_pattern(fields, span),
         }
     }
 
@@ -147,10 +118,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         span: Span,
     ) -> (ir::Pattern, ir::TypeID) {
         let q = self.check_path_or_expr(e);
-        let (args, arg_types): (Vec<_>, Vec<_>) = args
-            .iter()
-            .map(|item| self.declare_pattern_with_protection(item, Protection::Disallowed))
-            .unzip();
+        let (args, arg_types): (Vec<_>, Vec<_>) =
+            args.iter().map(|item| self.declare_pattern(item)).unzip();
 
         use ir::Pattern as I;
         match q {
@@ -264,7 +233,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         &mut self,
         field_pats: &[(Option<Span>, Option<ast::Pattern>)],
         span: Span,
-        prot: Protection,
     ) -> (ir::Pattern, ir::TypeID) {
         let mut fields = HashMap::new();
         for (name, pat) in field_pats {
@@ -278,7 +246,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 None => &ast::Pattern::Binding(*name_span),
             };
 
-            let pat = self.declare_pattern_with_protection(field_pattern, prot);
+            let pat = self.declare_pattern(field_pattern);
             fields.insert(field_name, pat);
         }
 
@@ -370,20 +338,5 @@ impl<'src, 'e> Checker<'src, 'e> {
 
     fn declare_missing_pattern(&mut self) -> (ir::Pattern, ir::TypeID) {
         (ir::Pattern::Missing, self.create_fresh_type(None))
-    }
-}
-
-#[derive(Copy, Clone)]
-enum Protection {
-    Allowed(bool),
-    Disallowed,
-}
-
-impl Protection {
-    fn get_modifier(&self) -> bool {
-        match self {
-            Protection::Allowed(m) => *m,
-            Protection::Disallowed => false,
-        }
     }
 }

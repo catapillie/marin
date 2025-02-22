@@ -22,7 +22,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
             self.open_scope(false);
 
-            let (pattern, pattern_type) = self.declare_pattern_unprotected(&pattern);
+            let (pattern, pattern_type) = self.declare_pattern(&pattern);
             self.unify(scrut_type, pattern_type, &[]);
 
             let (val, val_type) = self.check_expression(&case.value);
