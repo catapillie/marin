@@ -52,6 +52,7 @@ pub enum Label {
     ConstraintOrigin(ConstraintString),
     MatchingInstances(ConstraintString),
     SuchInstance,
+    CannotBePublic,
 }
 
 impl Label {
@@ -114,7 +115,7 @@ impl Label {
             L::VariableDefinition(name)
                 => format!("variable '{name}' is defined here"),
             L::NamelessSignature
-                => "function signature has no name".to_string(), 
+                => "function signature has no name".to_string(),
             L::FunctionTypeCannotHaveName(name)
                 => format!("a function type cannot have a name ('{name}')"),
             L::LetBindingPattern
@@ -150,7 +151,7 @@ impl Label {
             L::RecordTypeArgCount(name, 1)
                 => format!("record type '{name}' takes in a single argument"),
             L::RecordTypeArgCount(name, count)
-                => format!("record type '{name}' takes in {count} arguments"), 
+                => format!("record type '{name}' takes in {count} arguments"),
             L::RecordTypeNoArgs(name)
                 => format!("record type '{name}' does not take in any argument"),
             L::RecordDefinition(name)
@@ -187,6 +188,8 @@ impl Label {
                 => format!("there are more than one instance of [{constraint}] in the current scope"),
             L::SuchInstance
                 => "this instance matches".to_string(),
+            L::CannotBePublic
+                => "none of the inner patterns here are allowed to be marked public".to_string(),
         }
     }
 }

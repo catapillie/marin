@@ -195,6 +195,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Skip => self.try_parse_skip_expression(),
             Token::Fun => self.try_parse_fun_expression(),
             Token::Let => return self.try_parse_let_expression(),
+            Token::Pub => return self.try_parse_pub_expression(),
 
             Token::Import => return self.try_parse_import_expression(),
             Token::Super => self.try_parse_super_expression(),
@@ -516,6 +517,16 @@ impl<'src, 'e> Parser<'src, 'e> {
             assign,
             pattern: Box::new(pattern),
             value: Box::new(value),
+        }))
+    }
+
+    fn try_parse_pub_expression(&mut self) -> Option<ast::Expr> {
+        let pub_kw = self.try_expect_token(Token::Pub)?;
+        let expr = self.expect_primary_expression();
+
+        Some(ast::Expr::Pub(ast::Pub {
+            pub_kw,
+            expr: Box::new(expr),
         }))
     }
 

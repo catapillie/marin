@@ -70,6 +70,7 @@ pub enum Header {
     UninstantiatedItems(String),
     UnsatisfiedContraint(ConstraintString),
     AmbiguousConstraintSolution(ConstraintString),
+    DisallowedPub(),
 }
 
 impl Header {
@@ -142,6 +143,7 @@ impl Header {
             H::UninstantiatedItems(..) => "uninstantiated_items",
             H::UnsatisfiedContraint(..) => "unsatisfied_contraint",
             H::AmbiguousConstraintSolution(..) => "ambiguous_constraint_solution",
+            H::DisallowedPub(..) => "disallowed_pub",
         }
     }
 
@@ -286,6 +288,8 @@ impl Header {
                 => format!("unsatisfied constraint [{constraint}]"),
             H::AmbiguousConstraintSolution(constraint)
                 => format!("ambiguous solution for constraint [{constraint}]"),
+            H::DisallowedPub()
+                => "disallowed usage of the 'pub' access modifier".to_string(),
         }
     }
 }

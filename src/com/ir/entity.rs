@@ -19,6 +19,9 @@ pub struct Variable {
     pub name: String,
     pub scheme: Scheme,
     pub loc: Loc,
+
+    #[allow(dead_code)]
+    pub public: bool,
 }
 
 pub struct RecordInfo {

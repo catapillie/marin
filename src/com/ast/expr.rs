@@ -21,6 +21,7 @@ pub enum Expr {
     Call(Call),
     Access(Access),
     Let(Let),
+    Pub(Pub),
     Fun(Fun),
     Import(Import),
     Super(Lexeme),
@@ -160,6 +161,12 @@ pub struct Let {
     pub assign: Option<Span>,
     pub pattern: Box<Expr>,
     pub value: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Pub {
+    pub pub_kw: Span,
+    pub expr: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -321,6 +328,12 @@ impl Let {
     }
 }
 
+impl Pub {
+    pub fn span(&self) -> Span {
+        mix_spans([self.pub_kw, self.expr.span()])
+    }
+}
+
 impl Fun {
     pub fn span(&self) -> Span {
         mix_spans([
@@ -427,6 +440,7 @@ impl Expr {
             Self::Call(e) => e.span(),
             Self::Access(e) => e.span(),
             Self::Let(e) => e.span(),
+            Self::Pub(e) => e.span(),
             Self::Fun(e) => e.span(),
             Self::Import(e) => e.span(),
             Self::Super(e) => e.span,

@@ -44,6 +44,8 @@ pub enum Token {
     End,
     #[token("let")]
     Let,
+    #[token("pub")]
+    Pub,
     #[token("fun")]
     Fun,
     #[token("if")]
@@ -122,6 +124,7 @@ impl Display for Token {
             Token::Do => write!(f, "'do' keyword"),
             Token::End => write!(f, "'end' keyword"),
             Token::Let => write!(f, "'let' keyword"),
+            Token::Pub => write!(f, "'pub' keyword"),
             Token::Fun => write!(f, "'fun' keyword"),
             Token::If => write!(f, "'if' keyword"),
             Token::Then => write!(f, "'then' keyword"),

@@ -58,6 +58,9 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
             walk_expr(&e.pattern, nodes);
             walk_expr(&e.value, nodes);
         }
+        E::Pub(e) => {
+            walk_expr(&e.expr, nodes);
+        }
         E::Fun(e) => {
             walk_expr(&e.signature, nodes);
             walk_expr(&e.value, nodes);

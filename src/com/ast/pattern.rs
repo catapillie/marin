@@ -11,6 +11,7 @@ pub enum Pattern {
     String(Span),
     True(Span),
     False(Span),
+    Pub(Span, Box<Pattern>),
     Tuple(Span, Span, Box<[Pattern]>),
     Call(Span, Span, Box<Expr>, Box<[Pattern]>),
     Access(Box<Expr>),
@@ -29,6 +30,7 @@ impl Pattern {
             P::String(span) => *span,
             P::True(span) => *span,
             P::False(span) => *span,
+            P::Pub(pub_kw, pattern) => mix_spans([*pub_kw, pattern.span()]),
             P::Tuple(left_paren, right_paren, items) => {
                 mix_spans([*left_paren, *right_paren, item_spans(items)])
             }
@@ -51,6 +53,7 @@ impl Pattern {
             P::String(_) => false,
             P::True(_) => false,
             P::False(_) => false,
+            P::Pub(_, pat) => pat.is_irrefutable(),
             P::Tuple(_, _, items) => items.iter().all(Self::is_irrefutable),
             P::Call(..) => false,
             P::Access(_) => false,

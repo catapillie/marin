@@ -9,13 +9,17 @@ use crate::com::{
 };
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_pattern_or_signature(
+    fn check_pattern_or_signature(
         &mut self,
         e: &ast::Expr,
-    ) -> Either<ast::Pattern, ast::Signature> {
+    ) -> Either<ast::Pattern, (ast::Signature, bool)> {
         use ast::Expr as E;
         match e {
-            E::Call(..) => Either::Right(self.check_signature(e, true)),
+            E::Pub(p) => match &*p.expr {
+                E::Call(..) => Either::Right((self.check_signature(&p.expr, true), true)),
+                _ => Either::Left(self.check_pattern(e)),
+            },
+            E::Call(..) => Either::Right((self.check_signature(e, true), false)),
             _ => Either::Left(self.check_pattern(e)),
         }
     }
@@ -73,7 +77,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
                 (ir::Stmt::Let(pattern, value), bindings)
             }
-            Either::Right(signature) => {
+            Either::Right((signature, is_public)) => {
                 for arg_pattern in signature.arg_patterns() {
                     if !arg_pattern.is_irrefutable() {
                         self.reports.push(
@@ -120,7 +124,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                     self.add_class_constraint(&mut scheme, constraint);
                 }
 
-                let id = self.create_variable_poly(name, scheme, name_span);
+                let id = self.create_variable_poly(name, scheme, name_span, is_public);
                 let pattern = ir::Pattern::Binding(id);
                 let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
 
