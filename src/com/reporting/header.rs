@@ -71,6 +71,7 @@ pub enum Header {
     UnsatisfiedContraint(ConstraintString),
     AmbiguousConstraintSolution(ConstraintString),
     DisallowedPub(),
+    ExpressionAlias(),
 }
 
 impl Header {
@@ -79,19 +80,16 @@ impl Header {
         use Header as H;
         match self {
             H::Internal(..) => "internal",
-
             H::CompilerNoInput(..) => "compiler_no_input",
             H::CompilerNoSuchPath(..) => "compiler_no_such_path",
             H::CompilerBadExtension(..) => "compiler_bad_extension",
             H::CompilerIO(..) => "compiler_io",
-
             H::InvalidDependencyPath(..) => "invalid_dependency_path",
             H::NoSuchDependency(..) => "no_such_dependency",
             H::UnstagedDependency(..) => "unstaged_dependency",
             H::SelfDependency(..) => "self_dependency",
             H::DependencyCycle(..) => "dependency_cycle",
             H::OutsideDependency(..) => "outside_dependency",
-
             H::InvalidCharacterSequence(..) => "invalid_character_sequence",
             H::ExpectedToken(..) => "expected_token",
             H::ExpectedExpression(..) => "expected_expression",
@@ -144,6 +142,7 @@ impl Header {
             H::UnsatisfiedContraint(..) => "unsatisfied_contraint",
             H::AmbiguousConstraintSolution(..) => "ambiguous_constraint_solution",
             H::DisallowedPub(..) => "disallowed_pub",
+            H::ExpressionAlias(..) => "expression_alias",
         }
     }
 
@@ -290,6 +289,8 @@ impl Header {
                 => format!("ambiguous solution for constraint [{constraint}]"),
             H::DisallowedPub()
                 => "disallowed usage of the 'pub' access modifier".to_string(),
+            H::ExpressionAlias()
+                => "disallowed usage of 'alias' for an expression".to_string(),
         }
     }
 }

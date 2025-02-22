@@ -102,6 +102,5 @@ pub struct ImportInfo {
 }
 
 pub struct AliasInfo {
-    pub loc: Loc,
     pub path: PathQuery,
 }
