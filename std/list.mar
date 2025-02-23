@@ -35,3 +35,20 @@ pub let fold_left(f)(init, l) do
     end
     aux(init, l)
 end
+
+pub let filter(p)(l) match l with
+    empty       => empty
+    cons(x, xs) => if p(x) then
+        cons(x, filter(p)(xs))
+    else
+        filter(p)(xs)
+    end
+end
+
+pub let filter_map(f)(l) match l with
+    empty => empty
+    cons(x, xs) => match f(x) with
+        Option.none    => filter_map(f)(xs)
+        Option.some(y) => list.cons(y, filter_map(f)(xs))
+    end
+end
