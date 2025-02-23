@@ -8,7 +8,7 @@ use colored::Colorize;
 use ast::Expr as E;
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_import(&mut self, e: &ast::Import) -> ir::Stmt {
+    pub fn check_import(&mut self, e: &ast::Import, public: bool) -> ir::Stmt {
         for query in &e.queries {
             let file_name_span = match &*query.query {
                 E::Var(lex) => lex.span,
@@ -48,6 +48,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 file: dep_file,
             }));
             self.scope.insert(import_name, import_id);
+            self.set_entity_public(import_id, public);
 
             // import all instances of classes in our scope
             // make sure to copy them and reset them to private so they aren't exported from this file
