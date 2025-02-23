@@ -62,7 +62,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         ir::Stmt::Nothing
     }
 
-    pub fn check_import_from(&mut self, e: &ast::ImportFrom) -> ir::Stmt {
+    pub fn check_import_from(&mut self, e: &ast::ImportFrom, public: bool) -> ir::Stmt {
         let file_name_span = match &*e.path_query {
             E::Var(lex) => lex.span,
             E::Access(e) => match &*e.accessor {
@@ -124,6 +124,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 path,
             }));
             self.scope.insert(import_name, alias_id);
+            self.set_entity_public(alias_id, public);
 
             eprintln!("    {item_name} {} '{import_name}'", "as".bold());
         }

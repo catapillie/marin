@@ -11,6 +11,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Pub(e) => match &*e.expr {
                 E::Let(e) => self.check_let(e, true),
                 E::Alias(e) => self.check_alias(e, true),
+                E::ImportFrom(e) => self.check_import_from(e, true),
                 E::Record(e) => self.check_record(e, true),
                 E::Union(e) => self.check_union(e, true),
                 E::Class(e) => self.check_class(e, true),
@@ -29,7 +30,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             E::Let(e) => self.check_let(e, false),
             E::Alias(e) => self.check_alias(e, false),
             E::Import(e) => self.check_import(e),
-            E::ImportFrom(e) => self.check_import_from(e),
+            E::ImportFrom(e) => self.check_import_from(e, false),
             E::Record(e) => self.check_record(e, false),
             E::Union(e) => self.check_union(e, false),
             E::Class(e) => self.check_class(e, false),
