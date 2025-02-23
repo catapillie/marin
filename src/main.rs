@@ -6,6 +6,8 @@ fn main() {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
 
     let mut compiler = com::init();
+    
+    compiler.add_marin_std();
     for arg in &args {
         compiler.add_file(arg);
     }

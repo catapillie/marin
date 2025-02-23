@@ -5,6 +5,7 @@ use crate::com::{
     ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
+    sem::checker::checker_print,
     Checker,
 };
 
@@ -27,7 +28,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             let info = self.get_variable(binding);
             let name = info.name.clone();
             let scheme = info.scheme.clone();
-            eprintln!(
+            checker_print!(
+                self,
                 "{} {name} :: {}",
                 "let".bold(),
                 self.get_scheme_string(&scheme)

@@ -1,18 +1,31 @@
+use crate::com::{
+    ast, ir,
+    sem::checker::{checker_print, Export},
+    Checker,
+};
+use colored::Colorize;
 use std::collections::HashMap;
 
-use colored::Colorize;
-
-use crate::com::{ast, ir, sem::checker::Export, Checker};
-
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn check_file(
+    pub fn check_module(
         &mut self,
+        file_name: &str,
         file_id: usize,
         file_source: &'src str,
         ast: &ast::File,
-    ) -> ir::File {
+        options: CheckModuleOptions,
+    ) -> ir::Module {
         self.file = file_id;
         self.source = file_source;
+        self.options = options;
+
+        checker_print!(
+            self,
+            "\n{}",
+            format!("=== checking '{}' ===", file_name)
+                .on_bright_white()
+                .black()
+        );
 
         self.open_scope(true);
 
@@ -26,14 +39,14 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.close_scope();
 
         if !exports.is_empty() || !instances.is_empty() {
-            eprintln!("{}", "\nexport".bold());
+            checker_print!(self, "{}", "\nexport".bold());
             for id in exports.values() {
-                eprintln!("    {}", self.get_entity_display(*id))
+                checker_print!(self, "    {}", self.get_entity_display(*id))
             }
             for id in &instances {
-                eprintln!("    {}", self.get_entity_display(*id))
+                checker_print!(self, "    {}", self.get_entity_display(*id))
             }
-            eprintln!("{}", "end".bold());
+            checker_print!(self, "{}", "end".bold());
         }
 
         self.exports[self.file] = Export {
@@ -42,7 +55,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             instances,
         };
 
-        ir::File { stmts }
+        ir::Module { stmts }
     }
 
     // (exports, instances)
@@ -64,5 +77,20 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         (exports, instances)
+    }
+}
+
+pub struct CheckModuleOptions {
+    pub is_verbose: bool,
+}
+
+impl CheckModuleOptions {
+    pub fn new() -> Self {
+        Self { is_verbose: false }
+    }
+
+    pub fn set_verbose(mut self, is_verbose: bool) -> Self {
+        self.is_verbose = is_verbose;
+        self
     }
 }

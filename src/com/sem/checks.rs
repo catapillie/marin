@@ -51,3 +51,4 @@ mod path_call;
 mod path_var;
 
 mod file;
+pub use file::CheckModuleOptions;

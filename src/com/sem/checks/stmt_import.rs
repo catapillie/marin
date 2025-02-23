@@ -1,6 +1,7 @@
 use crate::com::{
     ast, ir,
     reporting::{Header, Label, Note, Report},
+    sem::checker::checker_print,
     Checker,
 };
 use colored::Colorize;
@@ -36,7 +37,8 @@ impl<'src, 'e> Checker<'src, 'e> {
                 continue;
             };
 
-            eprintln!(
+            checker_print!(
+                self,
                 "{} {file_name} {} '{import_name}'",
                 "import".bold(),
                 "as".bold()
@@ -84,7 +86,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             return ir::Stmt::Nothing;
         };
 
-        eprintln!("{}", "import".bold());
+        checker_print!(self, "{}", "import".bold());
         for query in &e.queries {
             let E::Var(item_name_span) = &*query.query else {
                 self.reports.push(
@@ -127,9 +129,9 @@ impl<'src, 'e> Checker<'src, 'e> {
             self.scope.insert(import_name, alias_id);
             self.set_entity_public(alias_id, public);
 
-            eprintln!("    {item_name} {} '{import_name}'", "as".bold());
+            checker_print!(self, "    {item_name} {} '{import_name}'", "as".bold());
         }
-        eprintln!("{} {file_name}", "from".bold());
+        checker_print!(self, "{} {file_name}", "from".bold());
 
         ir::Stmt::Nothing
     }

@@ -1,7 +1,9 @@
 mod checker;
+mod checks;
 mod deps;
 mod provenance;
-mod checks;
+
+pub use deps::*;
 
 pub use checker::Checker;
-pub use deps::*;
+pub use checks::CheckModuleOptions;

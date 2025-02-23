@@ -1,5 +1,5 @@
 use super::Stmt;
 
-pub struct File {
+pub struct Module {
     pub stmts: Box<[Stmt]>,
 }

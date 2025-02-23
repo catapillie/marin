@@ -14,7 +14,7 @@ impl<'a> Walker<'a> {
         }
     }
 
-    pub fn eval_file(&mut self, ir: &'a ir::File) -> std::result::Result<(), Error> {
+    pub fn eval_file(&mut self, ir: &'a ir::Module) -> std::result::Result<(), Error> {
         for stmt in &ir.stmts {
             if let Some(e) = self.eval_statement(stmt)? {
                 println!("{e}")

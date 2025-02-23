@@ -2,6 +2,7 @@ use crate::com::{
     ast, ir,
     loc::Span,
     reporting::{Header, Label, Note, Report},
+    sem::checker::checker_print,
     Checker,
 };
 use colored::Colorize;
@@ -168,9 +169,10 @@ impl<'src, 'e> Checker<'src, 'e> {
             .iter()
             .map(|item| (item.name.clone(), item.scheme.clone()))
             .collect::<Vec<_>>();
-        eprintln!("{} {}", "class".bold(), class_name);
+        checker_print!(self, "{} {}", "class".bold(), class_name);
         for (item_name, scheme) in items {
-            eprintln!(
+            checker_print!(
+                self,
                 "    {} {}.{} :: {}",
                 "let".bold(),
                 class_name,
@@ -178,7 +180,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.get_scheme_string(&scheme)
             );
         }
-        eprintln!("{}", "end".bold());
+        checker_print!(self, "{}", "end".bold());
 
         ir::Stmt::Nothing
     }

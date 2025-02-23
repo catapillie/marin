@@ -28,7 +28,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         .canonicalize()
         .expect("couldn't normalize current directory");
 
-    for (file_id, (file, path, Parsed(ast::File(ast)))) in files.0.iter().enumerate() {
+    for (file_id, (file, path, Parsed(ast::File(ast), _))) in files.0.iter().enumerate() {
         graph.add_edge(file_id, file_id, HashSet::new());
 
         let source = file.source();

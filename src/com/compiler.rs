@@ -12,7 +12,6 @@ use codespan_reporting::{
         Config,
     },
 };
-use colored::Colorize;
 use std::path::{Path, PathBuf};
 
 pub struct Compiler<Stage, Info> {
@@ -22,15 +21,32 @@ pub struct Compiler<Stage, Info> {
 }
 
 // compiler stage
-pub struct Staged(PathBuf);
-pub struct Source;
-pub struct Parsed(pub ast::File);
-pub struct Checked(pub ir::File);
+#[derive(Default, Clone)]
+pub struct StagedFileInfo {
+    is_from_std: bool,
+}
+impl StagedFileInfo {
+    pub fn marin_std_file() -> Self {
+        Self { is_from_std: true }
+    }
+}
+pub struct Staged(PathBuf, StagedFileInfo);
+
+pub struct Sourced(StagedFileInfo);
+
+pub struct Parsed(pub ast::File, pub StagedFileInfo);
+
+pub struct Checked(pub ir::Module);
 
 // compiler info
-pub struct StagedInfo;
+pub struct StagedInfo {
+    staged_std: bool,
+}
+
 pub struct SourceInfo;
+
 pub struct ParsedInfo;
+
 pub struct CheckedInfo {
     pub evaluation_order: Vec<usize>,
 }
@@ -40,7 +56,7 @@ pub fn init() -> Compiler<Staged, StagedInfo> {
     Compiler {
         reports: Vec::new(),
         files: Files::default(),
-        info: StagedInfo,
+        info: StagedInfo { staged_std: false },
     }
 }
 
@@ -68,7 +84,66 @@ impl<T, I> Compiler<T, I> {
 }
 
 impl Compiler<Staged, StagedInfo> {
+    // pub fn add_dir(&mut self, path: impl AsRef<Path>) {
+    //     self.add_dir_with_info(path, StagedFileInfo::default());
+    // }
+
+    fn add_dir_with_info(&mut self, path: impl AsRef<Path>, info: StagedFileInfo) {
+        let path = path.as_ref();
+        let path_display = path.display().to_string();
+
+        let entries = match std::fs::read_dir(path) {
+            Ok(entries) => entries,
+            Err(err) => {
+                self.reports.push(Report::error(Header::CompilerIO(
+                    path_display.to_string(),
+                    err.to_string(),
+                )));
+                return;
+            }
+        };
+
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(err) => {
+                    self.reports.push(Report::error(Header::CompilerIO(
+                        path_display.to_string(),
+                        err.to_string(),
+                    )));
+                    continue;
+                }
+            };
+
+            let entry_path = entry.path();
+            let entry_type = match entry.file_type() {
+                Ok(kind) => kind,
+                Err(err) => {
+                    self.reports.push(Report::error(Header::CompilerIO(
+                        entry_path.display().to_string(),
+                        err.to_string(),
+                    )));
+                    continue;
+                }
+            };
+
+            if entry_type.is_dir() {
+                self.add_dir_with_info(&entry_path, info.clone());
+                continue;
+            }
+
+            if entry_type.is_file() {
+                self.add_file_with_info(&entry_path, info.clone());
+                continue;
+            }
+        }
+    }
+
     pub fn add_file(&mut self, path: impl AsRef<Path>) {
+        self.add_file_with_info(path, StagedFileInfo::default());
+    }
+
+    fn add_file_with_info(&mut self, path: impl AsRef<Path>, info: StagedFileInfo) {
         let path = path.as_ref();
         let path_display = path.display().to_string();
 
@@ -89,8 +164,22 @@ impl Compiler<Staged, StagedInfo> {
         self.files.0.push((
             File::new(String::new(), String::new()),
             full_path,
-            Staged(path.to_path_buf()),
+            Staged(path.to_path_buf(), info),
         ))
+    }
+
+    pub fn add_marin_std(&mut self) {
+        if self.info.staged_std {
+            panic!("marin std library is already staged");
+        }
+
+        let marin_std_path = std::env::current_exe()
+            .expect("need access to current executable directory")
+            .parent()
+            .unwrap()
+            .join("std");
+        self.add_dir_with_info(&marin_std_path, StagedFileInfo::marin_std_file());
+        self.info.staged_std = true;
     }
 
     fn read_file(staged: &Staged, reports: &mut Vec<Report>) -> File {
@@ -110,7 +199,7 @@ impl Compiler<Staged, StagedInfo> {
         File::new(file_path, source)
     }
 
-    pub fn read_sources(mut self) -> Compiler<Source, SourceInfo> {
+    pub fn read_sources(mut self) -> Compiler<Sourced, SourceInfo> {
         if self.files.0.is_empty() {
             self.reports.push(Report::error(Header::CompilerNoInput()));
         }
@@ -120,7 +209,7 @@ impl Compiler<Staged, StagedInfo> {
             .files
             .0
             .into_iter()
-            .map(|(_, p, f)| (Self::read_file(&f, &mut reports), p, Source))
+            .map(|(_, p, f)| (Self::read_file(&f, &mut reports), p, Sourced(f.1)))
             .collect();
         self.reports.append(&mut reports);
 
@@ -132,10 +221,15 @@ impl Compiler<Staged, StagedInfo> {
     }
 }
 
-impl Compiler<Source, SourceInfo> {
-    fn parse_file(file: &File, id: usize, reports: &mut Vec<Report>) -> Parsed {
+impl Compiler<Sourced, SourceInfo> {
+    fn parse_file(
+        file: &File,
+        id: usize,
+        info: StagedFileInfo,
+        reports: &mut Vec<Report>,
+    ) -> Parsed {
         let mut parser = Parser::new(file.source(), id, reports);
-        Parsed(parser.parse_file())
+        Parsed(parser.parse_file(), info)
     }
 
     pub fn parse(mut self) -> Compiler<Parsed, ParsedInfo> {
@@ -145,8 +239,8 @@ impl Compiler<Source, SourceInfo> {
             .0
             .into_iter()
             .enumerate()
-            .map(|(id, (f, p, _))| {
-                let parsed = Self::parse_file(&f, id, &mut reports);
+            .map(|(id, (f, p, Sourced(info)))| {
+                let parsed = Self::parse_file(&f, id, info, &mut reports);
                 (f, p, parsed)
             })
             .collect();
@@ -175,16 +269,10 @@ impl Compiler<Parsed, ParsedInfo> {
         for scc in &order {
             for id in scc {
                 let id = *id;
-                let (file, _, Parsed(ast)) = &files[id];
+                let (file, _, Parsed(ast, info)) = &files[id];
 
-                eprintln!(
-                    "{}",
-                    format!("\n=== checking '{}' ===", file.name())
-                        .black()
-                        .on_bright_white()
-                );
-
-                let ir = checker.check_file(id, file.source(), ast);
+                let options = sem::CheckModuleOptions::new().set_verbose(!info.is_from_std);
+                let ir = checker.check_module(file.name(), id, file.source(), ast, options);
                 irs[id] = Some(Checked(ir))
             }
         }

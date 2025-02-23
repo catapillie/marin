@@ -3,6 +3,7 @@ use std::collections::{BTreeSet, HashMap};
 use crate::com::{
     ast, ir,
     reporting::{Header, Label, Note, Report},
+    sem::checker::checker_print,
     Checker,
 };
 
@@ -108,7 +109,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         if is_complete {
-            eprintln!("{}", self.get_instance_scheme_string(&scheme));
+            checker_print!(self, "{}", self.get_instance_scheme_string(&scheme));
         }
 
         self.close_scope();

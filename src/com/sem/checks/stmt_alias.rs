@@ -1,6 +1,7 @@
 use crate::com::{
     ast, ir,
     reporting::{Header, Label, Report},
+    sem::checker::checker_print,
     Checker,
 };
 
@@ -49,7 +50,8 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.scope.insert(alias_name, alias_id);
         self.set_entity_public(alias_id, public);
 
-        eprintln!(
+        checker_print!(
+            self,
             "{}{entity_desc} {} {alias_name}",
             "alias".bold(),
             "as".bold()
