@@ -12,6 +12,20 @@ use crate::com::{
     reporting::{Header, Label, Note, Report},
 };
 
+pub fn get_marin_path_builtin(dir: &str) -> PathBuf {
+    std::env::current_exe()
+        .expect("need access to current executable directory")
+        .canonicalize()
+        .expect("couldn't normalize current executable directory")
+        .parent()
+        .unwrap()
+        .join(dir)
+}
+
+pub fn get_marin_std_path() -> PathBuf {
+    get_marin_path_builtin("std")
+}
+
 pub type QueryUIDs = HashSet<usize>;
 pub type DepGraph = DiGraphMap<usize, QueryUIDs>;
 
@@ -69,7 +83,9 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                 continue;
             }
 
-            let Some(full_dep_path) = navigate_query(path.parent().unwrap(), &query) else {
+            let Some((full_dep_path, used_builtin)) =
+                navigate_query(path.parent().unwrap(), &query)
+            else {
                 reports.push(
                     Report::error(Header::InvalidDependencyPath())
                         .with_primary_label(Label::Empty, span.wrap(file_id)),
@@ -78,7 +94,8 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
             };
 
             let short_dep_path = match full_dep_path.strip_prefix(&current_dir) {
-                Ok(short) => short,
+                _ if used_builtin => get_query_string(&query),
+                Ok(short) => short.display().to_string(),
                 Err(_) => {
                     reports.push(
                         Report::error(Header::OutsideDependency())
@@ -90,13 +107,9 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
 
             let Some(&dep_id) = file_tree.get_by_path(&full_dep_path) else {
                 let rep = match full_dep_path.exists() && !full_dep_path.is_dir() {
-                    true => Report::error(Header::UnstagedDependency(
-                        short_dep_path.display().to_string(),
-                    ))
-                    .with_note(Note::ConsiderStage(short_dep_path.display().to_string())),
-                    false => Report::error(Header::NoSuchDependency(
-                        short_dep_path.display().to_string(),
-                    )),
+                    true => Report::error(Header::UnstagedDependency(short_dep_path.clone()))
+                        .with_note(Note::ConsiderStage(short_dep_path.clone())),
+                    false => Report::error(Header::NoSuchDependency(short_dep_path.clone())),
                 };
                 reports.push(rep.with_primary_label(
                     Label::ImportedInFile(file_name.clone()),
@@ -118,14 +131,12 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
                 // for example, it's okay to reimport in order to set aliases
                 if is_total {
                     reports.push(
-                        Report::warning(Header::FileReimported(
-                            short_dep_path.display().to_string(),
-                        ))
-                        .with_primary_label(Label::Empty, span.wrap(file_id))
-                        .with_secondary_label(
-                            Label::FirstImportHere(short_dep_path.display().to_string()),
-                            first_span.wrap(file_id),
-                        ),
+                        Report::warning(Header::FileReimported(short_dep_path.clone()))
+                            .with_primary_label(Label::Empty, span.wrap(file_id))
+                            .with_secondary_label(
+                                Label::FirstImportHere(short_dep_path.clone()),
+                                first_span.wrap(file_id),
+                            ),
                     );
                 }
             }
@@ -150,8 +161,10 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
     graph
 }
 
-fn navigate_query(from: impl AsRef<Path>, query: &Query) -> Option<PathBuf> {
+fn navigate_query(from: impl AsRef<Path>, query: &Query) -> Option<(PathBuf, bool)> {
     let mut path = from.as_ref().to_path_buf();
+    let mut is_first = true;
+    let mut used_builtin = false;
     for part in &query.0 {
         match part {
             Part::Dir(name, _) => path.push(name),
@@ -160,15 +173,38 @@ fn navigate_query(from: impl AsRef<Path>, query: &Query) -> Option<PathBuf> {
                     return None;
                 }
             }
+            Part::Builtin(name) => {
+                if !is_first {
+                    return None;
+                } else {
+                    used_builtin = true;
+                    path = get_marin_path_builtin(name);
+                }
+            }
         }
+        is_first = false;
     }
     path.set_extension("mar");
-    Some(path)
+    Some((path, used_builtin))
+}
+
+fn get_query_string(query: &Query) -> String {
+    let part_strings = query
+        .0
+        .iter()
+        .map(|part| match part {
+            Part::Dir(name, _) => name.clone(),
+            Part::Builtin(name) => format!("\"{}\"", name),
+            Part::Super(_) => "super".to_string(),
+        })
+        .collect::<Vec<_>>();
+    part_strings.join(".")
 }
 
 #[derive(Debug)]
 enum Part {
     Dir(String, Span),
+    Builtin(String),
     Super(Span),
 }
 
@@ -231,6 +267,10 @@ fn process_query_accessor(expr: &ast::Expr, source: &str) -> Option<Part> {
     match expr {
         ast::Expr::Var(lex) => Some(Part::Dir(lex.span.lexeme(source).to_string(), lex.span)),
         ast::Expr::Super(lex) => Some(Part::Super(lex.span)),
+        ast::Expr::String(lex) => match &source[lex.span.start + 1..lex.span.end - 1] {
+            "" => None,
+            name => Some(Part::Builtin(name.to_string())),
+        },
         _ => None,
     }
 }

@@ -173,11 +173,7 @@ impl Compiler<Staged, StagedInfo> {
             panic!("marin std library is already staged");
         }
 
-        let marin_std_path = std::env::current_exe()
-            .expect("need access to current executable directory")
-            .parent()
-            .unwrap()
-            .join("std");
+        let marin_std_path = sem::get_marin_std_path();
         self.add_dir_with_info(&marin_std_path, StagedFileInfo::marin_std_file());
         self.info.staged_std = true;
     }
