@@ -1,8 +1,9 @@
 pub let id(x) = x
 pub let compose(g, f)(x) = f(g(x))
 
-pub import option from option
 pub import option as Option
+pub import option from option
+pub import some, none from option
 
-pub import list from list
 pub import list as List
+pub import list from list
