@@ -261,6 +261,44 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
     }
 
+    fn propagate_lower_depth(&mut self, id: ir::TypeID, new_depth: usize) {
+        let ty = self.get_type_repr(id);
+        let node = &mut self.types[ty.0];
+
+        use ir::Type as T;
+        match node.ty.clone() {
+            T::Var => node.depth = node.depth.min(new_depth),
+            T::Int => {}
+            T::Float => {}
+            T::Bool => {}
+            T::String => {}
+            T::Tuple(items) => {
+                for item in items {
+                    self.propagate_lower_depth(item, new_depth);
+                }
+            }
+            T::Array(item) => self.propagate_lower_depth(item, new_depth),
+            T::Lambda(args, ret) => {
+                for arg in args {
+                    self.propagate_lower_depth(arg, new_depth);
+                }
+                self.propagate_lower_depth(ret, new_depth)
+            }
+            T::Record(_, None) => {}
+            T::Record(_, Some(items)) => {
+                for item in items {
+                    self.propagate_lower_depth(item, new_depth);
+                }
+            }
+            T::Union(_, None) => {}
+            T::Union(_, Some(items)) => {
+                for item in items {
+                    self.propagate_lower_depth(item, new_depth);
+                }
+            }
+        }
+    }
+
     pub fn unify(&mut self, left: ir::TypeID, right: ir::TypeID, provenances: &[Provenance]) {
         self.try_unify(left, right, provenances, false);
     }
@@ -292,15 +330,23 @@ impl<'src, 'e> Checker<'src, 'e> {
                 return true;
             }
 
+            // if a non-variable type is unified against a type variable x
+            // then any type sitting deeper than x in the scope
+            // must be refreshed to be sitting at the depth as x
+            // so that they are not generalized where they shouldn't
             (_, T::Var) => {
+                let var_depth = right.depth;
                 if !self.occurs_in_type(repr_right, repr_left) {
                     self.join_type_repr(repr_right, repr_left);
+                    self.propagate_lower_depth(repr_left, var_depth);
                     return true;
                 }
             }
             (T::Var, _) => {
+                let var_depth = left.depth;
                 if !self.occurs_in_type(repr_left, repr_right) {
                     self.join_type_repr(repr_left, repr_right);
+                    self.propagate_lower_depth(repr_right, var_depth);
                     return true;
                 }
             }
@@ -790,7 +836,8 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let mut required_constraints = HashSet::new();
         for constraint in &scheme.required_constraints {
-            required_constraints.insert(self.get_constraint_string_map(constraint, &name_map, true));
+            required_constraints
+                .insert(self.get_constraint_string_map(constraint, &name_map, true));
         }
         let required_constraints = required_constraints.into_iter().collect();
 
