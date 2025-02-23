@@ -23,7 +23,7 @@ pub struct Compiler<Stage, Info> {
 // compiler stage
 #[derive(Default, Clone)]
 pub struct StagedFileInfo {
-    is_from_std: bool,
+    pub is_from_std: bool,
 }
 impl StagedFileInfo {
     pub fn marin_std_file() -> Self {
@@ -40,12 +40,16 @@ pub struct Checked(pub ir::Module);
 
 // compiler info
 pub struct StagedInfo {
-    staged_std: bool,
+    is_std_staged: bool,
 }
 
-pub struct SourceInfo;
+pub struct SourceInfo {
+    is_std_staged: bool,
+}
 
-pub struct ParsedInfo;
+pub struct ParsedInfo {
+    is_std_staged: bool,
+}
 
 pub struct CheckedInfo {
     pub evaluation_order: Vec<usize>,
@@ -56,7 +60,9 @@ pub fn init() -> Compiler<Staged, StagedInfo> {
     Compiler {
         reports: Vec::new(),
         files: Files::default(),
-        info: StagedInfo { staged_std: false },
+        info: StagedInfo {
+            is_std_staged: false,
+        },
     }
 }
 
@@ -169,13 +175,13 @@ impl Compiler<Staged, StagedInfo> {
     }
 
     pub fn add_marin_std(&mut self) {
-        if self.info.staged_std {
+        if self.info.is_std_staged {
             panic!("marin std library is already staged");
         }
 
         let marin_std_path = sem::get_marin_std_path();
         self.add_dir_with_info(&marin_std_path, StagedFileInfo::marin_std_file());
-        self.info.staged_std = true;
+        self.info.is_std_staged = true;
     }
 
     fn read_file(staged: &Staged, reports: &mut Vec<Report>) -> File {
@@ -212,7 +218,9 @@ impl Compiler<Staged, StagedInfo> {
         Compiler {
             reports: self.reports,
             files: Files(source_files),
-            info: SourceInfo,
+            info: SourceInfo {
+                is_std_staged: self.info.is_std_staged,
+            },
         }
     }
 }
@@ -245,15 +253,18 @@ impl Compiler<Sourced, SourceInfo> {
         Compiler {
             reports: self.reports,
             files: Files(parsed_files),
-            info: ParsedInfo,
+            info: ParsedInfo {
+                is_std_staged: self.info.is_std_staged,
+            },
         }
     }
 }
 
 impl Compiler<Parsed, ParsedInfo> {
     pub fn check(mut self) -> Compiler<Checked, CheckedInfo> {
-        let deps = sem::build_dependency_graph(&self.files, &mut self.reports);
-        let order = sem::sort_dependencies(&deps, &self.files, &mut self.reports);
+        let deps =
+            sem::analyse_dependencies(&self.files, self.info.is_std_staged, &mut self.reports);
+        let order = sem::sort_dependencies(&deps.graph, &self.files, &mut self.reports);
 
         let files = self.files.0;
         let mut irs = Vec::new();
@@ -267,7 +278,9 @@ impl Compiler<Parsed, ParsedInfo> {
                 let id = *id;
                 let (file, _, Parsed(ast, info)) = &files[id];
 
-                let options = sem::CheckModuleOptions::new().set_verbose(!info.is_from_std);
+                let options = sem::CheckModuleOptions::new()
+                    .set_verbose(!info.is_from_std)
+                    .set_import_prelude(self.info.is_std_staged);
                 let ir = checker.check_module(file.name(), id, file.source(), ast, options);
                 irs[id] = Some(Checked(ir))
             }

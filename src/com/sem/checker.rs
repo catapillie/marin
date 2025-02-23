@@ -22,7 +22,7 @@ pub struct Checker<'src, 'e> {
     pub file: usize,
     pub reports: &'e mut Vec<Report>,
 
-    pub deps: &'e deps::DepGraph,
+    pub deps: &'e deps::Dependencies,
     pub exports: Vec<Export<'src>>,
 
     pub scope: Scope<&'src str, Instances, ir::EntityID>,
@@ -35,7 +35,11 @@ pub struct Checker<'src, 'e> {
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
-    pub fn new(file_count: usize, deps: &'e deps::DepGraph, reports: &'e mut Vec<Report>) -> Self {
+    pub fn new(
+        file_count: usize,
+        deps: &'e deps::Dependencies,
+        reports: &'e mut Vec<Report>,
+    ) -> Self {
         let mut checker = Self {
             options: CheckModuleOptions::new(),
 

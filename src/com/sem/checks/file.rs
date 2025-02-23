@@ -29,6 +29,10 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         self.open_scope(true);
 
+        if self.options.import_prelude {
+            self.import_std_prelude();
+        }
+
         let stmts = ast.0.iter().map(|e| self.check_statement(e)).collect();
         let constraints = self.solve_constraints();
         if !constraints.is_empty() {
@@ -82,15 +86,24 @@ impl<'src, 'e> Checker<'src, 'e> {
 
 pub struct CheckModuleOptions {
     pub is_verbose: bool,
+    pub import_prelude: bool,
 }
 
 impl CheckModuleOptions {
     pub fn new() -> Self {
-        Self { is_verbose: false }
+        Self {
+            is_verbose: false,
+            import_prelude: false,
+        }
     }
 
     pub fn set_verbose(mut self, is_verbose: bool) -> Self {
         self.is_verbose = is_verbose;
+        self
+    }
+
+    pub fn set_import_prelude(mut self, import_prelude: bool) -> Self {
+        self.import_prelude = import_prelude;
         self
     }
 }

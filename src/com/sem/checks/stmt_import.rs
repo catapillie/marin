@@ -28,6 +28,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
             let Some(dep_file) = self
                 .deps
+                .graph
                 .edges(self.file)
                 .find_map(|(_, file, uids)| match uids.contains(&query.uid) {
                     true => Some(file),
@@ -71,22 +72,23 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let file_name = file_name_span.lexeme(self.source);
 
-        let Some(dep_file) = self.deps.edges(self.file).find_map(|(_, file, uids)| {
-            match uids.contains(&e.path_query_uid) {
-                true => Some(file),
-                false => None,
-            }
-        }) else {
+        let Some(dep_file) =
+            self.deps
+                .graph
+                .edges(self.file)
+                .find_map(|(_, file, uids)| match uids.contains(&e.path_query_uid) {
+                    true => Some(file),
+                    false => None,
+                })
+        else {
             return ir::Stmt::Nothing;
         };
-
-        // import instances
-        self.import_all_instances(dep_file);
 
         checker_print!(self, "{}", "import".bold());
         for query in &e.queries {
             if let E::Spread(_) = &*query.query {
                 self.import_all_items(dep_file, public);
+                self.import_all_instances(dep_file);
                 checker_print!(self, "    ..");
                 continue;
             };
@@ -164,5 +166,14 @@ impl<'src, 'e> Checker<'src, 'e> {
             let instance_id = self.create_entity(ir::Entity::Instance(instance_info));
             self.scope.infos_mut().push(instance_id);
         }
+    }
+
+    pub fn import_std_prelude(&mut self) {
+        let Some(id) = self.deps.info.prelude_file else {
+            return;
+        };
+
+        self.import_all_items(id, false);
+        self.import_all_instances(id);
     }
 }

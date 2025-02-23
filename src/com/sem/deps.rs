@@ -26,15 +26,38 @@ pub fn get_marin_std_path() -> PathBuf {
     get_marin_path_builtin("std")
 }
 
+pub struct Dependencies {
+    pub graph: DepGraph,
+    pub info: DepInfo,
+}
+
 pub type QueryUIDs = HashSet<usize>;
 pub type DepGraph = DiGraphMap<usize, QueryUIDs>;
 
-pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) -> DepGraph {
-    let mut graph = DepGraph::with_capacity(files.0.len(), 0);
+#[derive(Default)]
+pub struct DepInfo {
+    pub prelude_file: Option<usize>,
+}
 
+pub fn analyse_dependencies(
+    files: &Files<Parsed>,
+    is_std_staged: bool,
+    reports: &mut Vec<Report>,
+) -> Dependencies {
     let mut file_tree = FileTree::new();
     for (file_id, (_, path, _)) in files.0.iter().enumerate() {
         file_tree.add_file(path, file_id);
+    }
+
+    // initialize output
+    let mut graph = DepGraph::with_capacity(files.0.len(), 0);
+    let mut info = DepInfo::default();
+
+    // use prelude file
+    if is_std_staged {
+        let prelude_path = get_marin_path_builtin("std").join("prelude.mar");
+        let prelude_file = file_tree.get_by_path(&prelude_path).copied();
+        info.prelude_file = prelude_file;
     }
 
     let current_dir = std::env::current_dir()
@@ -42,8 +65,14 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         .canonicalize()
         .expect("couldn't normalize current directory");
 
-    for (file_id, (file, path, Parsed(ast::File(ast), _))) in files.0.iter().enumerate() {
-        graph.add_edge(file_id, file_id, HashSet::new());
+    for (file_id, (file, path, Parsed(ast::File(ast), file_info))) in files.0.iter().enumerate() {
+        graph.add_edge(file_id, file_id, Default::default());
+
+        if is_std_staged && !file_info.is_from_std {
+            if let Some(prelude_id) = info.prelude_file {
+                graph.add_edge(file_id, prelude_id, Default::default());
+            }
+        }
 
         let source = file.source();
         let file_name = file.name();
@@ -158,7 +187,7 @@ pub fn build_dependency_graph(files: &Files<Parsed>, reports: &mut Vec<Report>) 
         }
     }
 
-    graph
+    Dependencies { graph, info }
 }
 
 fn navigate_query(from: impl AsRef<Path>, query: &Query) -> Option<(PathBuf, bool)> {
