@@ -53,13 +53,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             self.set_entity_public(import_id, public);
 
             // import all instances of classes in our scope
-            // make sure to copy them and reset them to private so they aren't exported from this file
-            let dep_instances = self.exports[dep_file].instances.clone();
-            for id in dep_instances {
-                let instance_info = self.get_instance_info(id).clone();
-                let instance_id = self.create_entity(ir::Entity::Instance(instance_info));
-                self.scope.infos_mut().push(instance_id);
-            }
+            self.import_all_instances(dep_file);
         }
 
         ir::Stmt::Nothing
@@ -86,8 +80,17 @@ impl<'src, 'e> Checker<'src, 'e> {
             return ir::Stmt::Nothing;
         };
 
+        // import instances
+        self.import_all_instances(dep_file);
+
         checker_print!(self, "{}", "import".bold());
         for query in &e.queries {
+            if let E::Spread(_) = &*query.query {
+                self.import_all_items(dep_file, public);
+                checker_print!(self, "    ..");
+                continue;
+            };
+
             let E::Var(item_name_span) = &*query.query else {
                 self.reports.push(
                     Report::error(Header::InvalidItemQuery())
@@ -134,5 +137,32 @@ impl<'src, 'e> Checker<'src, 'e> {
         checker_print!(self, "{} {file_name}", "from".bold());
 
         ir::Stmt::Nothing
+    }
+
+    fn import_all_items(&mut self, dep_file: usize, public: bool) {
+        let dep_exports = self.exports[dep_file]
+            .exports
+            .iter()
+            .map(|(k, v)| (*k, *v))
+            .collect::<Vec<_>>();
+        for (name, id) in dep_exports {
+            let path = self.check_entity_into_path(id);
+            let alias_id = self.create_entity(ir::Entity::Alias(ir::AliasInfo {
+                name: name.to_string(),
+                path,
+            }));
+            self.scope.insert(name, alias_id);
+            self.set_entity_public(alias_id, public);
+        }
+    }
+
+    // make sure to copy them and reset them to private so they aren't exported from this file
+    fn import_all_instances(&mut self, dep_file: usize) {
+        let dep_instances = self.exports[dep_file].instances.clone();
+        for id in dep_instances {
+            let instance_info = self.get_instance_info(id).clone();
+            let instance_id = self.create_entity(ir::Entity::Instance(instance_info));
+            self.scope.infos_mut().push(instance_id);
+        }
     }
 }

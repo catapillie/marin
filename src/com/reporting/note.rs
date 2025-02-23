@@ -55,7 +55,7 @@ impl Note {
             N::PubExpression
                 => "if you meant to write an expression, remove the leading 'pub' keyword".to_string(),
             N::ItemQuerySyntax
-                => "an imported item from an 'import-from' statement must be an identifier".to_string(),
+                => "an imported item from an 'import-from' statement must be an identifier, or the '..' syntax to import every item".to_string(),
         }
     }
 }
