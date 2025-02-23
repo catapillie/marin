@@ -1,0 +1,17 @@
+pub union option(t)
+    none
+    some(t)
+end
+
+pub alias option.none as none
+pub alias option.some as some
+
+pub let map(f)(opt) = match opt with
+    some(x) => some(f(x))
+    none    => none
+end
+
+pub let unwrap_or(y)(opt) = match opt with
+    some(x) => x
+    none    => y
+end

@@ -179,7 +179,9 @@ impl Compiler<Parsed, ParsedInfo> {
 
                 eprintln!(
                     "{}",
-                    format!("\n=== checking '{}' ===", file.name()).underline()
+                    format!("\n=== checking '{}' ===", file.name())
+                        .black()
+                        .on_bright_white()
                 );
 
                 let ir = checker.check_file(id, file.source(), ast);

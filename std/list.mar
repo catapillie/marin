@@ -1,0 +1,37 @@
+import option as Option
+
+pub union list(t)
+    empty
+    cons(t, list(t))
+end
+
+pub alias list.empty as empty
+pub alias list.cons as cons
+
+pub let head(l) match l with
+    empty      => Option.none
+    cons(x, _) => Option.some(x)
+end
+
+pub let tail(l) match l with
+    empty       => Option.none
+    cons(_, xs) => Option.some(xs)
+end
+
+pub let map(f)(l) match l with
+    empty       => empty
+    cons(x, xs) => cons(f(x), map(f)(xs))
+end
+
+pub let fold_right(f)(l, init) match l with
+    empty       => init
+    cons(x, xs) => f(x, fold_right(f)(xs, init))
+end
+
+pub let fold_left(f)(init, l) do
+    let aux(acc, xs) match xs with
+        empty       => acc
+        cons(x, xs) => aux(f(acc, x), xs)
+    end
+    aux(init, l)
+end
