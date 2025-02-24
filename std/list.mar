@@ -23,6 +23,14 @@ pub let map(f)(l) match l with
     cons(x, xs) => cons(f(x), map(f)(xs))
 end
 
+pub let iter(f)(l) match l with
+    empty       => ()
+    cons(x, xs) => do
+        f(x)
+        iter(f)(xs)
+    end
+end
+
 pub let fold_right(f)(l, init) match l with
     empty       => init
     cons(x, xs) => f(x, fold_right(f)(xs, init))
@@ -38,10 +46,9 @@ end
 
 pub let filter(p)(l) match l with
     empty       => empty
-    cons(x, xs) => if p(x) then
-        cons(x, filter(p)(xs))
-    else
-        filter(p)(xs)
+    cons(x, xs) => match p(x) with
+        true  => cons(x, filter(p)(xs))
+        false => filter(p)(xs)
     end
 end
 
@@ -51,4 +58,97 @@ pub let filter_map(f)(l) match l with
         Option.none    => filter_map(f)(xs)
         Option.some(y) => list.cons(y, filter_map(f)(xs))
     end
+end
+
+pub let forall(p)(l) match l with
+    empty        => true
+    cons(x, xs)  => match p(x) with
+        true  => forall(p)(xs)
+        false => false
+    end
+end
+
+pub let exists(p)(l) match l with
+    empty        => false
+    cons(x, xs)  => match p(x) with
+        true  => true
+        false => exists(p)(xs)
+    end
+end
+
+pub let rev(l) do
+    let aux(acc, xs) match xs with
+        empty       => acc
+        cons(x, xs) => aux(cons(x, acc), xs)
+    end
+    aux(empty, l)
+end
+
+pub let find(p)(l) match l with
+    empty       => Option.none
+    cons(x, xs) => match p(x) with
+        true  => Option.some(x)
+        false => find(p)(xs)
+    end
+end
+
+pub let find_map(f)(l) match l with
+    empty       => Option.none
+    cons(x, xs) => match f(x) with
+        Option.none => find_map(f)(xs)
+        y           => y
+    end
+end
+
+pub let take_while(p)(l) match l with
+    empty       => empty
+    cons(x, xs) => match p(x) with
+        true  => cons(x, take_while(p)(xs))
+        false => empty
+    end
+end
+
+pub let take_while_map(f)(l) match l with
+    empty       => empty
+    cons(x, xs) => match f(x) with
+        Option.some(y) => cons(y, take_while_map(f)(xs))
+        Option.none    => empty
+    end
+end
+
+pub let take_until(p)(l) match l with
+    empty       => empty
+    cons(x, xs) => match p(x) with
+        true  => empty
+        false => cons(x, take_until(p)(xs))
+    end
+end
+
+pub let drop_while(p)(l) match l with
+    empty       => empty
+    cons(x, xs) => match p(x) with
+        true  => drop_while(p)(xs)
+        false => l
+    end
+end
+
+pub let drop_until(p)(l) match l with
+    empty       => empty
+    cons(x, xs) => match p(x) with
+        true  => l
+        false => drop_until(p)(xs)
+    end
+end
+
+pub let zip(la, lb) match (la, lb) with
+    (cons(xa, xas), cons(xb, xbs)) => cons((xa, xb), zip(xas, xbs))
+    _                              => empty
+end
+
+pub let unzip(l) match l with
+    cons((xa, xb), xs) => do
+        let (xas, xbs) = unzip(xs)
+        (cons(xa, xas), cons(xb, xbs))
+    end
+    empty            => (empty, empty)
 end

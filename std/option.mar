@@ -6,12 +6,22 @@ end
 pub alias option.none as none
 pub alias option.some as some
 
-pub let map(f)(opt) = match opt with
+pub let is_none(opt) match opt with
+    some(_) => false
+    none    => true
+end
+
+pub let is_some(opt) match opt with
+    some(_) => true
+    none    => false
+end
+
+pub let map(f)(opt) match opt with
     some(x) => some(f(x))
     none    => none
 end
 
-pub let unwrap_or(y)(opt) = match opt with
+pub let unwrap_or(y)(opt) match opt with
     some(x) => x
     none    => y
 end

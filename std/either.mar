@@ -1,0 +1,49 @@
+import option as Option
+
+pub union either(a, b)
+    left(a)
+    right(b)
+end
+
+pub alias either.left as left
+pub alias either.right as right
+
+pub let is_left(e) match e with
+    left(_)  => true
+    right(_) => false
+end
+
+pub let is_right(e) match e with
+    left(_)  => false
+    right(_) => true
+end
+
+pub let opt_left(e) match e with
+    left(a)  => Option.some(a)
+    right(_) => Option.none
+end
+
+pub let opt_right(e) match e with
+    left(_)  => Option.none
+    right(b) => Option.some(b)
+end
+
+pub let unwrap_left_or(y)(e) match e with
+    left(a)  => a
+    right(_) => y
+end
+
+pub let unwrap_right_or(y)(e) match e with
+    left(_)  => y
+    right(b) => b
+end
+
+pub let map_left(f)(e) match e with
+    left(a)  => left(f(a))
+    right(b) => right(b)
+end
+
+pub let map_right(f)(e) match e with
+    left(a)  => left(a)
+    right(b) => right(f(b))
+end
