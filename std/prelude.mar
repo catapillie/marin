@@ -1,8 +1,15 @@
-import default
-pub import Default from default
+pub import option as Option
+pub import option from option
+pub import some, none from option
 
+pub import either as Either
+pub import either from either
 
-pub let default = Default.default
+pub import list as List
+pub import list from list
+
+pub import .. from default
+
 
 pub let id(x) = x
 pub let compose(g, f)(x) = f(g(x))
@@ -13,13 +20,3 @@ pub let swap((a, b)) = (b, a)
 pub let rot_left((x, y, z)) = (y, z, x)
 pub let rot_right((x, y, z)) = (z, x, y)
 
-
-pub import option as Option
-pub import option from option
-pub import some, none from option
-
-pub import either as Either
-pub import either from either
-
-pub import list as List
-pub import list from list

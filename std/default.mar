@@ -1,3 +1,5 @@
 pub class Default(T)
     default: T
 end
+
+pub alias Default.default as default
