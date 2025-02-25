@@ -116,9 +116,11 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.close_scope();
 
         if is_complete {
-            let instance_id = self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
+            let instance_id = self.next_entity_id();
+            self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
                 loc: span.wrap(self.file),
                 scheme,
+                original: instance_id,
             }));
             self.scope.infos_mut().push(instance_id);
             self.set_entity_public(instance_id, public);

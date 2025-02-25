@@ -130,11 +130,16 @@ impl<'src, 'e> Checker<'src, 'e> {
     }
 
     fn get_known_instances(&self) -> Vec<(ir::EntityID, ir::InstanceInfo)> {
-        self.scope
+        let mut in_scope = self
+            .scope
             .infos_iter()
             .flatten()
             .map(|id| (*id, self.get_instance_info(*id).clone()))
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        println!("{}", in_scope.len());
+        in_scope.sort_by_key(|(_, info)| info.original.0);
+        in_scope.dedup_by_key(|(_, info)| info.original.0);
+        in_scope
     }
 
     fn is_concrete_constraint(&mut self, constraint: &ir::Constraint) -> bool {

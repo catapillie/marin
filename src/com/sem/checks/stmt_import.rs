@@ -84,11 +84,13 @@ impl<'src, 'e> Checker<'src, 'e> {
             return ir::Stmt::Nothing;
         };
 
+        // import instances
+        self.import_all_instances(dep_file);
+
         checker_print!(self, "{}", "import".bold());
         for query in &e.queries {
             if let E::Spread(_) = &*query.query {
                 self.import_all_items(dep_file, public);
-                self.import_all_instances(dep_file);
                 checker_print!(self, "    ..");
                 continue;
             };

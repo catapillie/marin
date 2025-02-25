@@ -95,6 +95,7 @@ pub struct ClassItemInfo {
 pub struct InstanceInfo {
     pub loc: Loc,
     pub scheme: InstanceScheme,
+    pub original: EntityID,
 }
 
 pub struct ImportInfo {
