@@ -35,6 +35,7 @@ pub enum Label {
     NotAnExpression,
     NotAPattern,
     NotAType,
+    NotAClass,
     WantFunctionType(TypeString),
     WithinRecordDefinition(String),
     RecordTypeArgCount(String, usize),
@@ -146,6 +147,8 @@ impl Label {
                 => "this is valid syntax but does not represent a pattern".to_string(),
             L::NotAType
                 => "this is valid syntax but does not represent a type".to_string(),
+            L::NotAClass
+                => "this is valid syntax but does not represent a class".to_string(),
             L::WantFunctionType(ty)
                 => format!("this expression is expected to be a function of type {ty}"),
             L::WithinRecordDefinition(name)

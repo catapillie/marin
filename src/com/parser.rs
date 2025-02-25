@@ -714,14 +714,14 @@ impl<'src, 'e> Parser<'src, 'e> {
 
     fn try_parse_have_expression(&mut self) -> Option<ast::Expr> {
         let have_kw = self.try_expect_token(Token::Have)?;
-        let name = self.expect_token(Token::Ident);
+        let class = self.expect_primary_expression();
         let items = self.parse_newline_separated_items();
         let end_kw = self.expect_token(Token::End);
 
         Some(ast::Expr::Have(ast::Have {
             have_kw,
-            name,
             end_kw,
+            class: Box::new(class),
             items,
         }))
     }

@@ -40,6 +40,7 @@ pub enum Header {
     InvalidTypeAnnotation(),
     InvalidLabel(),
     InvalidField(),
+    InvalidClass(),
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
     UnallowedSignatureName(),
@@ -107,6 +108,7 @@ impl Header {
             H::InvalidTypeAnnotation(..) => "invalid_type_annotation",
             H::InvalidLabel(..) => "invalid_label",
             H::InvalidField(..) => "invalid_field",
+            H::InvalidClass(..) => "invalid_class",
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
             H::UnallowedSignatureName(..) => "unallowed_signature_name",
@@ -209,6 +211,8 @@ impl Header {
                 => "invalid label syntax".to_string(),
             H::InvalidField()
                 => "invalid record field syntax".to_string(),
+            H::InvalidClass()
+                => "invalid class syntax".to_string(),
             H::InvalidBreak(None)
                 => "invalid break".to_string(),
             H::InvalidBreak(Some(name))

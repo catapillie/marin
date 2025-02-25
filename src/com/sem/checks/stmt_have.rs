@@ -10,15 +10,23 @@ use crate::com::{
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_have(&mut self, e: &ast::Have, public: bool) -> ir::Stmt {
         let span = e.span();
-        let class_name = e.name.lexeme(self.source);
-        let within_label = Label::WithinClassInstantiation(class_name.to_string());
 
         use ir::PathQuery as Q;
-        let lexeme = ast::Lexeme { span: e.name };
-        let class_id = match self.check_var_path(&lexeme) {
+        let class_id = match self.check_path_or_type(&e.class) {
             Q::Class(id) => id,
-            _ => return ir::Stmt::Nothing,
+            Q::Missing => return ir::Stmt::Nothing,
+            _ => {
+                self.reports.push(
+                    Report::error(Header::InvalidClass())
+                        .with_primary_label(Label::NotAClass, span.wrap(self.file)),
+                );
+                return ir::Stmt::Nothing;
+            }
         };
+
+        let info = self.get_class_info(class_id);
+        let class_name = info.name.clone();
+        let within_label = Label::WithinClassInstantiation(class_name.to_string());
 
         self.open_scope(false);
 
@@ -79,7 +87,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let current_constraint = ir::Constraint {
             id: class_id,
-            loc: e.name.wrap(self.file),
+            loc: e.class.span().wrap(self.file),
             class_args: (0..arity.0).map(|_| self.create_fresh_type(None)).collect(),
             associated_args: (0..arity.1).map(|_| self.create_fresh_type(None)).collect(),
         };

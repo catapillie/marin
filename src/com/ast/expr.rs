@@ -252,7 +252,7 @@ pub struct Class {
 pub struct Have {
     pub have_kw: Span,
     pub end_kw: Span,
-    pub name: Span,
+    pub class: Box<Expr>,
     pub items: Box<[Expr]>,
 }
 
@@ -451,7 +451,7 @@ impl Have {
     pub fn span(&self) -> Span {
         mix_spans([
             self.have_kw,
-            self.name,
+            self.class.span(),
             item_spans(&self.items),
             self.end_kw,
         ])
