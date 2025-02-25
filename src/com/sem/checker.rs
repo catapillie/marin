@@ -4,9 +4,9 @@ use crate::com::{
     reporting::Report,
     scope::Scope,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-pub type Instances = Vec<ir::EntityID>;
+pub type Instances = HashSet<ir::EntityID>;
 
 #[derive(Default)]
 pub struct Export<'src> {

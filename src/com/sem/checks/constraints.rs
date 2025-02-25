@@ -136,7 +136,6 @@ impl<'src, 'e> Checker<'src, 'e> {
             .flatten()
             .map(|id| (*id, self.get_instance_info(*id).clone()))
             .collect::<Vec<_>>();
-        println!("{}", in_scope.len());
         in_scope.sort_by_key(|(_, info)| info.original.0);
         in_scope.dedup_by_key(|(_, info)| info.original.0);
         in_scope

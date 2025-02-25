@@ -156,7 +156,7 @@ pub fn analyse_dependencies(
                 );
                 continue;
             } else if let Some(first_span) = import_spans.get(&dep_id) {
-                // no need to warning if this is only a partial reimport
+                // no need for a warning if this is only a partial reimport
                 // for example, it's okay to reimport in order to set aliases
                 if is_total {
                     reports.push(
