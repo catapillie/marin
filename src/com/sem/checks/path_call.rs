@@ -11,8 +11,6 @@ impl<'src, 'e> Checker<'src, 'e> {
         let q = self.check_path_or_expr(&e.callee);
         match q {
             Q::Missing => Q::Missing,
-
-            // should be handled by other functions
             Q::Expr(_) => todo!("call on expr"),
             Q::Var(_) => todo!("call on var"),
             Q::Variant(_, _) => todo!("call on variant"),
@@ -20,6 +18,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Record(id) => self.check_record_call_path(id, &e.args, e.span()),
             Q::Union(id) => self.check_union_call_path(id, &e.args, e.span()),
             Q::Class(_) => todo!("call on class"),
+            Q::ClassItem(_, _) => todo!("call on class item"),
             Q::Import(_) => todo!("call on import"),
         }
     }

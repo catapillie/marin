@@ -10,5 +10,6 @@ pub enum PathQuery {
     Union(EntityID),
     Variant(EntityID, usize),
     Class(EntityID),
+    ClassItem(EntityID, usize),
     Import(EntityID),
 }

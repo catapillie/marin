@@ -11,6 +11,10 @@ use ir::PathQuery as Q;
 impl<'src, 'e> Checker<'src, 'e> {
     pub fn check_alias(&mut self, e: &ast::Alias, public: bool) -> ir::Stmt {
         let path = self.check_path_or_type(&e.path);
+
+        // a bit hacky but prevents instances from appearing if the aliased item is an expression
+        self.solve_constraints();
+
         match path {
             Q::Missing => return ir::Stmt::Nothing,
             Q::Expr(_) => {
@@ -39,6 +43,16 @@ impl<'src, 'e> Checker<'src, 'e> {
                 format!("({}) {}.{}", "variant".bold(), info.name, variant_info.name,)
             }
             Q::Class(id) => format!("({}) {}", "class".bold(), self.get_class_info(*id).name),
+            Q::ClassItem(id, index) => {
+                let class_info = self.get_class_info(*id);
+                let item_info = self.get_class_item_info(*id, *index);
+                format!(
+                    "({}) {}.{}",
+                    "class item".bold(),
+                    class_info.name,
+                    item_info.name
+                )
+            }
             Q::Import(id) => format!("({}) {}", "import".bold(), self.get_import_info(*id).name),
         };
 

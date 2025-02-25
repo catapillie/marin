@@ -35,6 +35,7 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Var(id) => self.check_var_path_into_expr(id, span),
             Q::Expr(e) => e,
             Q::Variant(id, tag) => self.check_variant_path_into_expr(id, tag, span),
+            Q::ClassItem(id, index) => self.check_class_item_into_expr(id, index, span),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidExpression())
@@ -81,6 +82,34 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.add_type_provenance(ty, provenance);
 
         (expr, ty)
+    }
+
+    fn check_class_item_into_expr(
+        &mut self,
+        id: ir::EntityID,
+        index: usize,
+        span: Span,
+    ) -> ir::CheckedExpr {
+        let info = self.get_class_info(id);
+
+        let class_loc = info.loc;
+        let class_name = info.name.clone();
+
+        let item_info = self.get_class_item_info(id, index);
+        let item_loc = item_info.loc;
+        let item_name = item_info.name.clone();
+
+        let scheme = item_info.scheme.clone();
+
+        let item_ty = self.instantiate_scheme(scheme, Some(span.wrap(self.file)));
+        let item_ty = self.clone_type_repr(item_ty);
+        self.set_type_span(item_ty, span);
+        self.add_type_provenance(
+            item_ty,
+            ir::TypeProvenance::ClassItemDefinition(item_loc, item_name, class_loc, class_name),
+        );
+
+        (ir::Expr::Missing, item_ty)
     }
 
     pub fn check_path_into_type(&mut self, q: Q, span: Span) -> ir::TypeID {

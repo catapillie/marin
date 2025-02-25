@@ -32,7 +32,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             Q::Record(id) => self.check_record_access_path(id, &e.accessor),
             Q::Union(id) => self.check_union_access_path(id, &e.accessor),
             Q::Variant(_, _) => todo!("access on variant"),
-            Q::Class(id) => self.check_class_access_path(id, &e.accessor, e.span()),
+            Q::Class(id) => self.check_class_access_path(id, &e.accessor),
+            Q::ClassItem(_, _) => todo!("access on class item"),
             Q::Import(id) => self.check_import_access_path(id, &e.accessor, e.span()),
         }
     }
