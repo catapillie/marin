@@ -42,12 +42,9 @@ impl<'src, 'e> Checker<'src, 'e> {
         let (exports, instances) = self.get_public_exports_and_instances();
         self.close_scope();
 
-        if !exports.is_empty() || !instances.is_empty() {
+        if !exports.is_empty() {
             checker_print!(self, "{}", "\nexport".bold());
             for id in exports.values() {
-                checker_print!(self, "    {}", self.get_entity_display(*id))
-            }
-            for id in &instances {
                 checker_print!(self, "    {}", self.get_entity_display(*id))
             }
             checker_print!(self, "{}", "end".bold());
