@@ -1,5 +1,6 @@
 import option as Option
 
+
 pub union list(t)
     empty
     cons(t, list(t))

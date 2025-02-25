@@ -1,3 +1,6 @@
+import Default from default
+
+
 pub union option(t)
     none
     some(t)
@@ -24,4 +27,9 @@ end
 pub let unwrap_or(y)(opt) match opt with
     some(x) => x
     none    => y
+end
+
+pub let unwrap_or_default(opt) match opt with
+    some(x) => x
+    none    => Default.default
 end

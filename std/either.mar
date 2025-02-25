@@ -1,4 +1,6 @@
+import Default from default
 import option as Option
+
 
 pub union either(a, b)
     left(a)
@@ -33,8 +35,18 @@ pub let unwrap_left_or(y)(e) match e with
     right(_) => y
 end
 
+pub let unwrap_left_or_default(e) match e with
+    left(a)  => a
+    right(_) => Default.default
+end
+
 pub let unwrap_right_or(y)(e) match e with
     left(_)  => y
+    right(b) => b
+end
+
+pub let unwrap_right_or_default(e) match e with
+    left(_)  => Default.default
     right(b) => b
 end
 

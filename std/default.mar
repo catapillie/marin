@@ -1,0 +1,3 @@
+pub class Default(T)
+    default: T
+end
