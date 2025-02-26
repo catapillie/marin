@@ -1,0 +1,7 @@
+import default
+import option as Option
+
+
+pub have default.Default
+    let default = Option.none
+end

@@ -32,12 +32,12 @@ pub let iter(f)(l) match l with
     end
 end
 
-pub let fold_right(f)(l, init) match l with
+pub let fold_right(f, init)(l) match l with
     empty       => init
-    cons(x, xs) => f(x, fold_right(f)(xs, init))
+    cons(x, xs) => f(x, fold_right(f, init)(xs))
 end
 
-pub let fold_left(f)(init, l) do
+pub let fold_left(init, f)(l) do
     let aux(acc, xs) match xs with
         empty       => acc
         cons(x, xs) => aux(f(acc, x), xs)
@@ -151,5 +151,10 @@ pub let unzip(l) match l with
         let (xas, xbs) = unzip(xs)
         (cons(xa, xas), cons(xb, xbs))
     end
-    empty            => (empty, empty)
+    empty              => (empty, empty)
+end
+
+pub let concat(la, lb) match la with
+    empty       => lb
+    cons(x, xs) => cons(x, concat(xs, lb))
 end

@@ -1,0 +1,7 @@
+import default
+import list as List
+
+
+pub have default.Default
+    let default = List.empty
+end

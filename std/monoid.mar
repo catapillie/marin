@@ -1,0 +1,12 @@
+import list as List
+
+
+pub class Monoid(K)
+    empty: K
+    append(K, K) => K
+end
+
+pub alias Monoid.empty as empty
+pub alias Monoid.append as append
+
+pub let concat = List.fold_right(append, empty)

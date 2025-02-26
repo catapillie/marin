@@ -1,0 +1,12 @@
+import default
+alias default.default as def
+
+
+pub have default.Default let default = (def, def) end
+pub have default.Default let default = (def, def, def) end
+pub have default.Default let default = (def, def, def, def) end
+pub have default.Default let default = (def, def, def, def, def) end
+pub have default.Default let default = (def, def, def, def, def) end
+pub have default.Default let default = (def, def, def, def, def, def) end
+pub have default.Default let default = (def, def, def, def, def, def, def) end
+pub have default.Default let default = (def, def, def, def, def, def, def, def) end

@@ -1,0 +1,8 @@
+import monoid
+import list as List
+
+
+pub have monoid.Monoid
+    let empty = List.empty
+    let append = List.concat
+end

@@ -1,0 +1,8 @@
+import default
+alias default.default as def
+
+
+pub have default.Default let default = 0 end
+pub have default.Default let default = 0.0 end
+pub have default.Default let default = "" end
+pub have default.Default let default = false end
