@@ -1,6 +1,7 @@
-use colored::Colorize;
+use exe::{opcode, Value};
 
 mod com;
+mod exe;
 
 fn main() {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -21,16 +22,25 @@ fn main() {
         .emit_reports(color, &config)
         .expect("failed to emit reports");
 
-    let contents = compiler.file_contents();
-    let info = compiler.info();
+    let mut bytecode = Vec::new();
+    {
+        bytecode.push(opcode::LD_CONST);
+        bytecode.extend_from_slice(&0_u16.to_le_bytes());
+        bytecode.push(opcode::LD_CONST);
+        bytecode.extend_from_slice(&1_u16.to_le_bytes());
+        bytecode.push(opcode::LD_CONST);
+        bytecode.extend_from_slice(&2_u16.to_le_bytes());
 
-    eprintln!("\n{}", "=== EVALUATION ===".bright_white().on_black());
+        bytecode.extend_from_slice(&[opcode::BUNDLE, 3]);
+        bytecode.push(opcode::POP);
 
-    let mut walker = com::Walker::new();
-    for file_id in &info.evaluation_order {
-        let file_ir = &contents[*file_id].0;
-        if let Err(e) = walker.eval_file(file_ir) {
-            eprintln!("error: {e:?}")
-        }
+        bytecode.push(opcode::HALT);
     }
+
+    let mut vm = exe::VM::new(&bytecode);
+    vm.add_constant(&Value::Int(42));
+    vm.add_constant(&Value::Float(5.42));
+    vm.add_constant(&Value::Bool(true));
+
+    vm.run();
 }
