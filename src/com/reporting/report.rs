@@ -59,4 +59,8 @@ impl Report {
             )
             .with_notes(self.notes.iter().map(Note::msg).collect());
     }
+
+    pub fn is_fatal(&self) -> bool {
+        self.severity == Severity::Error
+    }
 }

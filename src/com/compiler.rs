@@ -1,5 +1,5 @@
 use super::{
-    ast, ir,
+    ast, gen, ir,
     reporting::{Header, Report},
     sem::{self},
     Checker, Parser,
@@ -38,6 +38,8 @@ pub struct Parsed(pub ast::File, pub StagedFileInfo);
 
 pub struct Checked(pub ir::Module);
 
+pub struct Compiled;
+
 // compiler info
 pub struct StagedInfo {
     is_std_staged: bool,
@@ -54,6 +56,8 @@ pub struct ParsedInfo {
 pub struct CheckedInfo {
     pub evaluation_order: Vec<usize>,
 }
+
+pub struct CompiledInfo;
 
 // compiler initialization
 pub fn init() -> Compiler<Staged, StagedInfo> {
@@ -73,6 +77,10 @@ impl<T, I> Compiler<T, I> {
 
     pub fn info(&self) -> &I {
         &self.info
+    }
+
+    pub fn is_fatal(&self) -> bool {
+        self.reports.iter().any(Report::is_fatal)
     }
 
     pub fn emit_reports(&self, color: ColorChoice, config: &Config) -> Result<(), files::Error> {
@@ -303,6 +311,24 @@ impl Compiler<Parsed, ParsedInfo> {
             reports: self.reports,
             files: Files(checked_files),
             info: CheckedInfo { evaluation_order },
+        }
+    }
+}
+
+impl Compiler<Checked, CheckedInfo> {
+    pub fn gen(self) -> Compiler<Compiled, CompiledInfo> {
+        let codegen = gen::Codegen::new();
+
+        let compiled_files = self
+            .files
+            .0
+            .into_iter()
+            .map(|(file, path, _)| (file, path, Compiled))
+            .collect();
+        Compiler {
+            reports: self.reports,
+            files: Files(compiled_files),
+            info: CompiledInfo,
         }
     }
 }

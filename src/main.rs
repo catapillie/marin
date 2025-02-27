@@ -21,6 +21,11 @@ fn main() {
     compiler
         .emit_reports(color, &config)
         .expect("failed to emit reports");
+    if compiler.is_fatal() {
+        std::process::exit(1);
+    }
+
+    compiler.gen();
 
     let mut bytecode = Vec::new();
     {

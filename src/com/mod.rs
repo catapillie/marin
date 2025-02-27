@@ -1,4 +1,5 @@
 mod ast;
+mod gen;
 mod ir;
 mod sem;
 
