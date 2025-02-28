@@ -1,5 +1,6 @@
 use super::{
-    ast, gen, ir,
+    ast, gen,
+    ir::{self, Entity},
     reporting::{Header, Report},
     sem::{self},
     Checker, Parser,
@@ -53,7 +54,9 @@ pub struct ParsedInfo {
     is_std_staged: bool,
 }
 
-pub struct CheckedInfo;
+pub struct CheckedInfo {
+    entities: Vec<Entity>,
+}
 
 pub struct CompiledInfo {
     pub bytecode: Vec<u8>,
@@ -289,6 +292,8 @@ impl Compiler<Parsed, ParsedInfo> {
                 irs[id] = Some(Checked(ir))
             }
         }
+
+        let entities = checker.entities;
         self.reports.append(&mut reports);
 
         let checked_files = files
@@ -304,7 +309,7 @@ impl Compiler<Parsed, ParsedInfo> {
         Compiler {
             reports: self.reports,
             files: Files(checked_files),
-            info: CheckedInfo,
+            info: CheckedInfo { entities },
         }
     }
 }
@@ -318,7 +323,7 @@ impl Compiler<Checked, CheckedInfo> {
             compiled_files.push((file, path, Compiled));
         }
 
-        let mut codegen = gen::Codegen::new(&modules);
+        let mut codegen = gen::Codegen::new(&modules, self.info.entities);
         codegen.gen().expect("codegen failed");
         let bytecode = codegen.done().expect("codegen finalize failed");
 

@@ -1,11 +1,18 @@
 opcodes! {
     0x10 bundle(u8)
-    0xa0 ld_const(u16)
+    0x11 index(u8)
+    0xa0 load_const(u16)
+    0xa2 load_local(u8)
+    0xa3 set_local(u8)
+    0xa4 load_nil
     0xb0 jump(u32)
     0xb1 jump_if(u32)
     0xb2 jump_if_not(u32)
+    0xb3 do_frame
+    0xb4 end_frame
+    0xbf ret
     0xe0 pop
-    0xff halt
+    0xe1 dup
 }
 
 macro_rules! opcodes {

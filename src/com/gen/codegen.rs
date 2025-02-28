@@ -1,5 +1,8 @@
 use byteorder::{WriteBytesExt, LE};
-use std::io::{self, Cursor};
+use std::{
+    collections::HashMap,
+    io::{self, Cursor},
+};
 
 use crate::{
     binary::{self, opcode, Opcode},
@@ -7,18 +10,41 @@ use crate::{
     exe,
 };
 
+struct Function {
+    pos: u32,
+    name: String,
+}
+
+struct Frame {
+    local_count: usize,
+}
+
 pub struct Codegen<'a> {
     ir: &'a [ir::Module],
+    entities: Vec<ir::Entity>,
+
     constants: Vec<exe::Value>,
+    functions: Vec<Function>,
+
     cursor: Cursor<Vec<u8>>,
+    frames: Vec<Frame>,
+    local_index: u8,
+    locals_by_id: HashMap<ir::EntityID, u8>,
 }
 
 impl<'a> Codegen<'a> {
-    pub fn new(ir: &'a [ir::Module]) -> Self {
+    pub fn new(ir: &'a [ir::Module], entities: Vec<ir::Entity>) -> Self {
         Self {
             ir,
+            entities,
+
             constants: Vec::new(),
+            functions: Vec::new(),
+
             cursor: Cursor::new(Vec::new()),
+            frames: Vec::new(),
+            local_index: 0,
+            locals_by_id: HashMap::new(),
         }
     }
 
@@ -75,6 +101,12 @@ impl<'a> Codegen<'a> {
         Ok(())
     }
 
+    fn gen_function(&mut self, name: String) -> binary::Result<()> {
+        let pos = self.pos();
+        self.functions.push(Function { pos, name });
+        Ok(())
+    }
+
     fn gen_statement(&mut self, stmt: &'a ir::Stmt) -> binary::Result<()> {
         use ir::Stmt as S;
         match stmt {
@@ -85,14 +117,123 @@ impl<'a> Codegen<'a> {
                 self.write_opcode(&Opcode::pop)?;
                 Ok(())
             }
-            S::Let(_, _) => todo!("let statement"),
+            S::Let(pattern, expr) => {
+                self.gen_deconstruct(pattern, expr)?;
+                Ok(())
+            }
         }
     }
 
+    fn gen_deconstruct(
+        &mut self,
+        pattern: &'a ir::Pattern,
+        expr: &'a ir::Expr,
+    ) -> binary::Result<()> {
+        self.gen_register_pattern_locals(pattern)?;
+        self.gen_expression(expr)?;
+        self.gen_initialize_pattern(pattern)?;
+        Ok(())
+    }
+
+    fn gen_register_pattern_locals(&mut self, pattern: &'a ir::Pattern) -> binary::Result<()> {
+        use ir::Pattern as P;
+        match pattern {
+            P::Missing => Ok(()),
+            P::Discard => Ok(()),
+            P::Binding(id) => {
+                self.write_opcode(&Opcode::load_nil)?;
+                let local = self.register_local();
+                self.locals_by_id.insert(*id, local);
+                Ok(())
+            }
+            P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => Ok(()),
+            P::Tuple(items) => {
+                for item in items {
+                    self.gen_register_pattern_locals(item)?;
+                }
+                Ok(())
+            }
+            P::Variant(_, _, _) => todo!(),
+            P::Record(_, fields) => {
+                for field in fields {
+                    self.gen_register_pattern_locals(field)?;
+                }
+                Ok(())
+            }
+        }
+    }
+
+    // initializes the pattern with the expression on the stack
+    fn gen_initialize_pattern(&mut self, pattern: &'a ir::Pattern) -> binary::Result<()> {
+        use ir::Pattern as P;
+        match pattern {
+            P::Missing => Ok(()),
+            P::Discard => {
+                self.write_opcode(&Opcode::pop)?;
+                Ok(())
+            }
+            P::Binding(id) => {
+                let local = self.get_local(id);
+                self.write_opcode(&Opcode::set_local(local))?;
+                Ok(())
+            }
+            P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => Ok(()),
+            P::Tuple(items) => {
+                for (i, item) in items.iter().enumerate() {
+                    self.write_opcode(&Opcode::index(i as u8))?;
+                    self.gen_initialize_pattern(item)?;
+                }
+                self.write_opcode(&Opcode::pop)?;
+                Ok(())
+            }
+            P::Variant(_, _, _) => todo!(),
+            P::Record(_, fields) => {
+                for (i, field) in fields.iter().enumerate() {
+                    self.write_opcode(&Opcode::index(i as u8))?;
+                    self.gen_initialize_pattern(field)?;
+                }
+                self.write_opcode(&Opcode::pop)?;
+                Ok(())
+            }
+        }
+    }
+
+    fn open_frame(&mut self) -> binary::Result<()> {
+        self.write_opcode(&Opcode::do_frame)?;
+        self.frames.push(Frame { local_count: 0 });
+        Ok(())
+    }
+
+    fn close_frame(&mut self) -> binary::Result<()> {
+        let frame = self.frames.pop().expect("frame stack underflow");
+        self.local_index -= frame.local_count as u8;
+
+        self.write_opcode(&Opcode::end_frame)?;
+        Ok(())
+    }
+
+    fn register_local(&mut self) -> u8 {
+        let index = self.local_index;
+        self.local_index = self
+            .local_index
+            .checked_add(1)
+            .expect("exceeded maximum local count (256) in function");
+        index
+    }
+
+    fn get_local(&self, id: &ir::EntityID) -> u8 {
+        self.locals_by_id
+            .get(id)
+            .copied()
+            .expect("unregistered local")
+    }
+
     fn gen_statement_block(&mut self, stmts: &'a [ir::Stmt]) -> binary::Result<()> {
+        self.open_frame()?;
         for stmt in stmts {
             self.gen_statement(stmt)?;
         }
+        self.close_frame()?;
         Ok(())
     }
 
@@ -111,6 +252,8 @@ impl<'a> Codegen<'a> {
         let Some(last) = stmts.last() else {
             return self.gen_unit();
         };
+
+        self.open_frame()?;
         match last {
             S::Expr(expr, _) => {
                 for stmt in &stmts[..stmts.len() - 1] {
@@ -125,6 +268,7 @@ impl<'a> Codegen<'a> {
                 self.gen_unit()?;
             }
         }
+        self.close_frame()?;
 
         Ok(())
     }
@@ -140,25 +284,29 @@ impl<'a> Codegen<'a> {
             E::Missing => Ok(()),
             E::Int(n) => {
                 let id = self.add_constant(exe::Value::Int(*n));
-                self.write_opcode(&Opcode::ld_const(id))?;
+                self.write_opcode(&Opcode::load_const(id))?;
                 Ok(())
             }
             E::Float(f) => {
                 let id = self.add_constant(exe::Value::Float(*f));
-                self.write_opcode(&Opcode::ld_const(id))?;
+                self.write_opcode(&Opcode::load_const(id))?;
                 Ok(())
             }
             E::String(s) => {
                 let id = self.add_constant(exe::Value::String(s.clone()));
-                self.write_opcode(&Opcode::ld_const(id))?;
+                self.write_opcode(&Opcode::load_const(id))?;
                 Ok(())
             }
             E::Bool(b) => {
                 let id = self.add_constant(exe::Value::Bool(*b));
-                self.write_opcode(&Opcode::ld_const(id))?;
+                self.write_opcode(&Opcode::load_const(id))?;
                 Ok(())
             }
-            E::Var(..) => todo!(),
+            E::Var(id) => {
+                let local = self.get_local(id);
+                self.write_opcode(&Opcode::load_local(local))?;
+                Ok(())
+            }
             E::Tuple(items) => {
                 for item in items {
                     self.gen_expression(item)?;
@@ -261,7 +409,7 @@ impl<'a> Codegen<'a> {
             E::Variant(tag, items) => {
                 // gen tag as i64
                 let tag_id = self.add_constant(exe::Value::Int(*tag as i64));
-                self.write_opcode(&Opcode::ld_const(tag_id))?;
+                self.write_opcode(&Opcode::load_const(tag_id))?;
 
                 // gen items
                 let count: u8 = match items {
@@ -305,9 +453,10 @@ impl<'a> Codegen<'a> {
 
         binary::write_magic(&mut bytecode)?;
         binary::write_constant_pool(&mut bytecode, &self.constants)?;
+        binary::write_function_table(&mut bytecode, &HashMap::new())?;
 
         bytecode.append(&mut code);
-        binary::write_opcode(&mut bytecode, &Opcode::halt)?;
+        binary::write_opcode(&mut bytecode, &Opcode::ret)?;
 
         Ok(bytecode)
     }

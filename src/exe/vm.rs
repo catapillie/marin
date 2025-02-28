@@ -4,6 +4,7 @@ use crate::binary::opcode;
 #[allow(dead_code)]
 #[derive(Clone)]
 enum Val {
+    Nil,
     Int(i64),
     Float(f64),
     String(String),
@@ -11,11 +12,16 @@ enum Val {
     Bundle(Box<[Val]>),
 }
 
+struct Frame {
+    stack_cursor: usize,
+}
+
 pub struct VM<'a> {
     code: &'a [u8],
     cursor: usize,
     constants: Vec<Val>,
     stack: Vec<Val>,
+    frame_stack: Vec<Frame>,
 }
 
 impl<'a> VM<'a> {
@@ -25,6 +31,7 @@ impl<'a> VM<'a> {
             cursor: 0,
             constants: Vec::new(),
             stack: Vec::new(),
+            frame_stack: Vec::new(),
         }
     }
 
@@ -44,6 +51,9 @@ impl<'a> VM<'a> {
     }
 
     pub fn run(&mut self) {
+        // initial frame
+        self.push_frame();
+
         loop {
             let op = self.read_u8();
             match op {
@@ -51,6 +61,31 @@ impl<'a> VM<'a> {
                     let count = self.read_u8() as usize;
                     let values = self.stack.split_off(self.stack.len() - count);
                     self.push(Val::Bundle(values.into()));
+                }
+                opcode::index => {
+                    let index = self.read_u8() as usize;
+                    let Val::Bundle(items) = self.peek() else {
+                        panic!("invalid index on a non-bundle value");
+                    };
+                    let value = items[index].clone();
+                    self.push(value);
+                }
+                opcode::load_const => {
+                    let index = self.read_u16() as usize;
+                    self.push(self.constants[index].clone());
+                }
+                opcode::load_local => {
+                    let local = self.read_u8() as usize;
+                    let value = self.stack[local].clone();
+                    self.push(value);
+                }
+                opcode::set_local => {
+                    let value = self.pop();
+                    let local = self.read_u8() as usize;
+                    self.stack[local] = value;
+                }
+                opcode::load_nil => {
+                    self.push(Val::Nil);
                 }
                 opcode::jump => {
                     let pos = self.read_u32() as usize;
@@ -68,20 +103,33 @@ impl<'a> VM<'a> {
                 opcode::jump_if_not => {
                     let pos = self.read_u32() as usize;
                     let Val::Bool(b) = self.pop() else {
-                        panic!("found non-boolean value as jump_if condition");
+                        panic!("found non-boolean value as jump_if_not condition");
                     };
                     if !b {
                         self.cursor = pos;
                     }
                 }
-                opcode::ld_const => {
-                    let index = self.read_u16() as usize;
-                    self.push(self.constants[index].clone());
+                opcode::do_frame => {
+                    self.push_frame();
+                }
+                opcode::end_frame => {
+                    let value = self.pop();
+                    self.pop_frame();
+                    self.push(value);
+                }
+                opcode::ret => {
+                    self.pop_frame();
+                    if self.frame_stack.is_empty() {
+                        break;
+                    }
                 }
                 opcode::pop => {
                     self.pop();
                 }
-                opcode::halt => break,
+                opcode::dup => {
+                    let value = self.peek().clone();
+                    self.push(value);
+                }
                 _ => panic!("invalid opcode 0x{op:x}"),
             }
         }
@@ -93,8 +141,23 @@ impl<'a> VM<'a> {
         self.stack.pop().expect("stack underflow")
     }
 
+    fn peek(&mut self) -> &Val {
+        self.stack.last().expect("stack underflow")
+    }
+
     fn push(&mut self, val: Val) {
         self.stack.push(val);
+    }
+
+    fn pop_frame(&mut self) {
+        let frame = self.frame_stack.pop().expect("frame stack underflow");
+        self.stack.truncate(frame.stack_cursor);
+    }
+
+    fn push_frame(&mut self) {
+        self.frame_stack.push(Frame {
+            stack_cursor: self.stack.len(),
+        });
     }
 
     fn read_u8(&mut self) -> u8 {
