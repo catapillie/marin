@@ -30,6 +30,9 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
     match r.read_u8()? {
         opcode::bundle => Ok(Opcode::bundle(r.read_u8()?)),
         opcode::ld_const => Ok(Opcode::ld_const(r.read_u16::<LE>()?)),
+        opcode::jump => Ok(Opcode::jump(r.read_u32::<LE>()?)),
+        opcode::jump_if => Ok(Opcode::jump_if(r.read_u32::<LE>()?)),
+        opcode::jump_if_not => Ok(Opcode::jump_if_not(r.read_u32::<LE>()?)),
         opcode::pop => Ok(Opcode::pop),
         opcode::halt => Ok(Opcode::halt),
         _ => Err(Error::IllegalOpcode),
@@ -46,6 +49,21 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         Opcode::ld_const(x) => {
             w.write_u8(opcode::ld_const)?;
             w.write_u16::<LE>(*x)?;
+            Ok(())
+        }
+        Opcode::jump(pos) => {
+            w.write_u8(opcode::jump)?;
+            w.write_u32::<LE>(*pos)?;
+            Ok(())
+        }
+        Opcode::jump_if(pos) => {
+            w.write_u8(opcode::jump_if)?;
+            w.write_u32::<LE>(*pos)?;
+            Ok(())
+        }
+        Opcode::jump_if_not(pos) => {
+            w.write_u8(opcode::jump_if_not)?;
+            w.write_u32::<LE>(*pos)?;
             Ok(())
         }
         Opcode::pop => {

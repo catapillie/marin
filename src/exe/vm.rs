@@ -52,6 +52,28 @@ impl<'a> VM<'a> {
                     let values = self.stack.split_off(self.stack.len() - count);
                     self.push(Val::Bundle(values.into()));
                 }
+                opcode::jump => {
+                    let pos = self.read_u32() as usize;
+                    self.cursor = pos;
+                }
+                opcode::jump_if => {
+                    let pos = self.read_u32() as usize;
+                    let Val::Bool(b) = self.pop() else {
+                        panic!("found non-boolean value as jump_if condition");
+                    };
+                    if b {
+                        self.cursor = pos;
+                    }
+                }
+                opcode::jump_if_not => {
+                    let pos = self.read_u32() as usize;
+                    let Val::Bool(b) = self.pop() else {
+                        panic!("found non-boolean value as jump_if condition");
+                    };
+                    if !b {
+                        self.cursor = pos;
+                    }
+                }
                 opcode::ld_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());
@@ -83,5 +105,14 @@ impl<'a> VM<'a> {
 
     fn read_u16(&mut self) -> u16 {
         u16::from_le_bytes([self.read_u8(), self.read_u8()])
+    }
+
+    fn read_u32(&mut self) -> u32 {
+        u32::from_le_bytes([
+            self.read_u8(),
+            self.read_u8(),
+            self.read_u8(),
+            self.read_u8(),
+        ])
     }
 }

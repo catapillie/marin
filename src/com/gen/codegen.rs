@@ -1,7 +1,8 @@
-use std::io::Cursor;
+use byteorder::{WriteBytesExt, LE};
+use std::io::{self, Cursor};
 
 use crate::{
-    binary::{self, Opcode},
+    binary::{self, opcode, Opcode},
     com::ir,
     exe,
 };
@@ -19,6 +20,31 @@ impl<'a> Codegen<'a> {
             constants: Vec::new(),
             cursor: Cursor::new(Vec::new()),
         }
+    }
+
+    fn pos(&self) -> u32 {
+        self.cursor
+            .position()
+            .try_into()
+            .expect("current cursor position is too large")
+    }
+
+    fn set_pos(&mut self, pos: u32) {
+        self.cursor.set_position(pos as u64);
+    }
+
+    fn write_u32_placeholder(&mut self) -> io::Result<u32> {
+        let pos = self.pos();
+        self.cursor.write_u32::<LE>(0)?;
+        Ok(pos)
+    }
+
+    fn patch_u32_placeholder(&mut self, pos: u32, val: u32) -> io::Result<()> {
+        let orig = self.pos();
+        self.set_pos(pos);
+        self.cursor.write_u32::<LE>(val)?;
+        self.set_pos(orig);
+        Ok(())
     }
 
     fn add_constant(&mut self, value: exe::Value) -> u16 {
@@ -63,6 +89,51 @@ impl<'a> Codegen<'a> {
         }
     }
 
+    fn gen_statement_block(&mut self, stmts: &'a [ir::Stmt]) -> binary::Result<()> {
+        for stmt in stmts {
+            self.gen_statement(stmt)?;
+        }
+        Ok(())
+    }
+
+    fn gen_expression_block(&mut self, stmts: &'a [ir::Stmt]) -> binary::Result<()> {
+        use ir::Stmt as S;
+        let stmts = stmts
+            .iter()
+            .filter(|stmt| match stmt {
+                S::Missing => false,
+                S::Nothing => true,
+                S::Expr(..) => true,
+                S::Let(..) => true,
+            })
+            .collect::<Vec<_>>();
+
+        let Some(last) = stmts.last() else {
+            return self.gen_unit();
+        };
+        match last {
+            S::Expr(expr, _) => {
+                for stmt in &stmts[..stmts.len() - 1] {
+                    self.gen_statement(stmt)?;
+                }
+                self.gen_expression(expr)?;
+            }
+            _ => {
+                for stmt in stmts {
+                    self.gen_statement(stmt)?;
+                }
+                self.gen_unit()?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn gen_unit(&mut self) -> binary::Result<()> {
+        self.write_opcode(&Opcode::bundle(0))?;
+        Ok(())
+    }
+
     fn gen_expression(&mut self, expr: &'a ir::Expr) -> binary::Result<()> {
         use ir::Expr as E;
         match expr {
@@ -100,8 +171,89 @@ impl<'a> Codegen<'a> {
                 Ok(())
             }
             E::Array(..) => todo!(),
-            E::Block(..) => todo!(),
-            E::Conditional(..) => todo!(),
+            E::Block(stmts, _) => {
+                self.gen_expression_block(stmts)?;
+                Ok(())
+            }
+            E::Conditional(branches, is_exhaustive) => {
+                let mut else_jump_pos = None;
+                let mut exit_jump_pos = Vec::new();
+
+                use ir::Branch as B;
+                for branch in branches {
+                    if let Some(pos) = else_jump_pos {
+                        self.patch_u32_placeholder(pos, self.pos())?;
+                    };
+
+                    match branch {
+                        B::If(guard, body, _) => {
+                            // if <guard> ...
+                            self.gen_expression(guard)?;
+
+                            // if false, skip over the 'then' block
+                            self.cursor.write_u8(opcode::jump_if_not)?;
+                            else_jump_pos = Some(self.write_u32_placeholder()?);
+
+                            // then <body> ...
+                            self.gen_expression_block(body)?;
+                            self.cursor.write_u8(opcode::jump)?;
+                            exit_jump_pos.push(self.write_u32_placeholder()?);
+                        }
+                        B::While(guard, body, _) => {
+                            // while <guard> ...
+                            let while_pos = self.pos();
+                            self.gen_expression(guard)?;
+
+                            // if false, skip over the 'do' block if
+                            self.cursor.write_u8(opcode::jump_if_not)?;
+                            else_jump_pos = Some(self.write_u32_placeholder()?);
+
+                            // do <body> ...
+                            self.gen_statement_block(body)?;
+                            self.write_opcode(&Opcode::jump(while_pos))?;
+                        }
+                        B::Loop(body, _) => {
+                            // loop <body> ...
+                            let loop_pos = self.pos();
+                            self.gen_statement_block(body)?;
+                            self.write_opcode(&Opcode::jump(loop_pos))?;
+                        }
+                        B::Else(body, _) => {
+                            // else <body> ...
+                            self.gen_expression_block(body)?;
+
+                            // no need to wire an 'else' because this branch always succeeds
+                            else_jump_pos = None;
+                            break;
+                        }
+                        B::Match(..) => todo!(),
+                    }
+                }
+
+                // wire all exit jumps
+                let final_pos = self.pos();
+                for exit_pos in exit_jump_pos {
+                    self.patch_u32_placeholder(exit_pos, final_pos)?;
+                }
+
+                // if non-exhaustive, then all successful branches
+                // have to pop: they eventually evaluate to unit down below
+                if !*is_exhaustive {
+                    self.write_opcode(&Opcode::pop)?;
+                }
+
+                // wire final else jump
+                if let Some(pos) = else_jump_pos {
+                    self.patch_u32_placeholder(pos, self.pos())?;
+                };
+
+                // non-exhaustive expressions evaluate to unit
+                if !*is_exhaustive {
+                    self.gen_unit()?;
+                }
+
+                Ok(())
+            }
             E::Break(..) => todo!(),
             E::Skip(..) => todo!(),
             E::Fun(..) => todo!(),
