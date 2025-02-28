@@ -1,5 +1,4 @@
-use exe::{opcode, Value};
-
+mod binary;
 mod com;
 mod exe;
 
@@ -29,23 +28,29 @@ fn main() {
 
     let mut bytecode = Vec::new();
     {
-        bytecode.push(opcode::LD_CONST);
-        bytecode.extend_from_slice(&0_u16.to_le_bytes());
-        bytecode.push(opcode::LD_CONST);
-        bytecode.extend_from_slice(&1_u16.to_le_bytes());
-        bytecode.push(opcode::LD_CONST);
-        bytecode.extend_from_slice(&2_u16.to_le_bytes());
+        binary::write_magic(&mut bytecode).unwrap();
+        binary::write_constant_pool(
+            &mut bytecode,
+            &[
+                exe::Value::Int(42),
+                exe::Value::Float(4.57),
+                exe::Value::Bool(true),
+            ],
+        )
+        .unwrap();
 
-        bytecode.extend_from_slice(&[opcode::BUNDLE, 3]);
-        bytecode.push(opcode::POP);
+        binary::write_opcode(&mut bytecode, &binary::Opcode::ld_const(0)).unwrap();
+        binary::write_opcode(&mut bytecode, &binary::Opcode::ld_const(1)).unwrap();
+        binary::write_opcode(&mut bytecode, &binary::Opcode::ld_const(2)).unwrap();
 
-        bytecode.push(opcode::HALT);
+        binary::write_opcode(&mut bytecode, &binary::Opcode::bundle(3)).unwrap();
+        binary::write_opcode(&mut bytecode, &binary::Opcode::pop).unwrap();
+
+        binary::write_opcode(&mut bytecode, &binary::Opcode::halt).unwrap();
     }
 
-    let mut vm = exe::VM::new(&bytecode);
-    vm.add_constant(&Value::Int(42));
-    vm.add_constant(&Value::Float(5.42));
-    vm.add_constant(&Value::Bool(true));
+    let mut cursor = std::io::Cursor::new(&bytecode);
+    binary::dissasemble(&mut cursor).unwrap();
 
-    vm.run();
+    exe::run_bytecode(&bytecode);
 }

@@ -1,5 +1,7 @@
-use super::{opcode, Value};
+use super::Value;
+use crate::binary::opcode;
 
+#[allow(dead_code)]
 #[derive(Clone)]
 enum Val {
     Int(i64),
@@ -45,20 +47,19 @@ impl<'a> VM<'a> {
         loop {
             let op = self.read_u8();
             match op {
-                opcode::BUNDLE => {
+                opcode::bundle => {
                     let count = self.read_u8() as usize;
                     let values = self.stack.split_off(self.stack.len() - count);
                     self.push(Val::Bundle(values.into()));
                 }
-                opcode::LD_CONST => {
+                opcode::ld_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());
                 }
-                opcode::POP => {
+                opcode::pop => {
                     self.pop();
                 }
-                opcode::NOP => continue,
-                opcode::HALT => break,
+                opcode::halt => break,
                 _ => panic!("invalid opcode 0x{op:x}"),
             }
         }
