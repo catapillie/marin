@@ -31,6 +31,10 @@ impl<'a> Codegen<'a> {
         id
     }
 
+    fn write_opcode(&mut self, opcode: &Opcode) -> binary::Result<()> {
+        binary::write_opcode(&mut self.cursor, opcode)
+    }
+
     pub fn gen(&mut self) -> binary::Result<()> {
         for module in self.ir {
             self.gen_module(module)?;
@@ -52,6 +56,7 @@ impl<'a> Codegen<'a> {
             S::Nothing => Ok(()),
             S::Expr(expr, _) => {
                 self.gen_expression(expr)?;
+                self.write_opcode(&Opcode::pop)?;
                 Ok(())
             }
             S::Let(_, _) => todo!("let statement"),
@@ -62,12 +67,38 @@ impl<'a> Codegen<'a> {
         use ir::Expr as E;
         match expr {
             E::Missing => Ok(()),
-            E::Int(..) => todo!(),
-            E::Float(..) => todo!(),
-            E::String(..) => todo!(),
-            E::Bool(..) => todo!(),
+            E::Int(n) => {
+                let id = self.add_constant(exe::Value::Int(*n));
+                self.write_opcode(&Opcode::ld_const(id))?;
+                Ok(())
+            }
+            E::Float(f) => {
+                let id = self.add_constant(exe::Value::Float(*f));
+                self.write_opcode(&Opcode::ld_const(id))?;
+                Ok(())
+            }
+            E::String(s) => {
+                let id = self.add_constant(exe::Value::String(s.clone()));
+                self.write_opcode(&Opcode::ld_const(id))?;
+                Ok(())
+            }
+            E::Bool(b) => {
+                let id = self.add_constant(exe::Value::Bool(*b));
+                self.write_opcode(&Opcode::ld_const(id))?;
+                Ok(())
+            }
             E::Var(..) => todo!(),
-            E::Tuple(..) => todo!(),
+            E::Tuple(items) => {
+                for item in items {
+                    self.gen_expression(item)?;
+                }
+                let count: u8 = items
+                    .len()
+                    .try_into()
+                    .expect("tuples cannot have more than 255 items");
+                self.write_opcode(&Opcode::bundle(count))?;
+                Ok(())
+            }
             E::Array(..) => todo!(),
             E::Block(..) => todo!(),
             E::Conditional(..) => todo!(),
@@ -75,8 +106,41 @@ impl<'a> Codegen<'a> {
             E::Skip(..) => todo!(),
             E::Fun(..) => todo!(),
             E::Call(..) => todo!(),
-            E::Variant(..) => todo!(),
-            E::Record(..) => todo!(),
+            E::Variant(tag, items) => {
+                // gen tag as i64
+                let tag_id = self.add_constant(exe::Value::Int(*tag as i64));
+                self.write_opcode(&Opcode::ld_const(tag_id))?;
+
+                // gen items
+                let count: u8 = match items {
+                    Some(items) => {
+                        for item in items {
+                            self.gen_expression(item)?;
+                        }
+                        items
+                            .len()
+                            .try_into()
+                            .expect("variants cannot have more than 255 items")
+                    }
+                    None => 0,
+                };
+                self.write_opcode(&Opcode::bundle(count))?;
+
+                // bundle (tag, [items])
+                self.write_opcode(&Opcode::bundle(2))?;
+                Ok(())
+            }
+            E::Record(items) => {
+                for item in items {
+                    self.gen_expression(item)?;
+                }
+                let count: u8 = items
+                    .len()
+                    .try_into()
+                    .expect("records cannot have more than 255 fields");
+                self.write_opcode(&Opcode::bundle(count))?;
+                Ok(())
+            }
             E::Access(..) => todo!(),
         }
     }
@@ -89,7 +153,9 @@ impl<'a> Codegen<'a> {
 
         binary::write_magic(&mut bytecode)?;
         binary::write_constant_pool(&mut bytecode, &self.constants)?;
+
         bytecode.append(&mut code);
+        binary::write_opcode(&mut bytecode, &Opcode::halt)?;
 
         Ok(bytecode)
     }

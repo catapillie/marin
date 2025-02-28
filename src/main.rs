@@ -7,9 +7,18 @@ fn main() {
 
     let mut compiler = com::init();
 
-    compiler.add_marin_std();
+    let mut has_std = true;
     for arg in &args {
+        if arg == "--no-std" {
+            has_std = false;
+            continue;
+        }
+
         compiler.add_file(arg);
+    }
+
+    if has_std {
+        compiler.add_marin_std();
     }
 
     let compiler = compiler.read_sources().parse().check();
