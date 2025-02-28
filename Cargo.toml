@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+byteorder = "1.5.0"
 codespan-reporting = "0.11.1"
 colored = "3.0.0"
 either = "1.13.0"

@@ -53,11 +53,11 @@ pub struct ParsedInfo {
     is_std_staged: bool,
 }
 
-pub struct CheckedInfo {
-    pub evaluation_order: Vec<usize>,
-}
+pub struct CheckedInfo;
 
-pub struct CompiledInfo;
+pub struct CompiledInfo {
+    pub bytecode: Vec<u8>,
+}
 
 // compiler initialization
 pub fn init() -> Compiler<Staged, StagedInfo> {
@@ -71,12 +71,8 @@ pub fn init() -> Compiler<Staged, StagedInfo> {
 }
 
 impl<T, I> Compiler<T, I> {
-    pub fn file_contents(&self) -> Box<[&T]> {
-        self.files.0.iter().map(|(_, _, t)| t).collect()
-    }
-
-    pub fn info(&self) -> &I {
-        &self.info
+    pub fn into_content(self) -> I {
+        self.info
     }
 
     pub fn is_fatal(&self) -> bool {
@@ -305,30 +301,31 @@ impl Compiler<Parsed, ParsedInfo> {
             })
             .collect();
 
-        let evaluation_order = order.into_iter().flatten().collect();
-
         Compiler {
             reports: self.reports,
             files: Files(checked_files),
-            info: CheckedInfo { evaluation_order },
+            info: CheckedInfo,
         }
     }
 }
 
 impl Compiler<Checked, CheckedInfo> {
     pub fn gen(self) -> Compiler<Compiled, CompiledInfo> {
-        let codegen = gen::Codegen::new();
+        let mut modules = Vec::with_capacity(self.files.0.len());
+        let mut compiled_files = Vec::with_capacity(self.files.0.len());
+        for (file, path, Checked(module)) in self.files.0 {
+            modules.push(module);
+            compiled_files.push((file, path, Compiled));
+        }
 
-        let compiled_files = self
-            .files
-            .0
-            .into_iter()
-            .map(|(file, path, _)| (file, path, Compiled))
-            .collect();
+        let mut codegen = gen::Codegen::new(&modules);
+        codegen.gen().expect("codegen failed");
+        let bytecode = codegen.done().expect("codegen finalize failed");
+
         Compiler {
             reports: self.reports,
             files: Files(compiled_files),
-            info: CompiledInfo,
+            info: CompiledInfo { bytecode },
         }
     }
 }

@@ -24,30 +24,8 @@ fn main() {
         std::process::exit(1);
     }
 
-    compiler.gen();
-
-    let mut bytecode = Vec::new();
-    {
-        binary::write_magic(&mut bytecode).unwrap();
-        binary::write_constant_pool(
-            &mut bytecode,
-            &[
-                exe::Value::Int(42),
-                exe::Value::Float(4.57),
-                exe::Value::Bool(true),
-            ],
-        )
-        .unwrap();
-
-        binary::write_opcode(&mut bytecode, &binary::Opcode::ld_const(0)).unwrap();
-        binary::write_opcode(&mut bytecode, &binary::Opcode::ld_const(1)).unwrap();
-        binary::write_opcode(&mut bytecode, &binary::Opcode::ld_const(2)).unwrap();
-
-        binary::write_opcode(&mut bytecode, &binary::Opcode::bundle(3)).unwrap();
-        binary::write_opcode(&mut bytecode, &binary::Opcode::pop).unwrap();
-
-        binary::write_opcode(&mut bytecode, &binary::Opcode::halt).unwrap();
-    }
+    let compiler = compiler.gen();
+    let bytecode = compiler.into_content().bytecode;
 
     let mut cursor = std::io::Cursor::new(&bytecode);
     binary::dissasemble(&mut cursor).unwrap();
