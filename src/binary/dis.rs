@@ -32,9 +32,24 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             break;
         }
 
+        let pos = pos - orig;
+
+        match function_table.get(&(pos as u32)) {
+            Some(fun_name) => {
+                println!("         ║ :: {}", fun_name.bold());
+                print!("{:0>8} ║ ", pos);
+            }
+            None => print!("{:0>8} ║ ", pos),
+        }
+
         let opcode = super::read_opcode(r)?;
-        print!("{:0>8} ║ ", pos - orig);
         match opcode {
+            Op::load_fun(pos) => print!(
+                "{:>12} {} <{:0>8}>",
+                "load_fun",
+                function_table.get(&pos).unwrap(),
+                pos.to_string().bold()
+            ),
             Op::bundle(count) => print!("{:>12} [{}]", "bundle", count.to_string().bold()),
             Op::index(count) => print!("{:>12} {}", "index", count.to_string().bold()),
             Op::load_const(x) => print!(

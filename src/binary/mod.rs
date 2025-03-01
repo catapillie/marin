@@ -31,6 +31,7 @@ pub fn write_magic<W: io::Write>(w: &mut W) -> Result<()> {
 
 pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
     match r.read_u8()? {
+        opcode::load_fun => Ok(Opcode::load_fun(r.read_u32::<LE>()?)),
         opcode::bundle => Ok(Opcode::bundle(r.read_u8()?)),
         opcode::index => Ok(Opcode::index(r.read_u8()?)),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
@@ -51,6 +52,11 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
 
 pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
     match opcode {
+        Opcode::load_fun(addr) => {
+            w.write_u8(opcode::load_fun)?;
+            w.write_u32::<LE>(*addr)?;
+            Ok(())
+        }
         Opcode::bundle(count) => {
             w.write_u8(opcode::bundle)?;
             w.write_u8(*count)?;

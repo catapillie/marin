@@ -9,6 +9,7 @@ enum Val {
     Float(f64),
     String(String),
     Bool(bool),
+    Func(u32),
     Bundle(Box<[Val]>),
 }
 
@@ -57,6 +58,10 @@ impl<'a> VM<'a> {
         loop {
             let op = self.read_u8();
             match op {
+                opcode::load_fun => {
+                    let pos = self.read_u32();
+                    self.push(Val::Func(pos));
+                }
                 opcode::bundle => {
                     let count = self.read_u8() as usize;
                     let values = self.stack.split_off(self.stack.len() - count);

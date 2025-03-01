@@ -11,12 +11,24 @@ use crate::{
 };
 
 struct Function {
-    pos: u32,
+    pos: Option<u32>,
     name: String,
+    placeholders: Vec<u32>,
 }
 
 struct Frame {
     local_count: usize,
+}
+
+enum FunctionCode<'a> {
+    Expr(&'a ir::Expr),
+    Block(&'a [ir::Stmt]),
+}
+
+struct FunctionWork<'a> {
+    id: usize,
+    signature: Option<&'a ir::Signature>,
+    body: FunctionCode<'a>,
 }
 
 pub struct Codegen<'a> {
@@ -30,6 +42,8 @@ pub struct Codegen<'a> {
     frames: Vec<Frame>,
     local_index: u8,
     locals_by_id: HashMap<ir::EntityID, u8>,
+    remaining_work: Vec<FunctionWork<'a>>,
+    functions_by_id: HashMap<ir::EntityID, usize>,
 }
 
 impl<'a> Codegen<'a> {
@@ -45,6 +59,8 @@ impl<'a> Codegen<'a> {
             frames: Vec::new(),
             local_index: 0,
             locals_by_id: HashMap::new(),
+            remaining_work: Vec::new(),
+            functions_by_id: HashMap::new(),
         }
     }
 
@@ -87,23 +103,63 @@ impl<'a> Codegen<'a> {
         binary::write_opcode(&mut self.cursor, opcode)
     }
 
+    fn create_function(
+        &mut self,
+        name: &str,
+        signature: Option<&'a ir::Signature>,
+        body: FunctionCode<'a>,
+    ) -> usize {
+        let id = self.functions.len();
+        self.functions.push(Function {
+            pos: None,
+            name: name.to_string(),
+            placeholders: Vec::new(),
+        });
+        self.remaining_work.push(FunctionWork {
+            id,
+            signature,
+            body,
+        });
+        id
+    }
+
     pub fn gen(&mut self) -> binary::Result<()> {
-        for module in self.ir {
-            self.gen_module(module)?;
+        // initial function
+        for (i, ir) in self.ir.iter().enumerate() {
+            let name = format!("<main{i}>");
+            self.create_function(&name, None, FunctionCode::Block(&ir.stmts));
         }
+
+        // generate all functions
+        while let Some(work) = self.remaining_work.pop() {
+            self.gen_function(work)?;
+        }
+
         Ok(())
     }
 
-    fn gen_module(&mut self, module: &'a ir::Module) -> binary::Result<()> {
-        for stmt in &module.stmts {
-            self.gen_statement(stmt)?;
-        }
-        Ok(())
-    }
-
-    fn gen_function(&mut self, name: String) -> binary::Result<()> {
+    fn gen_function(&mut self, work: FunctionWork<'a>) -> binary::Result<()> {
+        // update function's code position
         let pos = self.pos();
-        self.functions.push(Function { pos, name });
+        let fun = self
+            .functions
+            .get_mut(work.id)
+            .expect("generating an unregistered function");
+        fun.pos = Some(pos);
+        for placeholder in fun.placeholders.clone() {
+            self.patch_u32_placeholder(placeholder, pos)?;
+        }
+
+        // if let Some(_sig) = work.signature {
+        //     todo!("handle signatures")
+        // }
+
+        match work.body {
+            FunctionCode::Expr(expr) => self.gen_expression(expr)?,
+            FunctionCode::Block(stmts) => self.gen_expression_block(stmts)?,
+        }
+
+        self.write_opcode(&Opcode::ret)?;
         Ok(())
     }
 
@@ -228,6 +284,29 @@ impl<'a> Codegen<'a> {
             .expect("unregistered local")
     }
 
+    fn register_user_function(
+        &mut self,
+        id: Option<ir::EntityID>,
+        name: &str,
+        signature: Option<&'a ir::Signature>,
+        body: FunctionCode<'a>,
+    ) -> usize {
+        let fun_id = self.create_function(name, signature, body);
+
+        if let Some(id) = id {
+            if self.functions_by_id.contains_key(&id) {
+                panic!("function already registered");
+            }
+            self.functions_by_id.insert(id, fun_id);
+        }
+
+        fun_id
+    }
+
+    fn try_get_user_function(&self, id: &ir::EntityID) -> Option<usize> {
+        self.functions_by_id.get(id).copied()
+    }
+
     fn gen_statement_block(&mut self, stmts: &'a [ir::Stmt]) -> binary::Result<()> {
         self.open_frame()?;
         for stmt in stmts {
@@ -303,9 +382,15 @@ impl<'a> Codegen<'a> {
                 Ok(())
             }
             E::Var(id) => {
-                let local = self.get_local(id);
-                self.write_opcode(&Opcode::load_local(local))?;
-                Ok(())
+                println!("var id {}", id.0);
+                if let Some(fun_id) = self.try_get_user_function(id) {
+                    self.gen_function_value(fun_id)?;
+                    Ok(())
+                } else {
+                    let local = self.get_local(id);
+                    self.write_opcode(&Opcode::load_local(local))?;
+                    Ok(())
+                }
             }
             E::Tuple(items) => {
                 for item in items {
@@ -404,7 +489,17 @@ impl<'a> Codegen<'a> {
             }
             E::Break(..) => todo!(),
             E::Skip(..) => todo!(),
-            E::Fun(..) => todo!(),
+            E::Fun(rec_id, signature, expr) => {
+                println!("fun rec_id {rec_id:?}");
+                let id = self.register_user_function(
+                    *rec_id,
+                    "",
+                    Some(signature),
+                    FunctionCode::Expr(expr),
+                );
+                self.gen_function_value(id)?;
+                Ok(())
+            }
             E::Call(..) => todo!(),
             E::Variant(tag, items) => {
                 // gen tag as i64
@@ -445,7 +540,34 @@ impl<'a> Codegen<'a> {
         }
     }
 
+    fn gen_function_value(&mut self, id: usize) -> binary::Result<()> {
+        let fun = &self.functions[id];
+        match fun.pos {
+            Some(pos) => {
+                self.write_opcode(&Opcode::load_fun(pos))?;
+            }
+            None => {
+                self.cursor.write_u8(opcode::load_fun)?;
+                let placeholder = self.write_u32_placeholder()?;
+                self.functions[id].placeholders.push(placeholder);
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn done(self) -> binary::Result<Vec<u8>> {
+        let function_table = self
+            .functions
+            .into_iter()
+            .map(|f| {
+                (
+                    f.pos
+                        .expect("generated function does not have a code position"),
+                    f.name,
+                )
+            })
+            .collect();
         let mut code = self.cursor.into_inner();
 
         let final_size_approx = code.len() + binary::MAGIC.len() + 1;
@@ -453,10 +575,8 @@ impl<'a> Codegen<'a> {
 
         binary::write_magic(&mut bytecode)?;
         binary::write_constant_pool(&mut bytecode, &self.constants)?;
-        binary::write_function_table(&mut bytecode, &HashMap::new())?;
-
+        binary::write_function_table(&mut bytecode, &function_table)?;
         bytecode.append(&mut code);
-        binary::write_opcode(&mut bytecode, &Opcode::ret)?;
 
         Ok(bytecode)
     }

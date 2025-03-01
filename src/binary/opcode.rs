@@ -1,4 +1,5 @@
 opcodes! {
+    0x0a load_fun(u32)
     0x10 bundle(u8)
     0x11 index(u8)
     0xa0 load_const(u16)
