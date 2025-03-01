@@ -163,7 +163,7 @@ impl<'src, 'e> Checker<'src, 'e> {
     fn import_all_instances(&mut self, dep_file: usize) {
         let dep_instances = self.exports[dep_file].instances.clone();
         for id in dep_instances {
-            self.scope.infos_mut().insert(id);
+            self.scope.infos_mut().instances.insert(id);
         }
     }
 

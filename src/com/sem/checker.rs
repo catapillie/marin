@@ -15,6 +15,12 @@ pub struct Export<'src> {
     pub instances: Vec<ir::EntityID>,
 }
 
+#[derive(Default)]
+pub struct ScopeInfo<'src> {
+    pub name: &'src str,
+    pub instances: Instances,
+}
+
 pub struct Checker<'src, 'e> {
     pub options: CheckModuleOptions,
 
@@ -25,7 +31,7 @@ pub struct Checker<'src, 'e> {
     pub deps: &'e deps::Dependencies,
     pub exports: Vec<Export<'src>>,
 
-    pub scope: Scope<&'src str, Instances, ir::EntityID>,
+    pub scope: Scope<&'src str, ScopeInfo<'src>, ir::EntityID>,
     pub label_scope: Scope<&'src str, (), ir::LabelID>,
     pub entities: Vec<ir::Entity>,
     pub entity_public: Vec<bool>,
@@ -76,6 +82,18 @@ impl<'src, 'e> Checker<'src, 'e> {
     pub fn close_scope(&mut self) {
         self.scope.close();
         self.label_scope.close();
+    }
+
+    pub fn set_scope_name(&mut self, name: &'src str) {
+        self.scope.infos_mut().name = name;
+    }
+
+    pub fn build_scope_name(&self) -> String {
+        self.scope
+            .infos_iter()
+            .map(|info| info.name.to_string())
+            .collect::<Vec<_>>()
+            .join(".")
     }
 }
 

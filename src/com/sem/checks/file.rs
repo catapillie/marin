@@ -71,7 +71,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         }
 
         let mut instances = Vec::new();
-        for id in self.scope.infos_iter().flatten() {
+        for id in self.scope.infos_iter().flat_map(|info| &info.instances) {
             if self.is_entity_public(*id) {
                 instances.push(*id);
             }

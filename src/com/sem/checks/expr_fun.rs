@@ -30,6 +30,9 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         self.close_scope();
 
-        (ir::Expr::Fun(id, Box::new(sig), Box::new(val)), sig_type)
+        (
+            ir::Expr::Fun(String::default(), id, Box::new(sig), Box::new(val)),
+            sig_type,
+        )
     }
 }

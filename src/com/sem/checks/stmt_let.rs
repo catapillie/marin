@@ -100,6 +100,10 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.open_scope(true);
 
                 let name = self.signature_name(&signature);
+                if let Some((name, _)) = name {
+                    self.set_scope_name(name);
+                }
+
                 let (sig, sig_type, ret_type, rec_id) = self.declare_signature(&signature);
                 self.set_type_span(sig_type, e.pattern.span());
                 self.set_type_span(ret_type, e.value.span());
@@ -108,6 +112,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 self.unify(val_type, ret_type, &[]);
                 let relevant_contraints = self.solve_constraints();
 
+                let full_function_name = self.build_scope_name();
                 self.close_scope();
 
                 let Some((name, name_span)) = name else {
@@ -130,7 +135,8 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let id = self.create_variable_poly(name, scheme, name_span, false);
                 self.set_entity_public(id, public);
                 let pattern = ir::Pattern::Binding(id);
-                let lambda = ir::Expr::Fun(rec_id, Box::new(sig), Box::new(val));
+                let lambda =
+                    ir::Expr::Fun(full_function_name, rec_id, Box::new(sig), Box::new(val));
 
                 (ir::Stmt::Let(pattern, lambda), vec![id])
             }

@@ -106,7 +106,8 @@ impl<'src, 'e> Checker<'src, 'e> {
 
             let arity = variant_type_args.as_ref().map(|args| args.len());
 
-            let variant_expr = self.build_variant_expr(tag, arity);
+            let variant_full_name = format!("{union_name}.{variant_name}");
+            let variant_expr = self.build_variant_expr(tag, arity, variant_full_name);
             let variant_type = match variant_type_args.clone() {
                 Some(args) => {
                     self.create_type(ir::Type::Lambda(args, union_type), Some(variant_name_span))
@@ -137,7 +138,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         ir::Stmt::Nothing
     }
 
-    fn build_variant_expr(&mut self, tag: usize, arity: Option<usize>) -> ir::Expr {
+    fn build_variant_expr(&mut self, tag: usize, arity: Option<usize>, name: String) -> ir::Expr {
         self.open_scope(true);
 
         let expr = match arity {
@@ -150,6 +151,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 let arg_exprs = arg_ids.iter().map(|id| ir::Expr::Var(*id)).collect();
 
                 ir::Expr::Fun(
+                    name,
                     None,
                     Box::new(ir::Signature::Args(
                         arg_patterns,

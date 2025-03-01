@@ -133,7 +133,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         let mut in_scope = self
             .scope
             .infos_iter()
-            .flatten()
+            .flat_map(|info| &info.instances)
             .map(|id| (*id, self.get_instance_info(*id).clone()))
             .collect::<Vec<_>>();
         in_scope.sort_by_key(|(_, info)| info.original.0);

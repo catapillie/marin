@@ -16,7 +16,7 @@ pub enum Expr {
     Conditional(Box<[Branch]>, bool),
     Break(Option<Box<Expr>>, LabelID),
     Skip(LabelID),
-    Fun(Option<EntityID>, Box<Signature>, Box<Expr>),
+    Fun(String, Option<EntityID>, Box<Signature>, Box<Expr>),
     Call(Box<Expr>, Box<[Expr]>),
     Variant(usize, Option<Box<[Expr]>>),
     Record(Box<[Expr]>),

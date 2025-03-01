@@ -130,7 +130,7 @@ impl<'src, 'e> Checker<'src, 'e> {
                 scheme,
                 original: instance_id,
             }));
-            self.scope.infos_mut().insert(instance_id);
+            self.scope.infos_mut().instances.insert(instance_id);
             self.set_entity_public(instance_id, public);
         }
 

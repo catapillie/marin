@@ -29,6 +29,7 @@ impl<'src, 'e> Checker<'src, 'e> {
         };
 
         let (info, field_info) = self.get_record_field_info(id, tag);
+        let getter_full_name = format!("{}.{}", info.name, field_info.name);
 
         let domain = info.scheme.forall.clone();
         let uninstantiated_record = info.scheme.uninstantiated;
@@ -40,6 +41,7 @@ impl<'src, 'e> Checker<'src, 'e> {
 
         let arg_id = self.create_entity_dummy();
         let getter_expr = ir::Expr::Fun(
+            getter_full_name,
             None,
             Box::new(ir::Signature::Args(
                 Box::new([ir::Pattern::Binding(arg_id)]),

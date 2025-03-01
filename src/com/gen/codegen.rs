@@ -382,7 +382,6 @@ impl<'a> Codegen<'a> {
                 Ok(())
             }
             E::Var(id) => {
-                println!("var id {}", id.0);
                 if let Some(fun_id) = self.try_get_user_function(id) {
                     self.gen_function_value(fun_id)?;
                     Ok(())
@@ -489,11 +488,10 @@ impl<'a> Codegen<'a> {
             }
             E::Break(..) => todo!(),
             E::Skip(..) => todo!(),
-            E::Fun(rec_id, signature, expr) => {
-                println!("fun rec_id {rec_id:?}");
+            E::Fun(name, rec_id, signature, expr) => {
                 let id = self.register_user_function(
                     *rec_id,
-                    "",
+                    name,
                     Some(signature),
                     FunctionCode::Expr(expr),
                 );

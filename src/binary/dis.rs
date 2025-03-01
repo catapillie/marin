@@ -47,7 +47,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::load_fun(pos) => print!(
                 "{:>12} {} <{:0>8}>",
                 "load_fun",
-                function_table.get(&pos).unwrap(),
+                function_table.get(&pos).unwrap().bold(),
                 pos.to_string().bold()
             ),
             Op::bundle(count) => print!("{:>12} [{}]", "bundle", count.to_string().bold()),
