@@ -43,6 +43,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::jump_if_not => Ok(Opcode::jump_if_not(r.read_u32::<LE>()?)),
         opcode::do_frame => Ok(Opcode::do_frame),
         opcode::end_frame => Ok(Opcode::end_frame),
+        opcode::call => Ok(Opcode::call(r.read_u8()?)),
         opcode::ret => Ok(Opcode::ret),
         opcode::pop => Ok(Opcode::pop),
         opcode::dup => Ok(Opcode::dup),
@@ -109,6 +110,11 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
             w.write_u8(opcode::end_frame)?;
             Ok(())
         }
+        Opcode::call(count) => {
+            w.write_u8(opcode::call)?;
+            w.write_u8(*count)?;
+            Ok(())
+        }
         Opcode::ret => {
             w.write_u8(opcode::ret)?;
             Ok(())
@@ -157,6 +163,7 @@ pub fn read_value<R: io::Read>(r: &mut R) -> Result<Value> {
 
 pub fn write_value<W: io::Write>(w: &mut W, value: &Value) -> Result<()> {
     match value {
+        Value::Nil => unimplemented!(),
         Value::Int(n) => {
             w.write_u8(value::int)?;
             w.write_i64::<LE>(*n)?;
@@ -177,6 +184,7 @@ pub fn write_value<W: io::Write>(w: &mut W, value: &Value) -> Result<()> {
             w.write_u8(*b as u8)?;
             Ok(())
         }
+        Value::Func => unimplemented!(),
         Value::Bundle(items) => {
             w.write_u8(value::bundle)?;
             w.write_u8(

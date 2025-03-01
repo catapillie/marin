@@ -139,6 +139,10 @@ impl<'a> Codegen<'a> {
     }
 
     fn gen_function(&mut self, work: FunctionWork<'a>) -> binary::Result<()> {
+        // reset local counter and registered locals
+        self.local_index = 0;
+        self.locals_by_id.clear();
+
         // update function's code position
         let pos = self.pos();
         let fun = self
@@ -150,9 +154,31 @@ impl<'a> Codegen<'a> {
             self.patch_u32_placeholder(placeholder, pos)?;
         }
 
-        // if let Some(_sig) = work.signature {
-        //     todo!("handle signatures")
-        // }
+        use ir::Signature as Sig;
+        if let Some(sig) = work.signature {
+            let Sig::Args(args, next) = sig else {
+                unreachable!("invalid function signature");
+            };
+
+            let Sig::Done = &**next else {
+                panic!("unhandled higher order functions");
+            };
+
+            // account for parameters already living on the stack
+            let arg_count: u8 = args
+                .len()
+                .try_into()
+                .expect("function has more than 255 arguments");
+            self.local_index += arg_count;
+
+            // deconstruct each one of them
+            for (i, arg) in args.iter().enumerate() {
+                let local_id = i as u8;
+                self.gen_register_pattern_locals(arg)?;
+                self.write_opcode(&Opcode::load_local(local_id))?;
+                self.gen_initialize_pattern(arg)?;
+            }
+        }
 
         match work.body {
             FunctionCode::Expr(expr) => self.gen_expression(expr)?,
@@ -498,7 +524,18 @@ impl<'a> Codegen<'a> {
                 self.gen_function_value(id)?;
                 Ok(())
             }
-            E::Call(..) => todo!(),
+            E::Call(fun, args) => {
+                let arg_count: u8 = args
+                    .len()
+                    .try_into()
+                    .expect("call has more than 255 arguemnts");
+                for arg in args {
+                    self.gen_expression(arg)?;
+                }
+                self.gen_expression(fun)?;
+                self.write_opcode(&Opcode::call(arg_count))?;
+                Ok(())
+            }
             E::Variant(tag, items) => {
                 // gen tag as i64
                 let tag_id = self.add_constant(exe::Value::Int(*tag as i64));

@@ -70,6 +70,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             }
             Op::do_frame => print!("{:>12}", "do_frame"),
             Op::end_frame => print!("{:>12}", "end_frame"),
+            Op::call(count) => print!("{:>12} [{}]", "call", count.to_string().bold()),
             Op::ret => print!("{:>12}", "ret"),
             Op::pop => print!("{:>12}", "pop"),
             Op::dup => print!("{:>12}", "dup"),

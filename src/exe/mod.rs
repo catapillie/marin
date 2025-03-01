@@ -15,5 +15,7 @@ pub fn run_bytecode(mut bytecode: &[u8]) {
     for value in constants {
         vm.add_constant(&value);
     }
-    vm.run();
+
+    let result = vm.run();
+    println!("{result}");
 }

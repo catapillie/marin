@@ -11,6 +11,7 @@ opcodes! {
     0xb2 jump_if_not(u32)
     0xb3 do_frame
     0xb4 end_frame
+    0xbe call(u8)
     0xbf ret
     0xe0 pop
     0xe1 dup

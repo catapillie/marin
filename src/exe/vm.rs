@@ -2,7 +2,7 @@ use super::Value;
 use crate::binary::opcode;
 
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Val {
     Nil,
     Int(i64),
@@ -14,7 +14,9 @@ enum Val {
 }
 
 struct Frame {
+    pos: usize,
     stack_cursor: usize,
+    prev_stack_cursor: usize,
 }
 
 pub struct VM<'a> {
@@ -23,6 +25,7 @@ pub struct VM<'a> {
     constants: Vec<Val>,
     stack: Vec<Val>,
     frame_stack: Vec<Frame>,
+    frame_cursor: usize,
 }
 
 impl<'a> VM<'a> {
@@ -33,16 +36,31 @@ impl<'a> VM<'a> {
             constants: Vec::new(),
             stack: Vec::new(),
             frame_stack: Vec::new(),
+            frame_cursor: 0,
         }
     }
 
     fn to_val(value: &Value) -> Val {
         match value {
+            Value::Nil => Val::Nil,
             Value::Int(n) => Val::Int(*n),
             Value::Float(f) => Val::Float(*f),
             Value::String(s) => Val::String(s.clone()),
             Value::Bool(b) => Val::Bool(*b),
-            Value::Bundle(items) => Val::Bundle((items).into_iter().map(Self::to_val).collect()),
+            Value::Func => panic!("unallowed user function value"),
+            Value::Bundle(items) => Val::Bundle(items.into_iter().map(Self::to_val).collect()),
+        }
+    }
+
+    fn to_user_val(val: &Val) -> Value {
+        match val {
+            Val::Nil => Value::Nil,
+            Val::Int(n) => Value::Int(*n),
+            Val::Float(f) => Value::Float(*f),
+            Val::String(s) => Value::String(s.clone()),
+            Val::Bool(b) => Value::Bool(*b),
+            Val::Func(_) => Value::Func,
+            Val::Bundle(items) => Value::Bundle(items.iter().map(Self::to_user_val).collect()),
         }
     }
 
@@ -51,9 +69,9 @@ impl<'a> VM<'a> {
         self.constants.push(val);
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Value {
         // initial frame
-        self.push_frame();
+        self.push_call_frame(0);
 
         loop {
             let op = self.read_u8();
@@ -81,13 +99,15 @@ impl<'a> VM<'a> {
                 }
                 opcode::load_local => {
                     let local = self.read_u8() as usize;
-                    let value = self.stack[local].clone();
+                    let index = self.frame_cursor + local;
+                    let value = self.stack[index].clone();
                     self.push(value);
                 }
                 opcode::set_local => {
                     let value = self.pop();
                     let local = self.read_u8() as usize;
-                    self.stack[local] = value;
+                    let index = self.frame_cursor + local;
+                    self.stack[index] = value;
                 }
                 opcode::load_nil => {
                     self.push(Val::Nil);
@@ -122,8 +142,19 @@ impl<'a> VM<'a> {
                     self.pop_frame();
                     self.push(value);
                 }
+                opcode::call => {
+                    let arg_count = self.read_u8() as usize;
+                    let fun = self.pop();
+                    let Val::Func(addr) = fun else {
+                        panic!("invalid function object");
+                    };
+                    self.push_call_frame(arg_count);
+                    self.cursor = addr as usize;
+                }
                 opcode::ret => {
-                    self.pop_frame();
+                    let value = self.pop();
+                    self.ret_frame();
+                    self.push(value);
                     if self.frame_stack.is_empty() {
                         break;
                     }
@@ -139,7 +170,9 @@ impl<'a> VM<'a> {
             }
         }
 
+        let result = self.pop();
         debug_assert!(self.stack.is_empty(), "non-empty stack after halting");
+        Self::to_user_val(&result)
     }
 
     fn pop(&mut self) -> Val {
@@ -159,9 +192,28 @@ impl<'a> VM<'a> {
         self.stack.truncate(frame.stack_cursor);
     }
 
+    fn ret_frame(&mut self) {
+        let frame = self.frame_stack.pop().expect("frame stack underflow");
+        self.stack.truncate(frame.stack_cursor);
+        self.cursor = frame.pos;
+        self.frame_cursor = frame.prev_stack_cursor;
+    }
+
+    fn push_call_frame(&mut self, arg_count: usize) {
+        let prev_stack_cursor = self.frame_cursor;
+        self.frame_cursor = self.stack.len() - arg_count;
+        self.frame_stack.push(Frame {
+            pos: self.cursor,
+            stack_cursor: self.frame_cursor,
+            prev_stack_cursor,
+        });
+    }
+
     fn push_frame(&mut self) {
         self.frame_stack.push(Frame {
+            pos: self.cursor,
             stack_cursor: self.stack.len(),
+            prev_stack_cursor: self.frame_cursor,
         });
     }
 
