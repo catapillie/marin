@@ -5,7 +5,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_match(
         &mut self,
         b: &ast::MatchBranch,

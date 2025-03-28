@@ -5,7 +5,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     pub fn check_signature(&mut self, mut e: &ast::Expr, require_name: bool) -> ast::Signature {
         use ast::Signature as S;
         let mut signature = S::Empty;

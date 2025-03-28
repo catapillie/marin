@@ -6,7 +6,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_break(&mut self, e: &ast::Break) -> ir::CheckedExpr {
         let (value, ty) = e
             .expr

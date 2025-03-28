@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_skip(&mut self, e: &ast::Skip) -> ir::CheckedExpr {
         let label_name = self.check_label_name(&e.label);
         let Some(label_id) = self.find_label_by_name(label_name, true) else {

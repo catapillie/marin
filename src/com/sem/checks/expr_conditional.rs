@@ -7,7 +7,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_conditional(&mut self, e: &ast::Conditional) -> ir::CheckedExpr {
         let mut branches = Vec::with_capacity(e.else_branches.len() + 1);
         let mut branch_types = Vec::with_capacity(e.else_branches.len() + 1);

@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     fn add_label(&mut self, label: ir::Label) -> ir::LabelID {
         let id = self.labels.len();
         self.labels.push(label);

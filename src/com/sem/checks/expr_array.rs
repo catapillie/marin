@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, sem::provenance::Provenance, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_array(&mut self, e: &ast::Array) -> ir::CheckedExpr {
         let array_item_type = self.create_fresh_type(None);
         let (items, item_types) = self.check_expression_list(&e.items);

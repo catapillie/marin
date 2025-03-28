@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_var(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         let q = self.check_var_path(e);
         self.check_path_into_expr(q, e.span)

@@ -46,7 +46,7 @@ impl Report {
     pub fn to_diagnostic(&self) -> Diagnostic<usize> {
         use diagnostic::Diagnostic as D;
         use diagnostic::Label as L;
-        return D::new(self.severity)
+        D::new(self.severity)
             .with_code(self.header.name())
             .with_message(self.header.msg())
             .with_labels(
@@ -57,7 +57,7 @@ impl Report {
                     })
                     .collect(),
             )
-            .with_notes(self.notes.iter().map(Note::msg).collect());
+            .with_notes(self.notes.iter().map(Note::msg).collect())
     }
 
     pub fn is_fatal(&self) -> bool {

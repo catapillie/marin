@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     // returns (branch_type, is_exhaustive)
     pub fn check_branch(&mut self, b: &ast::Branch) -> (ir::Branch, ir::TypeID, bool) {
         use ast::Branch as B;

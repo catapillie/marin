@@ -7,7 +7,7 @@ use crate::com::{
 
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     pub fn check_identifier_accessor(&mut self, e: &ast::Expr) -> Option<(&'src str, Span)> {
         use ast::Expr as E;
         match e {

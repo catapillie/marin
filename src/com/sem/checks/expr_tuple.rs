@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_tuple(&mut self, e: &ast::Tuple) -> ir::CheckedExpr {
         if e.items.len() == 1 {
             return self.check_expression(&e.items[0]);

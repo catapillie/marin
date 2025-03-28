@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_pattern(&mut self, e: &ast::Expr) -> ast::Pattern {
         use ast::Expr as E;
         use ast::Pattern as P;

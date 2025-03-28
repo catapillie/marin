@@ -7,7 +7,7 @@ use crate::com::{
 
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_import_access_path(
         &mut self,
         id: ir::EntityID,

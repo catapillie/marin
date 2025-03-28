@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_tuple_type(&mut self, t: &ast::Tuple) -> ir::TypeID {
         if t.items.len() == 1 {
             return self.check_type(&t.items[0]);

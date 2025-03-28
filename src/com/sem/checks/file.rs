@@ -6,7 +6,7 @@ use crate::com::{
 use colored::Colorize;
 use std::collections::HashMap;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     pub fn check_module(
         &mut self,
         file_name: &str,

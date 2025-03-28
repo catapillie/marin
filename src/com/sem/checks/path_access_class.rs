@@ -6,7 +6,7 @@ use crate::com::{
 
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_class_access_path(&mut self, id: ir::EntityID, accessor: &ast::Expr) -> Q {
         let Some((name, name_span)) = self.check_identifier_accessor(accessor) else {
             return Q::Missing;

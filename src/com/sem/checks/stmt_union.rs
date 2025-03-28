@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_union(&mut self, e: &ast::Union, public: bool) -> ir::Stmt {
         // ensure the union's signature syntax is valid
         let span = e.span();

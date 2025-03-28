@@ -1,6 +1,6 @@
 use crate::com::{ir, loc::Span, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     pub fn create_variable_poly(
         &mut self,
         name: &'src str,

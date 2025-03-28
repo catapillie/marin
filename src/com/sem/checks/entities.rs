@@ -2,7 +2,7 @@ use colored::Colorize;
 
 use crate::com::{ir, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn next_entity_id(&self) -> ir::EntityID {
         ir::EntityID(self.entities.len())
     }

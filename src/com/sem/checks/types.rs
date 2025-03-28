@@ -8,7 +8,7 @@ use crate::com::{
 };
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     pub fn create_type(&mut self, ty: ir::Type, span: Option<Span>) -> ir::TypeID {
         let id = ir::TypeID(self.types.len());
         self.types.push(ir::TypeNode {

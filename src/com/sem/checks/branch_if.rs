@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, loc::Span, sem::provenance::Provenance, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_if(&mut self, b: &ast::IfBranch, span: Span) -> (ir::Branch, ir::TypeID, bool) {
         let (condition, condition_type) = self.check_expression(&b.condition);
         let bool_type = self.create_type(ir::Type::Bool, None);

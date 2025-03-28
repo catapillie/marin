@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_record(&mut self, e: &ast::Record, public: bool) -> ir::Stmt {
         // ensure the record's signature syntax is valid
         let span = e.span();

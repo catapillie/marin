@@ -7,7 +7,7 @@ use crate::com::{
 use ir::Entity as Ent;
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_entity_into_path(&self, id: ir::EntityID) -> Q {
         match self.get_entity(id) {
             Ent::Dummy => unreachable!(),

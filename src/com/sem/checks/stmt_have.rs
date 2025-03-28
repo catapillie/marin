@@ -7,7 +7,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_have(&mut self, e: &ast::Have, public: bool) -> ir::Stmt {
         let span = e.span();
 

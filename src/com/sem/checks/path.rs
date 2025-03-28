@@ -8,7 +8,7 @@ use crate::com::{
 
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_path_or_type(&mut self, e: &ast::Expr) -> Q {
         use ast::Expr as E;
         match e {

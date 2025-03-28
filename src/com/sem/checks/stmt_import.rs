@@ -8,7 +8,7 @@ use colored::Colorize;
 
 use ast::Expr as E;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_import(&mut self, e: &ast::Import, public: bool) -> ir::Stmt {
         for query in &e.queries {
             let file_name_span = match &*query.query {

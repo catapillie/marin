@@ -8,7 +8,7 @@ use crate::com::{
 use colored::Colorize;
 use ir::PathQuery as Q;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_alias(&mut self, e: &ast::Alias, public: bool) -> ir::Stmt {
         let path = self.check_path_or_type(&e.path);
 

@@ -5,7 +5,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_fun(&mut self, e: &ast::Fun) -> ir::CheckedExpr {
         let signature = self.check_signature(&e.signature, true);
         let sig_span = Span::combine(e.fun_kw, e.signature.span());

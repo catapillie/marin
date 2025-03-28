@@ -5,7 +5,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'src> Checker<'src, '_> {
     pub fn read_source_int(&mut self, span: Span) -> Option<i64> {
         match span.lexeme(self.source).parse() {
             Ok(n) => Some(n),

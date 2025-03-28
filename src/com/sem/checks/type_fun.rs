@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_fun_type(&mut self, t: &ast::Fun) -> ir::TypeID {
         let (type_sig, sig_name_span) = self.check_type_signature(&t.signature);
         let (lam_type, sig_ret_type) = self.declare_type_signature(&type_sig);

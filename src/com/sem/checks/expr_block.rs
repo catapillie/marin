@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, loc::Span, sem::provenance::Provenance, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_expression_block(
         &mut self,
         label: &ast::Label,

@@ -1,6 +1,6 @@
 use crate::com::{ast, ir, sem::provenance::Provenance, Checker};
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_call(&mut self, e: &ast::Call) -> ir::CheckedExpr {
         let (callee, callee_type) = self.check_expression(&e.callee);
         let (args, arg_types) = self.check_expression_list(&e.args);

@@ -4,7 +4,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_statement(&mut self, e: &ast::Expr) -> ir::Stmt {
         use ast::Expr as E;
         match e {

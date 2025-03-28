@@ -7,7 +7,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_record_value(&mut self, e: &ast::RecordValue) -> ir::CheckedExpr {
         let mut fields = HashMap::new();
         for (name, expr) in &e.fields {

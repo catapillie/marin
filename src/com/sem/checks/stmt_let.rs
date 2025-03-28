@@ -9,7 +9,7 @@ use crate::com::{
     Checker,
 };
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     fn check_pattern_or_signature(
         &mut self,
         e: &ast::Expr,

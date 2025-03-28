@@ -8,7 +8,7 @@ use crate::com::{
 use colored::Colorize;
 use either::Either;
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl Checker<'_, '_> {
     pub fn check_pattern_or_type_signature(
         &mut self,
         e: &ast::Expr,
