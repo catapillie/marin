@@ -68,6 +68,9 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::jump_if_not(pos) => {
                 print!("{:>12} -> <{:0>8}>", "jump_if_not", pos.to_string().bold())
             }
+            Op::jump_eq(pos) => {
+                print!("{:>12} -> <{:0>8}>", "jump_eq", pos.to_string().bold())
+            }
             Op::jump_ne(pos) => {
                 print!("{:>12} -> <{:0>8}>", "jump_ne", pos.to_string().bold())
             }

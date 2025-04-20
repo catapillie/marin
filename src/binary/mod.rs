@@ -41,6 +41,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::jump => Ok(Opcode::jump(r.read_u32::<LE>()?)),
         opcode::jump_if => Ok(Opcode::jump_if(r.read_u32::<LE>()?)),
         opcode::jump_if_not => Ok(Opcode::jump_if_not(r.read_u32::<LE>()?)),
+        opcode::jump_eq => Ok(Opcode::jump_eq(r.read_u32::<LE>()?)),
         opcode::jump_ne => Ok(Opcode::jump_ne(r.read_u32::<LE>()?)),
         opcode::do_frame => Ok(Opcode::do_frame),
         opcode::end_frame => Ok(Opcode::end_frame),
@@ -48,7 +49,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::ret => Ok(Opcode::ret),
         opcode::pop => Ok(Opcode::pop),
         opcode::dup => Ok(Opcode::dup),
-        _ => Err(Error::IllegalOpcode),
+        byte => Err(Error::IllegalOpcode(byte)),
     }
 }
 
@@ -100,6 +101,11 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::jump_if_not(pos) => {
             w.write_u8(opcode::jump_if_not)?;
+            w.write_u32::<LE>(*pos)?;
+            Ok(())
+        }
+        Opcode::jump_eq(pos) => {
+            w.write_u8(opcode::jump_eq)?;
             w.write_u32::<LE>(*pos)?;
             Ok(())
         }

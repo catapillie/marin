@@ -303,6 +303,7 @@ impl<'a> Codegen<'a> {
                     self.gen_initialize_pattern(field)?;
                 }
                 self.write_opcode(&Opcode::pop)?;
+                self.write_opcode(&Opcode::pop)?;
                 Ok(())
             }
             P::Record(_, fields) => {
@@ -353,20 +354,45 @@ impl<'a> Codegen<'a> {
             }
 
             P::Tuple(items) => {
+                let mut inner_failure_jumps = Vec::new();
+
                 for (i, item) in items.iter().enumerate() {
                     self.write_opcode(&Opcode::index_dup(i as u8))?;
-                    self.gen_pattern_test(item, failure_jumps)?;
+                    self.gen_pattern_test(item, &mut inner_failure_jumps)?;
                 }
-                self.write_opcode(&Opcode::pop)
+
+                // jump over ok-clean-up section
+                self.cursor.write_u8(opcode::jump)?;
+                let ok_jump_pos = self.write_u32_placeholder()?;
+
+                // catch inner failures, clean up, then wire to expected failure dest.
+                for pos in inner_failure_jumps {
+                    self.patch_u32_placeholder(pos, self.pos())?;
+                }
+                self.write_opcode(&Opcode::pop)?;
+                self.cursor.write_u8(opcode::jump)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+
+                // wire ok-jump, and just clean up
+                self.patch_u32_placeholder(ok_jump_pos, self.pos())?;
+                self.write_opcode(&Opcode::pop)?;
+
+                Ok(())
             }
             P::Variant(_, tag, None) => {
                 // check tag
                 self.write_opcode(&Opcode::index_dup(0))?;
                 self.gen_constant(exe::Value::Int(*tag as i64))?;
-                self.cursor.write_u8(opcode::jump_ne)?;
+                self.cursor.write_u8(opcode::jump_eq)?;
+                let ok_jump_pos = self.write_u32_placeholder()?;
+
+                // failure case; clean and wire expected dest.
+                self.write_opcode(&Opcode::pop)?;
+                self.cursor.write_u8(opcode::jump)?;
                 failure_jumps.push(self.write_u32_placeholder()?);
 
-                // pop tag then variant object
+                // wire ok-jump, clean up
+                self.patch_u32_placeholder(ok_jump_pos, self.pos())?;
                 self.write_opcode(&Opcode::pop)?;
 
                 Ok(())
@@ -375,29 +401,71 @@ impl<'a> Codegen<'a> {
                 // check tag
                 self.write_opcode(&Opcode::index_dup(0))?;
                 self.gen_constant(exe::Value::Int(*tag as i64))?;
-                self.cursor.write_u8(opcode::jump_ne)?;
+                self.cursor.write_u8(opcode::jump_eq)?;
+                let ok_jump_pos = self.write_u32_placeholder()?;
+
+                // failure case; clean and wire expected dest.
+                self.write_opcode(&Opcode::pop)?;
+                self.cursor.write_u8(opcode::jump)?;
                 failure_jumps.push(self.write_u32_placeholder()?);
 
-                // pop tag
-                self.write_opcode(&Opcode::pop)?;
+                // wire ok-jump, keep going
+                self.patch_u32_placeholder(ok_jump_pos, self.pos())?;
+
+                let mut inner_failure_jumps = Vec::new();
 
                 // check bundle inner values
                 self.write_opcode(&Opcode::index_dup(1))?;
                 for (i, item) in items.iter().enumerate() {
                     self.write_opcode(&Opcode::index_dup(i as u8))?;
-                    self.gen_pattern_test(item, failure_jumps)?;
+                    self.gen_pattern_test(item, &mut inner_failure_jumps)?;
                 }
 
-                // pop bundle then variant object
-                self.write_opcode(&Opcode::pop)?;
+                // jump over ok-clean-up section
+                self.cursor.write_u8(opcode::jump)?;
+                let ok_jump_pos = self.write_u32_placeholder()?;
+
+                // catch inner failures, clean up, then wire to expected failure dest.
+                for pos in inner_failure_jumps {
+                    self.patch_u32_placeholder(pos, self.pos())?;
+                }
+                self.write_opcode(&Opcode::pop)?; // variant's [items] values bundle
+                self.write_opcode(&Opcode::pop)?; // variant's (tag, [items]) bundle
+                self.cursor.write_u8(opcode::jump)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+
+                // wire ok-jump, and just clean up
+                self.patch_u32_placeholder(ok_jump_pos, self.pos())?;
+                self.write_opcode(&Opcode::pop)?; // variant's [items] values bundle
+                self.write_opcode(&Opcode::pop)?; // variant's (tag, [items]) bundle
+
                 Ok(())
             }
             P::Record(_, fields) => {
+                let mut inner_failure_jumps = Vec::new();
+
                 for (i, field) in fields.iter().enumerate() {
                     self.write_opcode(&Opcode::index_dup(i as u8))?;
-                    self.gen_pattern_test(field, failure_jumps)?;
+                    self.gen_pattern_test(field, &mut inner_failure_jumps)?;
                 }
-                self.write_opcode(&Opcode::pop)
+
+                // jump over ok-clean-up section
+                self.cursor.write_u8(opcode::jump)?;
+                let ok_jump_pos = self.write_u32_placeholder()?;
+
+                // catch inner failures, clean up, then wire to expected failure dest.
+                for pos in inner_failure_jumps {
+                    self.patch_u32_placeholder(pos, self.pos())?;
+                }
+                self.write_opcode(&Opcode::pop)?;
+                self.cursor.write_u8(opcode::jump)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+
+                // wire ok-jump, and just clean up
+                self.patch_u32_placeholder(ok_jump_pos, self.pos())?;
+                self.write_opcode(&Opcode::pop)?;
+
+                Ok(())
             }
         }
     }

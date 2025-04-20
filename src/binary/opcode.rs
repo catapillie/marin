@@ -9,6 +9,7 @@ opcodes! {
     0xb0 jump(u32)
     0xb1 jump_if(u32)
     0xb2 jump_if_not(u32)
+    0xb3 jump_eq(u32)
     0xb4 jump_ne(u32)
     0xb5 do_frame
     0xb6 end_frame

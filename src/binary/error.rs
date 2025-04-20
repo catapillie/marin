@@ -6,7 +6,7 @@ pub type Result<T> = result::Result<T, Error>;
 #[derive(Debug)]
 pub enum Error {
     MagicMismatch,
-    IllegalOpcode,
+    IllegalOpcode(u8),
     IllegalValue,
     IO(io::Error),
     Utf8(string::FromUtf8Error),

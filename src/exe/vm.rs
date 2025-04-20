@@ -134,6 +134,14 @@ impl<'a> VM<'a> {
                         self.cursor = pos;
                     }
                 }
+                opcode::jump_eq => {
+                    let pos = self.read_u32() as usize;
+                    let right = self.pop();
+                    let left = self.pop();
+                    if left == right {
+                        self.cursor = pos;
+                    }
+                }
                 opcode::jump_ne => {
                     let pos = self.read_u32() as usize;
                     let right = self.pop();
