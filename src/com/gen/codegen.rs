@@ -206,6 +206,30 @@ impl<'a> Codegen<'a> {
         }
     }
 
+    // <x> <- <value>
+    fn gen_variable_deconstruct(
+        &mut self,
+        id: ir::EntityID,
+        value: &'a ir::Expr,
+    ) -> binary::Result<()> {
+        self.gen_expression(value)?;
+        let local = self.register_local();
+        self.locals_by_id.insert(id, local);
+        Ok(())
+    }
+
+    // <pat> <- <x>
+    fn gen_deconstruct_variable(
+        &mut self,
+        pattern: &'a ir::Pattern,
+        id: ir::EntityID,
+    ) -> binary::Result<()> {
+        self.gen_register_pattern_locals(pattern)?;
+        self.gen_variable(id)?;
+        self.gen_initialize_pattern(pattern)?;
+        Ok(())
+    }
+
     fn gen_deconstruct(
         &mut self,
         pattern: &'a ir::Pattern,
@@ -262,7 +286,7 @@ impl<'a> Codegen<'a> {
             P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => Ok(()),
             P::Tuple(items) => {
                 for (i, item) in items.iter().enumerate() {
-                    self.write_opcode(&Opcode::index(i as u8))?;
+                    self.write_opcode(&Opcode::index_dup(i as u8))?;
                     self.gen_initialize_pattern(item)?;
                 }
                 self.write_opcode(&Opcode::pop)?;
@@ -271,11 +295,65 @@ impl<'a> Codegen<'a> {
             P::Variant(_, _, _) => todo!(),
             P::Record(_, fields) => {
                 for (i, field) in fields.iter().enumerate() {
-                    self.write_opcode(&Opcode::index(i as u8))?;
+                    self.write_opcode(&Opcode::index_dup(i as u8))?;
                     self.gen_initialize_pattern(field)?;
                 }
                 self.write_opcode(&Opcode::pop)?;
                 Ok(())
+            }
+        }
+    }
+
+    fn gen_pattern_test(
+        &mut self,
+        pattern: &'a ir::Pattern,
+        failure_jumps: &mut Vec<u32>,
+    ) -> binary::Result<()> {
+        use ir::Pattern as P;
+        match pattern {
+            P::Missing => self.write_opcode(&Opcode::pop),
+            P::Discard => self.write_opcode(&Opcode::pop),
+            P::Binding(_) => self.write_opcode(&Opcode::pop),
+
+            P::Int(n) => {
+                self.gen_constant(exe::Value::Int(*n))?;
+                self.cursor.write_u8(opcode::jump_ne)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+                Ok(())
+            }
+            P::Float(f) => {
+                self.gen_constant(exe::Value::Float(*f))?;
+                self.cursor.write_u8(opcode::jump_ne)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+                Ok(())
+            }
+            P::String(s) => {
+                self.gen_constant(exe::Value::String(s.to_string()))?;
+                self.cursor.write_u8(opcode::jump_ne)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+                Ok(())
+            }
+            P::Bool(b) => {
+                self.gen_constant(exe::Value::Bool(*b))?;
+                self.cursor.write_u8(opcode::jump_ne)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+                Ok(())
+            }
+
+            P::Tuple(items) => {
+                for (i, item) in items.iter().enumerate() {
+                    self.write_opcode(&Opcode::index_dup(i as u8))?;
+                    self.gen_pattern_test(item, failure_jumps)?;
+                }
+                self.write_opcode(&Opcode::pop)
+            }
+            P::Variant(_, _, _) => todo!(),
+            P::Record(_, fields) => {
+                for (i, field) in fields.iter().enumerate() {
+                    self.write_opcode(&Opcode::index_dup(i as u8))?;
+                    self.gen_pattern_test(field, failure_jumps)?;
+                }
+                self.write_opcode(&Opcode::pop)
             }
         }
     }
@@ -383,39 +461,33 @@ impl<'a> Codegen<'a> {
         Ok(())
     }
 
+    fn gen_variable(&mut self, id: ir::EntityID) -> binary::Result<()> {
+        if let Some(fun_id) = self.try_get_user_function(&id) {
+            self.gen_function_value(fun_id)?;
+            Ok(())
+        } else {
+            let local = self.get_local(&id);
+            self.write_opcode(&Opcode::load_local(local))?;
+            Ok(())
+        }
+    }
+
+    fn gen_constant(&mut self, value: exe::Value) -> binary::Result<()> {
+        let id = self.add_constant(value);
+        self.write_opcode(&Opcode::load_const(id))
+    }
+
     fn gen_expression(&mut self, expr: &'a ir::Expr) -> binary::Result<()> {
         use ir::Expr as E;
         match expr {
             E::Missing => Ok(()),
-            E::Int(n) => {
-                let id = self.add_constant(exe::Value::Int(*n));
-                self.write_opcode(&Opcode::load_const(id))?;
-                Ok(())
-            }
-            E::Float(f) => {
-                let id = self.add_constant(exe::Value::Float(*f));
-                self.write_opcode(&Opcode::load_const(id))?;
-                Ok(())
-            }
-            E::String(s) => {
-                let id = self.add_constant(exe::Value::String(s.clone()));
-                self.write_opcode(&Opcode::load_const(id))?;
-                Ok(())
-            }
-            E::Bool(b) => {
-                let id = self.add_constant(exe::Value::Bool(*b));
-                self.write_opcode(&Opcode::load_const(id))?;
-                Ok(())
-            }
+            E::Int(n) => self.gen_constant(exe::Value::Int(*n)),
+            E::Float(f) => self.gen_constant(exe::Value::Float(*f)),
+            E::String(s) => self.gen_constant(exe::Value::String(s.clone())),
+            E::Bool(b) => self.gen_constant(exe::Value::Bool(*b)),
             E::Var(id) => {
-                if let Some(fun_id) = self.try_get_user_function(id) {
-                    self.gen_function_value(fun_id)?;
-                    Ok(())
-                } else {
-                    let local = self.get_local(id);
-                    self.write_opcode(&Opcode::load_local(local))?;
-                    Ok(())
-                }
+                self.gen_variable(*id)?;
+                Ok(())
             }
             E::Tuple(items) => {
                 for item in items {
@@ -434,14 +506,18 @@ impl<'a> Codegen<'a> {
                 Ok(())
             }
             E::Conditional(branches, is_exhaustive) => {
-                let mut else_jump_pos = None;
+                let mut else_jump_positions: Option<Vec<u32>> = None;
                 let mut exit_jump_pos = Vec::new();
 
                 use ir::Branch as B;
                 for branch in branches {
-                    if let Some(pos) = else_jump_pos {
-                        self.patch_u32_placeholder(pos, self.pos())?;
+                    if let Some(pos_list) = else_jump_positions {
+                        for pos in pos_list {
+                            self.patch_u32_placeholder(pos, self.pos())?;
+                        }
                     };
+
+                    else_jump_positions = None;
 
                     match branch {
                         B::If(guard, body, _) => {
@@ -450,7 +526,7 @@ impl<'a> Codegen<'a> {
 
                             // if false, skip over the 'then' block
                             self.cursor.write_u8(opcode::jump_if_not)?;
-                            else_jump_pos = Some(self.write_u32_placeholder()?);
+                            else_jump_positions = Some(vec![self.write_u32_placeholder()?]);
 
                             // then <body> ...
                             self.gen_expression_block(body)?;
@@ -464,7 +540,7 @@ impl<'a> Codegen<'a> {
 
                             // if false, skip over the 'do' block if
                             self.cursor.write_u8(opcode::jump_if_not)?;
-                            else_jump_pos = Some(self.write_u32_placeholder()?);
+                            else_jump_positions = Some(vec![self.write_u32_placeholder()?]);
 
                             // do <body> ...
                             self.gen_statement_block(body)?;
@@ -481,10 +557,19 @@ impl<'a> Codegen<'a> {
                             self.gen_expression_block(body)?;
 
                             // no need to wire an 'else' because this branch always succeeds
-                            else_jump_pos = None;
+                            else_jump_positions = None;
                             break;
                         }
-                        B::Match(..) => todo!(),
+                        B::Match(scrut_var_id, scrut, decision) => {
+                            let mut jump_positions = Vec::new();
+
+                            // match <scrutinee> with ...
+                            self.gen_variable_deconstruct(*scrut_var_id, scrut)?;
+                            self.gen_decision(decision, &mut jump_positions, &mut exit_jump_pos)?;
+
+                            // match failures are wired into the next conditional branch
+                            else_jump_positions = Some(jump_positions);
+                        }
                     }
                 }
 
@@ -501,8 +586,10 @@ impl<'a> Codegen<'a> {
                 }
 
                 // wire final else jump
-                if let Some(pos) = else_jump_pos {
-                    self.patch_u32_placeholder(pos, self.pos())?;
+                if let Some(pos_list) = else_jump_positions {
+                    for pos in pos_list {
+                        self.patch_u32_placeholder(pos, self.pos())?;
+                    }
                 };
 
                 // non-exhaustive expressions evaluate to unit
@@ -538,8 +625,7 @@ impl<'a> Codegen<'a> {
             }
             E::Variant(tag, items) => {
                 // gen tag as i64
-                let tag_id = self.add_constant(exe::Value::Int(*tag as i64));
-                self.write_opcode(&Opcode::load_const(tag_id))?;
+                self.gen_constant(exe::Value::Int(*tag as i64))?;
 
                 // gen items
                 let count: u8 = match items {
@@ -572,6 +658,53 @@ impl<'a> Codegen<'a> {
                 Ok(())
             }
             E::Access(..) => todo!(),
+        }
+    }
+
+    fn gen_decision(
+        &mut self,
+        decision: &'a ir::Decision,
+        jump_positions: &mut Vec<u32>,
+        exit_jump_positions: &mut Vec<u32>,
+    ) -> binary::Result<()> {
+        use ir::Decision as D;
+        match decision {
+            D::Failure => {
+                self.cursor.write_u8(opcode::jump)?;
+                jump_positions.push(self.write_u32_placeholder()?);
+                Ok(())
+            }
+            D::Success(stmts, expr) => {
+                for stmt in stmts {
+                    self.gen_statement(stmt)?;
+                }
+                self.gen_expression(expr)?;
+
+                // exit now; jump to end of conditional
+                self.cursor.write_u8(opcode::jump)?;
+                exit_jump_positions.push(self.write_u32_placeholder()?);
+
+                Ok(())
+            }
+            D::Test(id, pat, success, failure) => {
+                let local = self.get_local(id);
+                self.write_opcode(&Opcode::load_local(local))?;
+
+                let mut jump_failures = Vec::new();
+                self.gen_pattern_test(pat, &mut jump_failures)?;
+
+                // success
+                self.gen_deconstruct_variable(pat, *id)?;
+                self.gen_decision(success, jump_positions, exit_jump_positions)?;
+
+                // failure; wire jumps from gen_pattern_test
+                for pos in jump_failures {
+                    self.patch_u32_placeholder(pos, self.pos())?;
+                }
+                self.gen_decision(failure, jump_positions, exit_jump_positions)?;
+
+                Ok(())
+            }
         }
     }
 

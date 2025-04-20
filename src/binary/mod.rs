@@ -33,7 +33,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
     match r.read_u8()? {
         opcode::load_fun => Ok(Opcode::load_fun(r.read_u32::<LE>()?)),
         opcode::bundle => Ok(Opcode::bundle(r.read_u8()?)),
-        opcode::index => Ok(Opcode::index(r.read_u8()?)),
+        opcode::index_dup => Ok(Opcode::index_dup(r.read_u8()?)),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -41,6 +41,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::jump => Ok(Opcode::jump(r.read_u32::<LE>()?)),
         opcode::jump_if => Ok(Opcode::jump_if(r.read_u32::<LE>()?)),
         opcode::jump_if_not => Ok(Opcode::jump_if_not(r.read_u32::<LE>()?)),
+        opcode::jump_ne => Ok(Opcode::jump_ne(r.read_u32::<LE>()?)),
         opcode::do_frame => Ok(Opcode::do_frame),
         opcode::end_frame => Ok(Opcode::end_frame),
         opcode::call => Ok(Opcode::call(r.read_u8()?)),
@@ -63,8 +64,8 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
             w.write_u8(*count)?;
             Ok(())
         }
-        Opcode::index(count) => {
-            w.write_u8(opcode::index)?;
+        Opcode::index_dup(count) => {
+            w.write_u8(opcode::index_dup)?;
             w.write_u8(*count)?;
             Ok(())
         }
@@ -99,6 +100,11 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::jump_if_not(pos) => {
             w.write_u8(opcode::jump_if_not)?;
+            w.write_u32::<LE>(*pos)?;
+            Ok(())
+        }
+        Opcode::jump_ne(pos) => {
+            w.write_u8(opcode::jump_ne)?;
             w.write_u32::<LE>(*pos)?;
             Ok(())
         }

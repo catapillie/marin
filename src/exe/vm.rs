@@ -2,7 +2,7 @@ use super::Value;
 use crate::binary::opcode;
 
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 enum Val {
     Nil,
     Int(i64),
@@ -85,7 +85,7 @@ impl<'a> VM<'a> {
                     let values = self.stack.split_off(self.stack.len() - count);
                     self.push(Val::Bundle(values.into()));
                 }
-                opcode::index => {
+                opcode::index_dup => {
                     let index = self.read_u8() as usize;
                     let Val::Bundle(items) = self.peek() else {
                         panic!("invalid index on a non-bundle value");
@@ -131,6 +131,14 @@ impl<'a> VM<'a> {
                         panic!("found non-boolean value as jump_if_not condition");
                     };
                     if !b {
+                        self.cursor = pos;
+                    }
+                }
+                opcode::jump_ne => {
+                    let pos = self.read_u32() as usize;
+                    let right = self.pop();
+                    let left = self.pop();
+                    if left != right {
                         self.cursor = pos;
                     }
                 }
