@@ -1,5 +1,6 @@
 use crate::com::{
     ast, ir,
+    loc::Span,
     reporting::{Header, Label, Note, Report},
     Checker,
 };
@@ -111,5 +112,73 @@ impl Checker<'_, '_> {
         }
 
         true
+    }
+
+    /// Produces an error report if the provided arguments don't match the record type's signature
+    pub fn create_record_type(
+        &mut self,
+        record_id: ir::EntityID,
+        args: Option<Box<[ir::TypeID]>>,
+        span: Span,
+    ) -> Option<ir::TypeID> {
+        let info = self.get_record_info(record_id);
+        let Some(args) = args else {
+            match &info.type_args {
+                None => {
+                    return Some(self.create_type(ir::Type::Record(record_id, None), Some(span)))
+                }
+                Some(type_args) => {
+                    let arity = type_args.len();
+                    self.reports.push(
+                        Report::error(Header::RecordArgMismatch(info.name.to_string()))
+                            .with_primary_label(
+                                Label::RecordTypeArgCount(info.name.to_string(), arity),
+                                span.wrap(self.file),
+                            )
+                            .with_secondary_label(
+                                Label::RecordDefinition(info.name.to_string()),
+                                info.loc,
+                            ),
+                    );
+                    return None;
+                }
+            }
+        };
+
+        let info = self.get_record_info(record_id);
+        let Some(type_args) = &info.type_args else {
+            self.reports.push(
+                Report::error(Header::RecordArgMismatch(info.name.to_string()))
+                    .with_primary_label(
+                        Label::RecordTypeNoArgs(info.name.to_string()),
+                        span.wrap(self.file),
+                    )
+                    .with_secondary_label(Label::RecordDefinition(info.name.to_string()), info.loc),
+            );
+            return None;
+        };
+
+        let arity = type_args.len();
+        let record_ty = self.instantiate_scheme(info.scheme.clone(), None);
+        let record_ty = self.clone_type_repr(record_ty);
+        self.set_type_span(record_ty, span);
+
+        let info = self.get_record_info(record_id);
+        if arity == args.len() {
+            let ty = self.create_type(ir::Type::Record(record_id, Some(args)), Some(span));
+            self.unify(ty, record_ty, &[]);
+        } else {
+            self.reports.push(
+                Report::error(Header::RecordArgMismatch(info.name.to_string()))
+                    .with_primary_label(
+                        Label::RecordTypeArgCount(info.name.to_string(), arity),
+                        span.wrap(self.file),
+                    )
+                    .with_secondary_label(Label::RecordDefinition(info.name.to_string()), info.loc),
+            );
+            return None;
+        }
+
+        Some(record_ty)
     }
 }

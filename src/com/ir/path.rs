@@ -1,6 +1,6 @@
 use super::{CheckedExpr, EntityID, TypeID};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum PathQuery {
     Missing,
     Expr(CheckedExpr),

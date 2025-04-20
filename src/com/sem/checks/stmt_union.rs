@@ -1,5 +1,6 @@
 use crate::com::{
     ast, ir,
+    loc::Span,
     reporting::{Header, Label, Note, Report},
     Checker,
 };
@@ -164,5 +165,71 @@ impl Checker<'_, '_> {
 
         self.close_scope();
         expr
+    }
+
+    /// Produces an error report if the provided arguments don't match the union type's signature
+    pub fn create_union_type(
+        &mut self,
+        union_id: ir::EntityID,
+        args: Option<Box<[ir::TypeID]>>,
+        span: Span,
+    ) -> Option<ir::TypeID> {
+        let info = self.get_union_info(union_id);
+        let Some(args) = args else {
+            match &info.type_args {
+                None => return Some(self.create_type(ir::Type::Union(union_id, None), Some(span))),
+                Some(type_args) => {
+                    let arity = type_args.len();
+                    self.reports.push(
+                        Report::error(Header::UnionArgMismatch(info.name.to_string()))
+                            .with_primary_label(
+                                Label::UnionTypeArgCount(info.name.to_string(), arity),
+                                span.wrap(self.file),
+                            )
+                            .with_secondary_label(
+                                Label::UnionDefinition(info.name.to_string()),
+                                info.loc,
+                            ),
+                    );
+                    return None;
+                }
+            }
+        };
+
+        let info = self.get_union_info(union_id);
+        let Some(type_args) = &info.type_args else {
+            self.reports.push(
+                Report::error(Header::UnionArgMismatch(info.name.to_string()))
+                    .with_primary_label(
+                        Label::UnionTypeNoArgs(info.name.to_string()),
+                        span.wrap(self.file),
+                    )
+                    .with_secondary_label(Label::UnionDefinition(info.name.to_string()), info.loc),
+            );
+            return None;
+        };
+
+        let arity = type_args.len();
+        let union_ty = self.instantiate_scheme(info.scheme.clone(), None);
+        let union_ty = self.clone_type_repr(union_ty);
+        self.set_type_span(union_ty, span);
+
+        let info = self.get_union_info(union_id);
+        if arity == args.len() {
+            let ty = self.create_type(ir::Type::Union(union_id, Some(args)), Some(span));
+            self.unify(ty, union_ty, &[]);
+        } else {
+            self.reports.push(
+                Report::error(Header::UnionArgMismatch(info.name.to_string()))
+                    .with_primary_label(
+                        Label::UnionTypeArgCount(info.name.to_string(), arity),
+                        span.wrap(self.file),
+                    )
+                    .with_secondary_label(Label::UnionDefinition(info.name.to_string()), info.loc),
+            );
+            return None;
+        }
+
+        Some(union_ty)
     }
 }

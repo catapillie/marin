@@ -116,6 +116,14 @@ impl Checker<'_, '_> {
         match q {
             Q::Missing => self.create_fresh_type(Some(span)),
             Q::Type(ty) => ty,
+            Q::Union(union_id) => match self.create_union_type(union_id, None, span) {
+                Some(ty) => ty,
+                None => self.create_fresh_type(Some(span)),
+            },
+            Q::Record(record_ty) => match self.create_record_type(record_ty, None, span) {
+                Some(ty) => ty,
+                None => self.create_fresh_type(Some(span)),
+            },
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidType())
