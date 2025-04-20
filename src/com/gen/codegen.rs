@@ -259,7 +259,13 @@ impl<'a> Codegen<'a> {
                 }
                 Ok(())
             }
-            P::Variant(_, _, _) => todo!(),
+            P::Variant(_, _, None) => Ok(()),
+            P::Variant(_, _, Some(items)) => {
+                for item in items {
+                    self.gen_register_pattern_locals(item)?;
+                }
+                Ok(())
+            }
             P::Record(_, fields) => {
                 for field in fields {
                     self.gen_register_pattern_locals(field)?;
@@ -269,21 +275,18 @@ impl<'a> Codegen<'a> {
         }
     }
 
-    // initializes the pattern with the expression on the stack
+    // initializes the pattern with the expression on the stack then pops it
     fn gen_initialize_pattern(&mut self, pattern: &'a ir::Pattern) -> binary::Result<()> {
         use ir::Pattern as P;
         match pattern {
-            P::Missing => Ok(()),
-            P::Discard => {
-                self.write_opcode(&Opcode::pop)?;
-                Ok(())
-            }
+            P::Missing => self.write_opcode(&Opcode::pop),
+            P::Discard => self.write_opcode(&Opcode::pop),
             P::Binding(id) => {
                 let local = self.get_local(id);
                 self.write_opcode(&Opcode::set_local(local))?;
                 Ok(())
             }
-            P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => Ok(()),
+            P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => self.write_opcode(&Opcode::pop),
             P::Tuple(items) => {
                 for (i, item) in items.iter().enumerate() {
                     self.write_opcode(&Opcode::index_dup(i as u8))?;
@@ -292,7 +295,16 @@ impl<'a> Codegen<'a> {
                 self.write_opcode(&Opcode::pop)?;
                 Ok(())
             }
-            P::Variant(_, _, _) => todo!(),
+            P::Variant(_, _, None) => self.write_opcode(&Opcode::pop),
+            P::Variant(_, _, Some(items)) => {
+                self.write_opcode(&Opcode::index_dup(1))?;
+                for (i, field) in items.iter().enumerate() {
+                    self.write_opcode(&Opcode::index_dup(i as u8))?;
+                    self.gen_initialize_pattern(field)?;
+                }
+                self.write_opcode(&Opcode::pop)?;
+                Ok(())
+            }
             P::Record(_, fields) => {
                 for (i, field) in fields.iter().enumerate() {
                     self.write_opcode(&Opcode::index_dup(i as u8))?;
@@ -347,7 +359,39 @@ impl<'a> Codegen<'a> {
                 }
                 self.write_opcode(&Opcode::pop)
             }
-            P::Variant(_, _, _) => todo!(),
+            P::Variant(_, tag, None) => {
+                // check tag
+                self.write_opcode(&Opcode::index_dup(0))?;
+                self.gen_constant(exe::Value::Int(*tag as i64))?;
+                self.cursor.write_u8(opcode::jump_ne)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+
+                // pop tag then variant object
+                self.write_opcode(&Opcode::pop)?;
+
+                Ok(())
+            }
+            P::Variant(_, tag, Some(items)) => {
+                // check tag
+                self.write_opcode(&Opcode::index_dup(0))?;
+                self.gen_constant(exe::Value::Int(*tag as i64))?;
+                self.cursor.write_u8(opcode::jump_ne)?;
+                failure_jumps.push(self.write_u32_placeholder()?);
+
+                // pop tag
+                self.write_opcode(&Opcode::pop)?;
+
+                // check bundle inner values
+                self.write_opcode(&Opcode::index_dup(1))?;
+                for (i, item) in items.iter().enumerate() {
+                    self.write_opcode(&Opcode::index_dup(i as u8))?;
+                    self.gen_pattern_test(item, failure_jumps)?;
+                }
+
+                // pop bundle then variant object
+                self.write_opcode(&Opcode::pop)?;
+                Ok(())
+            }
             P::Record(_, fields) => {
                 for (i, field) in fields.iter().enumerate() {
                     self.write_opcode(&Opcode::index_dup(i as u8))?;
