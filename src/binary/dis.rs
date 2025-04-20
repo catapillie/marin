@@ -52,6 +52,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             ),
             Op::bundle(count) => print!("{:>12} [{}]", "bundle", count.to_string().bold()),
             Op::index_dup(count) => print!("{:>12} {}", "index_dup", count.to_string().bold()),
+            Op::index(count) => print!("{:>12} {}", "index", count.to_string().bold()),
             Op::load_const(x) => print!(
                 "{:>12} #{} = {}",
                 "load_const",

@@ -34,6 +34,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::load_fun => Ok(Opcode::load_fun(r.read_u32::<LE>()?)),
         opcode::bundle => Ok(Opcode::bundle(r.read_u8()?)),
         opcode::index_dup => Ok(Opcode::index_dup(r.read_u8()?)),
+        opcode::index => Ok(Opcode::index(r.read_u8()?)),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -67,6 +68,11 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::index_dup(count) => {
             w.write_u8(opcode::index_dup)?;
+            w.write_u8(*count)?;
+            Ok(())
+        }
+        Opcode::index(count) => {
+            w.write_u8(opcode::index)?;
             w.write_u8(*count)?;
             Ok(())
         }

@@ -769,7 +769,14 @@ impl<'a> Codegen<'a> {
                 self.write_opcode(&Opcode::bundle(count))?;
                 Ok(())
             }
-            E::Access(..) => todo!(),
+            E::Access(expr, at) => {
+                self.gen_expression(expr)?;
+                let index: u8 = (*at)
+                    .try_into()
+                    .expect("records cannot have more than 255 fields");
+                self.write_opcode(&Opcode::index(index))?;
+                Ok(())
+            }
         }
     }
 

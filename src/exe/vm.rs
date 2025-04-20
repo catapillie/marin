@@ -93,6 +93,14 @@ impl<'a> VM<'a> {
                     let value = items[index].clone();
                     self.push(value);
                 }
+                opcode::index => {
+                    let index = self.read_u8() as usize;
+                    let Val::Bundle(items) = self.pop() else {
+                        panic!("invalid index on a non-bundle value");
+                    };
+                    let value = items[index].clone();
+                    self.push(value);
+                }
                 opcode::load_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());
