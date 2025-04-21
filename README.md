@@ -41,7 +41,7 @@ cd marin
 cargo build --release
 ```
 
-The executable should located in `./target/release/`.
+The executable should be located in `./target/release/`.
 
 > Please note that the app builds with an `std` folder meant for internal use by the compiler.
 
