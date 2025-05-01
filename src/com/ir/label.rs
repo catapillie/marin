@@ -1,7 +1,7 @@
 use super::TypeID;
 use crate::com::loc::Loc;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct LabelID(pub usize);
 
 pub struct Label {
