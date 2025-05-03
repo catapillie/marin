@@ -22,6 +22,9 @@ impl Checker<'_, '_> {
         let prev_fun_info = self.create_function_info();
         self.open_scope(true);
 
+        let fun_uid_name = format!("fun_{}", self.get_generic_unique_id());
+        self.set_scope_name(fun_uid_name);
+
         let (sig, sig_type, ret_type, id) = self.declare_signature(&signature);
         self.set_type_span(sig_type, sig_span);
         self.set_type_span(ret_type, e.value.span());
@@ -29,17 +32,12 @@ impl Checker<'_, '_> {
         let (val, val_type) = self.check_expression(&e.value);
         self.unify(val_type, ret_type, &[]);
 
+        let fun_name = self.build_scope_name();
         self.close_scope();
         let fun_info = self.restore_function_info(prev_fun_info);
 
         (
-            ir::Expr::Fun(
-                String::default(),
-                id,
-                fun_info,
-                Box::new(sig),
-                Box::new(val),
-            ),
+            ir::Expr::Fun(fun_name, id, fun_info, Box::new(sig), Box::new(val)),
             sig_type,
         )
     }

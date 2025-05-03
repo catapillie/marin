@@ -16,8 +16,8 @@ pub struct Export<'src> {
 }
 
 #[derive(Default)]
-pub struct ScopeInfo<'src> {
-    pub name: &'src str,
+pub struct ScopeInfo {
+    pub name: String,
     pub instances: Instances,
 }
 
@@ -31,7 +31,7 @@ pub struct Checker<'src, 'e> {
     pub deps: &'e deps::Dependencies,
     pub exports: Vec<Export<'src>>,
 
-    pub scope: Scope<&'src str, ScopeInfo<'src>, ir::EntityID>,
+    pub scope: Scope<&'src str, ScopeInfo, ir::EntityID>,
     pub label_scope: Scope<&'src str, (), ir::LabelID>,
     pub entities: Vec<ir::Entity>,
     pub entity_public: Vec<bool>,
@@ -39,6 +39,8 @@ pub struct Checker<'src, 'e> {
     pub types: Vec<ir::TypeNode>,
     pub current_constraints: Vec<ir::Constraint>,
     pub current_function: ir::FunInfo,
+
+    generic_counter: usize,
 }
 
 impl<'src, 'e> Checker<'src, 'e> {
@@ -65,6 +67,8 @@ impl<'src, 'e> Checker<'src, 'e> {
             types: Vec::new(),
             current_constraints: Vec::new(),
             current_function: Default::default(),
+
+            generic_counter: 0,
         };
 
         // native type bindings
@@ -86,16 +90,23 @@ impl<'src, 'e> Checker<'src, 'e> {
         self.label_scope.close();
     }
 
-    pub fn set_scope_name(&mut self, name: &'src str) {
+    pub fn set_scope_name(&mut self, name: String) {
         self.scope.infos_mut().name = name;
     }
 
     pub fn build_scope_name(&self) -> String {
-        self.scope
+        let mut names = self
+            .scope
             .infos_iter()
             .map(|info| info.name.to_string())
-            .collect::<Vec<_>>()
-            .join(".")
+            .collect::<Vec<_>>();
+        names.reverse();
+        names.join(".")
+    }
+
+    pub fn get_generic_unique_id(&mut self) -> usize {
+        self.generic_counter += 1;
+        self.generic_counter
     }
 }
 

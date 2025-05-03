@@ -102,7 +102,7 @@ impl Checker<'_, '_> {
 
                 let name = self.signature_name(&signature);
                 if let Some((name, _)) = name {
-                    self.set_scope_name(name);
+                    self.set_scope_name(name.to_string());
                 }
 
                 let (sig, sig_type, ret_type, rec_id) = self.declare_signature(&signature);

@@ -36,7 +36,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
 
         match function_table.get(&(pos as u32)) {
             Some(fun_name) => {
-                println!("         ║ :: {}", fun_name.bold());
+                println!("         ║ :: {}", fun_name.bold().bright_blue());
                 print!("{:0>8} ║ ", pos);
             }
             None => print!("{:0>8} ║ ", pos),
@@ -47,7 +47,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::load_fun(pos) => print!(
                 "{:>12} {} <{:0>8}>",
                 "load_fun",
-                function_table.get(&pos).unwrap().bold(),
+                function_table.get(&pos).unwrap().bold().bright_blue(),
                 pos.to_string().bold()
             ),
             Op::bundle(count) => print!("{:>12} [{}]", "bundle", count.to_string().bold()),
