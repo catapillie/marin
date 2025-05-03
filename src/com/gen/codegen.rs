@@ -1,6 +1,6 @@
 use byteorder::{WriteBytesExt, LE};
 use std::{
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     io::{self, Cursor},
 };
 
@@ -14,6 +14,7 @@ struct Function {
     pos: Option<u32>,
     name: String,
     placeholders: Vec<u32>,
+    captured: BTreeSet<ir::EntityID>,
 }
 
 struct Frame {
@@ -40,7 +41,7 @@ struct LabelGen {
 
 pub struct Codegen<'a> {
     ir: &'a [ir::Module],
-    entities: Vec<ir::Entity>,
+    _entities: Vec<ir::Entity>,
 
     constants: Vec<exe::Value>,
     functions: Vec<Function>,
@@ -58,7 +59,7 @@ impl<'a> Codegen<'a> {
     pub fn new(ir: &'a [ir::Module], entities: Vec<ir::Entity>) -> Self {
         Self {
             ir,
-            entities,
+            _entities: entities,
 
             constants: Vec::new(),
             functions: Vec::new(),
@@ -117,12 +118,14 @@ impl<'a> Codegen<'a> {
         name: &str,
         signature: Option<&'a ir::Signature>,
         body: FunctionCode<'a>,
+        captured: BTreeSet<ir::EntityID>,
     ) -> usize {
         let id = self.functions.len();
         self.functions.push(Function {
             pos: None,
             name: name.to_string(),
             placeholders: Vec::new(),
+            captured,
         });
         self.remaining_work.push(FunctionWork {
             id,
@@ -136,7 +139,12 @@ impl<'a> Codegen<'a> {
         // initial function
         for (i, ir) in self.ir.iter().enumerate() {
             let name = format!("<main{i}>");
-            self.create_function(&name, None, FunctionCode::Block(&ir.stmts));
+            self.create_function(
+                &name,
+                None,
+                FunctionCode::Block(&ir.stmts),
+                Default::default(),
+            );
         }
 
         // generate all functions
@@ -159,6 +167,7 @@ impl<'a> Codegen<'a> {
             .get_mut(work.id)
             .expect("generating an unregistered function");
         fun.pos = Some(pos);
+        let captured_variables = fun.captured.clone();
         for placeholder in fun.placeholders.clone() {
             self.patch_u32_placeholder(placeholder, pos)?;
         }
@@ -179,6 +188,11 @@ impl<'a> Codegen<'a> {
                 .try_into()
                 .expect("function has more than 255 arguments");
             self.local_index += arg_count;
+
+            // re-register captured variables within the context of this function
+            for captured_id in captured_variables {
+                self.register_local(captured_id);
+            }
 
             // deconstruct each one of them
             for (i, arg) in args.iter().enumerate() {
@@ -222,8 +236,7 @@ impl<'a> Codegen<'a> {
         value: &'a ir::Expr,
     ) -> binary::Result<()> {
         self.gen_expression(value)?;
-        let local = self.register_local();
-        self.locals_by_id.insert(id, local);
+        self.register_local(id);
         Ok(())
     }
 
@@ -257,8 +270,7 @@ impl<'a> Codegen<'a> {
             P::Discard => Ok(()),
             P::Binding(id) => {
                 self.write_opcode(&Opcode::load_nil)?;
-                let local = self.register_local();
-                self.locals_by_id.insert(*id, local);
+                self.register_local(*id);
                 Ok(())
             }
             P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => Ok(()),
@@ -497,13 +509,13 @@ impl<'a> Codegen<'a> {
         self.frames.len()
     }
 
-    fn register_local(&mut self) -> u8 {
-        let index = self.local_index;
+    fn register_local(&mut self, id: ir::EntityID) {
+        let local = self.local_index;
         self.local_index = self
             .local_index
             .checked_add(1)
             .expect("exceeded maximum local count (256) in function");
-        index
+        self.locals_by_id.insert(id, local);
     }
 
     fn get_local(&self, id: &ir::EntityID) -> u8 {
@@ -519,8 +531,9 @@ impl<'a> Codegen<'a> {
         name: &str,
         signature: Option<&'a ir::Signature>,
         body: FunctionCode<'a>,
+        info: &ir::FunInfo,
     ) -> usize {
-        let fun_id = self.create_function(name, signature, body);
+        let fun_id = self.create_function(name, signature, body, info.captured.clone());
 
         if let Some(id) = id {
             if self.functions_by_id.contains_key(&id) {
@@ -827,12 +840,13 @@ impl<'a> Codegen<'a> {
             E::Break(Some(expr), label_id) => self.gen_break(*label_id, Some(expr)),
             E::Break(None, label_id) => self.gen_break(*label_id, None),
             E::Skip(label_id) => self.gen_skip(*label_id),
-            E::Fun(name, rec_id, _info, signature, expr) => {
+            E::Fun(name, rec_id, info, signature, expr) => {
                 let id = self.register_user_function(
                     *rec_id,
                     name,
                     Some(signature),
                     FunctionCode::Expr(expr),
+                    info,
                 );
                 self.gen_function_value(id)?;
                 Ok(())
@@ -942,6 +956,7 @@ impl<'a> Codegen<'a> {
     }
 
     fn gen_function_value(&mut self, id: usize) -> binary::Result<()> {
+        // gen function position
         let fun = &self.functions[id];
         match fun.pos {
             Some(pos) => {
@@ -953,6 +968,21 @@ impl<'a> Codegen<'a> {
                 self.functions[id].placeholders.push(placeholder);
             }
         }
+
+        let captured_variables = &self.functions[id].captured.clone();
+        for &captured in captured_variables {
+            self.gen_variable(captured)?;
+        }
+
+        // gen captured variables then bundle into tuple
+        let captured_count: u8 = captured_variables
+            .len()
+            .try_into()
+            .expect("function cannot capture more than 255 variables");
+        self.write_opcode(&Opcode::bundle(captured_count))?;
+
+        // bundle pair (address, (x_1, ..., x_n)), where (x_k) are the captured
+        self.write_opcode(&Opcode::bundle(2))?;
 
         Ok(())
     }

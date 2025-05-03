@@ -1,11 +1,11 @@
 use crate::com::{ir, Checker};
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 impl Checker<'_, '_> {
     pub fn create_function_info(&mut self) -> ir::FunInfo {
         self.restore_function_info(ir::FunInfo {
             depth: self.scope.depth(),
-            captured: HashSet::new(),
+            captured: BTreeSet::new(),
         })
     }
 

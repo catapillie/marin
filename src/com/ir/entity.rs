@@ -1,7 +1,7 @@
 use super::{Expr, InstanceScheme, PathQuery, Scheme, TypeID};
 use crate::com::loc::Loc;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct EntityID(pub usize);
 
 pub enum Entity {

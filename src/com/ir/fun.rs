@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use super::EntityID;
 
 #[derive(Default, Debug, Clone)]
 pub struct FunInfo {
     pub depth: usize,
-    pub captured: HashSet<EntityID>,
+    pub captured: BTreeSet<EntityID>,
 }

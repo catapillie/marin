@@ -182,11 +182,21 @@ impl<'a> VM<'a> {
                 }
                 opcode::call => {
                     let arg_count = self.read_u8() as usize;
-                    let fun = self.pop();
-                    let Val::Func(addr) = fun else {
+
+                    let fun_bundle = self.pop();
+                    let Val::Bundle(u) = fun_bundle else {
                         panic!("invalid function object");
                     };
-                    self.push_call_frame(arg_count);
+
+                    let &[Val::Func(addr), Val::Bundle(u_capture)] = self.heap.deref_val_array(u)
+                    else {
+                        panic!("invalid function bundle");
+                    };
+
+                    let captured = self.heap.deref_val_array(u_capture);
+                    self.stack.extend_from_slice(captured);
+
+                    self.push_call_frame(arg_count + captured.len());
                     self.cursor = addr as usize;
                 }
                 opcode::ret => {
