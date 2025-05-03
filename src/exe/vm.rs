@@ -7,10 +7,10 @@ enum Val {
     Nil,
     Int(i64),
     Float(f64),
-    String(String),
+    String(HeapIndex),
     Bool(bool),
     Func(u32),
-    Bundle(Box<[Val]>),
+    Bundle(HeapIndex),
 }
 
 struct Frame {
@@ -24,6 +24,7 @@ pub struct VM<'a> {
     cursor: usize,
     constants: Vec<Val>,
     stack: Vec<Val>,
+    heap: Heap,
     frame_stack: Vec<Frame>,
     frame_cursor: usize,
 }
@@ -35,37 +36,49 @@ impl<'a> VM<'a> {
             cursor: 0,
             constants: Vec::new(),
             stack: Vec::new(),
+            heap: Heap::new(),
             frame_stack: Vec::new(),
             frame_cursor: 0,
         }
     }
 
-    fn to_val(value: &Value) -> Val {
+    fn store_as_val(&mut self, value: &Value) -> Val {
         match value {
             Value::Nil => Val::Nil,
             Value::Int(n) => Val::Int(*n),
             Value::Float(f) => Val::Float(*f),
-            Value::String(s) => Val::String(s.clone()),
+            Value::String(s) => Val::String(self.heap.alloc_string(s.clone())),
             Value::Bool(b) => Val::Bool(*b),
             Value::Func => panic!("unallowed user function value"),
-            Value::Bundle(items) => Val::Bundle(items.into_iter().map(Self::to_val).collect()),
+            Value::Bundle(items) => {
+                let vals = items.iter().map(|item| self.store_as_val(item)).collect();
+                Val::Bundle(self.heap.alloc_val_array(vals))
+            }
         }
     }
 
-    fn to_user_val(val: &Val) -> Value {
+    fn to_user_val(&self, val: &Val) -> Value {
         match val {
             Val::Nil => Value::Nil,
             Val::Int(n) => Value::Int(*n),
             Val::Float(f) => Value::Float(*f),
-            Val::String(s) => Value::String(s.clone()),
+            Val::String(u) => Value::String(self.heap.deref_string(*u).to_string()),
             Val::Bool(b) => Value::Bool(*b),
             Val::Func(_) => Value::Func,
-            Val::Bundle(items) => Value::Bundle(items.iter().map(Self::to_user_val).collect()),
+            Val::Bundle(u) => {
+                let values = self
+                    .heap
+                    .deref_val_array(*u)
+                    .iter()
+                    .map(|val| self.to_user_val(val))
+                    .collect();
+                Value::Bundle(values)
+            }
         }
     }
 
     pub fn add_constant(&mut self, value: &Value) {
-        let val = Self::to_val(value);
+        let val = self.store_as_val(value);
         self.constants.push(val);
     }
 
@@ -83,23 +96,24 @@ impl<'a> VM<'a> {
                 opcode::bundle => {
                     let count = self.read_u8() as usize;
                     let values = self.stack.split_off(self.stack.len() - count);
-                    self.push(Val::Bundle(values.into()));
+                    let bundle = Val::Bundle(self.heap.alloc_val_array(values));
+                    self.push(bundle);
                 }
                 opcode::index_dup => {
                     let index = self.read_u8() as usize;
-                    let Val::Bundle(items) = self.peek() else {
+                    let &Val::Bundle(u) = self.peek() else {
                         panic!("invalid index on a non-bundle value");
                     };
-                    let value = items[index].clone();
-                    self.push(value);
+                    let value = self.heap.deref_val(u, index);
+                    self.push(value.clone());
                 }
                 opcode::index => {
                     let index = self.read_u8() as usize;
-                    let Val::Bundle(items) = self.pop() else {
+                    let Val::Bundle(u) = self.pop() else {
                         panic!("invalid index on a non-bundle value");
                     };
-                    let value = items[index].clone();
-                    self.push(value);
+                    let value = self.heap.deref_val(u, index);
+                    self.push(value.clone());
                 }
                 opcode::load_const => {
                     let index = self.read_u16() as usize;
@@ -196,7 +210,7 @@ impl<'a> VM<'a> {
 
         let result = self.pop();
         debug_assert!(self.stack.is_empty(), "non-empty stack after halting");
-        Self::to_user_val(&result)
+        self.to_user_val(&result)
     }
 
     fn pop(&mut self) -> Val {
@@ -258,5 +272,65 @@ impl<'a> VM<'a> {
             self.read_u8(),
             self.read_u8(),
         ])
+    }
+}
+
+type HeapIndex = usize;
+
+#[derive(Debug)]
+struct Heap {
+    strings: Vec<String>,
+    values: Vec<Val>,
+    value_stride_lengths: Vec<usize>,
+}
+
+impl Heap {
+    fn new() -> Self {
+        Self {
+            strings: Vec::new(),
+            values: Vec::new(),
+            value_stride_lengths: Vec::new(),
+        }
+    }
+
+    fn alloc_string(&mut self, string: String) -> HeapIndex {
+        let index = self.strings.len();
+        self.strings.push(string);
+        index
+    }
+
+    fn alloc_val(&mut self, val: Val) -> HeapIndex {
+        let index = self.values.len();
+        self.values.push(val);
+        self.value_stride_lengths.push(1);
+        index
+    }
+
+    fn alloc_val_array(&mut self, mut vals: Vec<Val>) -> HeapIndex {
+        let index = self.values.len();
+        let len = vals.len();
+        if len > 0 {
+            self.values.append(&mut vals);
+            self.value_stride_lengths.push(len);
+            self.value_stride_lengths.append(&mut vec![1; len - 1]);
+        } else {
+            // todo: make unit values not cause a pointless allocation
+            self.values.push(Val::Nil);
+            self.value_stride_lengths.push(0);
+        }
+        index
+    }
+
+    fn deref_string(&self, index: HeapIndex) -> &str {
+        &self.strings[index]
+    }
+
+    fn deref_val(&self, index: HeapIndex, offset: usize) -> &Val {
+        &self.values[index + offset]
+    }
+
+    fn deref_val_array(&self, index: HeapIndex) -> &[Val] {
+        let len = self.value_stride_lengths[index];
+        &self.values[index..(index + len)]
     }
 }
