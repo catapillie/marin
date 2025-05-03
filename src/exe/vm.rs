@@ -98,6 +98,12 @@ impl<'a> VM<'a> {
                     let bundle = Val::Bundle(self.heap.alloc_val_array(values));
                     self.push(bundle);
                 }
+                opcode::bundle_big => {
+                    let count = self.read_u64() as usize;
+                    let values = self.stack.split_off(self.stack.len() - count);
+                    let bundle = Val::Bundle(self.heap.alloc_val_array(values));
+                    self.push(bundle);
+                }
                 opcode::index_dup => {
                     let index = self.read_u8() as usize;
                     let &Val::Bundle(u) = self.peek() else {
@@ -106,8 +112,24 @@ impl<'a> VM<'a> {
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
                 }
+                opcode::index_big_dup => {
+                    let index = self.read_u64() as usize;
+                    let &Val::Bundle(u) = self.peek() else {
+                        panic!("invalid index on a non-bundle value");
+                    };
+                    let value = self.heap.deref_val(u, index);
+                    self.push(value.clone());
+                }
                 opcode::index => {
                     let index = self.read_u8() as usize;
+                    let Val::Bundle(u) = self.pop() else {
+                        panic!("invalid index on a non-bundle value");
+                    };
+                    let value = self.heap.deref_val(u, index);
+                    self.push(value.clone());
+                }
+                opcode::index_big => {
+                    let index = self.read_u64() as usize;
                     let Val::Bundle(u) = self.pop() else {
                         panic!("invalid index on a non-bundle value");
                     };
@@ -276,6 +298,19 @@ impl<'a> VM<'a> {
 
     fn read_u32(&mut self) -> u32 {
         u32::from_le_bytes([
+            self.read_u8(),
+            self.read_u8(),
+            self.read_u8(),
+            self.read_u8(),
+        ])
+    }
+
+    fn read_u64(&mut self) -> u64 {
+        u64::from_le_bytes([
+            self.read_u8(),
+            self.read_u8(),
+            self.read_u8(),
+            self.read_u8(),
             self.read_u8(),
             self.read_u8(),
             self.read_u8(),

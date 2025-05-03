@@ -33,8 +33,11 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
     match r.read_u8()? {
         opcode::load_fun => Ok(Opcode::load_fun(r.read_u32::<LE>()?)),
         opcode::bundle => Ok(Opcode::bundle(r.read_u8()?)),
+        opcode::bundle_big => Ok(Opcode::bundle_big(r.read_u64::<LE>()?)),
         opcode::index_dup => Ok(Opcode::index_dup(r.read_u8()?)),
+        opcode::index_big_dup => Ok(Opcode::index_big_dup(r.read_u64::<LE>()?)),
         opcode::index => Ok(Opcode::index(r.read_u8()?)),
+        opcode::index_big => Ok(Opcode::index_big(r.read_u64::<LE>()?)),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -66,14 +69,29 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
             w.write_u8(*count)?;
             Ok(())
         }
+        Opcode::bundle_big(count) => {
+            w.write_u8(opcode::bundle_big)?;
+            w.write_u64::<LE>(*count)?;
+            Ok(())
+        }
         Opcode::index_dup(count) => {
             w.write_u8(opcode::index_dup)?;
             w.write_u8(*count)?;
             Ok(())
         }
+        Opcode::index_big_dup(count) => {
+            w.write_u8(opcode::index_big_dup)?;
+            w.write_u64::<LE>(*count)?;
+            Ok(())
+        }
         Opcode::index(count) => {
             w.write_u8(opcode::index)?;
             w.write_u8(*count)?;
+            Ok(())
+        }
+        Opcode::index_big(count) => {
+            w.write_u8(opcode::index_big)?;
+            w.write_u64::<LE>(*count)?;
             Ok(())
         }
         Opcode::load_const(x) => {

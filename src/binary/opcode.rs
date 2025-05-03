@@ -1,8 +1,11 @@
 opcodes! {
     0x0a load_fun(u32)
     0x10 bundle(u8)
-    0x11 index_dup(u8)
-    0x12 index(u8)
+    0x11 bundle_big(u64)
+    0x12 index_dup(u8)
+    0x13 index_big_dup(u64)
+    0x14 index(u8)
+    0x16 index_big(u64)
     0xa0 load_const(u16)
     0xa2 load_local(u8)
     0xa3 set_local(u8)

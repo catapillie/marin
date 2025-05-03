@@ -713,7 +713,14 @@ impl<'a> Codegen<'a> {
                 self.write_opcode(&Opcode::bundle(count))?;
                 Ok(())
             }
-            E::Array(..) => todo!(),
+            E::Array(items) => {
+                for item in items {
+                    self.gen_expression(item)?;
+                }
+                let count = items.len() as u64;
+                self.write_opcode(&Opcode::bundle_big(count))?;
+                Ok(())
+            }
             E::Block(stmts, label_id) => {
                 self.register_label_here(*label_id);
                 self.gen_expression_block(stmts)?;
