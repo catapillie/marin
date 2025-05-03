@@ -43,6 +43,7 @@ impl Checker<'_, '_> {
         let getter_expr = ir::Expr::Fun(
             getter_full_name,
             None,
+            Default::default(),
             Box::new(ir::Signature::Args(
                 Box::new([ir::Pattern::Binding(arg_id)]),
                 Box::new(ir::Signature::Done),

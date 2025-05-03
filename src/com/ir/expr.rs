@@ -1,4 +1,4 @@
-use super::{Branch, EntityID, LabelID, Signature, Stmt, TypeID};
+use super::{Branch, EntityID, FunInfo, LabelID, Signature, Stmt, TypeID};
 
 pub type CheckedExpr = (Expr, TypeID);
 
@@ -16,7 +16,7 @@ pub enum Expr {
     Conditional(Box<[Branch]>, bool),
     Break(Option<Box<Expr>>, LabelID),
     Skip(LabelID),
-    Fun(String, Option<EntityID>, Box<Signature>, Box<Expr>),
+    Fun(String, Option<EntityID>, FunInfo, Box<Signature>, Box<Expr>),
     Call(Box<Expr>, Box<[Expr]>),
     Variant(usize, Option<Box<[Expr]>>),
     Record(Box<[Expr]>),

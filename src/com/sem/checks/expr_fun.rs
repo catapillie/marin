@@ -19,6 +19,7 @@ impl Checker<'_, '_> {
             }
         }
 
+        let prev_fun_info = self.create_function_info();
         self.open_scope(true);
 
         let (sig, sig_type, ret_type, id) = self.declare_signature(&signature);
@@ -29,9 +30,16 @@ impl Checker<'_, '_> {
         self.unify(val_type, ret_type, &[]);
 
         self.close_scope();
+        let fun_info = self.restore_function_info(prev_fun_info);
 
         (
-            ir::Expr::Fun(String::default(), id, Box::new(sig), Box::new(val)),
+            ir::Expr::Fun(
+                String::default(),
+                id,
+                fun_info,
+                Box::new(sig),
+                Box::new(val),
+            ),
             sig_type,
         )
     }

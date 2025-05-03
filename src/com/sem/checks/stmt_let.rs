@@ -97,6 +97,7 @@ impl Checker<'_, '_> {
                     }
                 }
 
+                let prev_fun_info = self.create_function_info();
                 self.open_scope(true);
 
                 let name = self.signature_name(&signature);
@@ -114,6 +115,7 @@ impl Checker<'_, '_> {
 
                 let full_function_name = self.build_scope_name();
                 self.close_scope();
+                let fun_info = self.restore_function_info(prev_fun_info);
 
                 let Some((name, name_span)) = name else {
                     if !matches!(signature, ast::Signature::Missing) {
@@ -135,8 +137,13 @@ impl Checker<'_, '_> {
                 let id = self.create_variable_poly(name, scheme, name_span, false);
                 self.set_entity_public(id, public);
                 let pattern = ir::Pattern::Binding(id);
-                let lambda =
-                    ir::Expr::Fun(full_function_name, rec_id, Box::new(sig), Box::new(val));
+                let lambda = ir::Expr::Fun(
+                    full_function_name,
+                    rec_id,
+                    fun_info,
+                    Box::new(sig),
+                    Box::new(val),
+                );
 
                 (ir::Stmt::Let(pattern, lambda), vec![id])
             }

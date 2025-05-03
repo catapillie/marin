@@ -50,7 +50,16 @@ impl Checker<'_, '_> {
         let info = self.get_variable(id);
         let name = info.name.to_string();
         let loc = info.loc;
+        let var_depth = info.depth;
 
+        // if variable has just been captured, mark it as captured and remember it
+        let fun_info = self.get_function_info();
+        if var_depth <= fun_info.depth {
+            self.mark_variable_as_captured(id);
+            self.get_function_info_mut().captured.insert(id);
+        }
+
+        let info = self.get_variable(id);
         let instantiated = self.instantiate_scheme(info.scheme.clone(), Some(span.wrap(self.file)));
         let ty = self.clone_type_repr(instantiated);
         self.set_type_span(ty, span);

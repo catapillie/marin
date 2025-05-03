@@ -154,6 +154,7 @@ impl Checker<'_, '_> {
                 ir::Expr::Fun(
                     name,
                     None,
+                    Default::default(),
                     Box::new(ir::Signature::Args(
                         arg_patterns,
                         Box::new(ir::Signature::Done),

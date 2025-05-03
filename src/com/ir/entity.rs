@@ -20,9 +20,9 @@ pub struct Variable {
     pub name: String,
     pub scheme: Scheme,
     pub loc: Loc,
-
-    #[allow(dead_code)]
+    pub depth: usize,
     pub public: bool,
+    pub is_captured: bool,
 }
 
 pub struct RecordInfo {

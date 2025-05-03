@@ -12,7 +12,9 @@ impl<'src> Checker<'src, '_> {
             name: name.to_string(),
             scheme,
             loc: span.wrap(self.file),
+            depth: self.scope.depth(),
             public,
+            is_captured: false,
         }));
         self.scope.insert(name, id);
         id
@@ -40,5 +42,9 @@ impl<'src> Checker<'src, '_> {
             ir::Entity::Variable(v) => v,
             _ => panic!("id '{}' is not that of an entity", id.0),
         }
+    }
+
+    pub fn mark_variable_as_captured(&mut self, id: ir::EntityID) {
+        self.get_variable_mut(id).is_captured = true;
     }
 }

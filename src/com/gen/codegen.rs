@@ -827,7 +827,7 @@ impl<'a> Codegen<'a> {
             E::Break(Some(expr), label_id) => self.gen_break(*label_id, Some(expr)),
             E::Break(None, label_id) => self.gen_break(*label_id, None),
             E::Skip(label_id) => self.gen_skip(*label_id),
-            E::Fun(name, rec_id, signature, expr) => {
+            E::Fun(name, rec_id, _info, signature, expr) => {
                 let id = self.register_user_function(
                     *rec_id,
                     name,
