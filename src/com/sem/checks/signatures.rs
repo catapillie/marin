@@ -102,7 +102,7 @@ impl<'src> Checker<'src, '_> {
             S::Name(span, next) => {
                 let (sig, sig_type, ret_type, _) = self.declare_signature(next);
                 let name = span.lexeme(self.source);
-                let id = self.create_variable_mono(name, sig_type, *span, false);
+                let id = self.create_variable_mono(name, sig_type, *span);
                 (sig, sig_type, ret_type, Some(id))
             }
             S::Args(patterns, next) => {

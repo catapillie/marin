@@ -134,7 +134,7 @@ impl Checker<'_, '_> {
                     self.add_class_constraint(&mut scheme, constraint);
                 }
 
-                let id = self.create_variable_poly(name, scheme, name_span, false);
+                let id = self.create_variable_poly(name, scheme, name_span);
                 self.set_entity_public(id, public);
                 let pattern = ir::Pattern::Binding(id);
                 let lambda = ir::Expr::Fun(

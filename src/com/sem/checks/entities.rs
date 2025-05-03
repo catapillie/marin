@@ -35,7 +35,6 @@ impl Checker<'_, '_> {
         self.entity_public[id.0] = public;
     }
 
-    #[allow(dead_code)]
     pub fn get_entity_display(&self, id: ir::EntityID) -> String {
         use ir::Entity as Ent;
         match &self.entities[id.0] {

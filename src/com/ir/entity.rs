@@ -21,7 +21,6 @@ pub struct Variable {
     pub scheme: Scheme,
     pub loc: Loc,
     pub depth: usize,
-    pub public: bool,
     pub is_captured: bool,
 }
 

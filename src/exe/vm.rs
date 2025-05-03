@@ -1,7 +1,6 @@
 use super::Value;
 use crate::binary::opcode;
 
-#[allow(dead_code)]
 #[derive(PartialEq, Clone, Debug)]
 enum Val {
     Nil,
@@ -309,12 +308,12 @@ impl Heap {
         index
     }
 
-    fn alloc_val(&mut self, val: Val) -> HeapIndex {
-        let index = self.values.len();
-        self.values.push(val);
-        self.value_stride_lengths.push(1);
-        index
-    }
+    // fn alloc_val(&mut self, val: Val) -> HeapIndex {
+    //     let index = self.values.len();
+    //     self.values.push(val);
+    //     self.value_stride_lengths.push(1);
+    //     index
+    // }
 
     fn alloc_val_array(&mut self, mut vals: Vec<Val>) -> HeapIndex {
         let index = self.values.len();

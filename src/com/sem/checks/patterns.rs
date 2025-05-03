@@ -84,7 +84,7 @@ impl Checker<'_, '_> {
                     _ => {
                         let name = span.lexeme(self.source);
                         let ty = self.create_fresh_type(Some(*span));
-                        let id = self.create_variable_mono(name, ty, *span, false);
+                        let id = self.create_variable_mono(name, ty, *span);
                         (I::Binding(id), ty)
                     }
                 }

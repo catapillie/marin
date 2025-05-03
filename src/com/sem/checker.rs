@@ -43,7 +43,7 @@ pub struct Checker<'src, 'e> {
     generic_counter: usize,
 }
 
-impl<'src, 'e> Checker<'src, 'e> {
+impl<'e> Checker<'_, 'e> {
     pub fn new(
         file_count: usize,
         deps: &'e deps::Dependencies,

@@ -6,14 +6,12 @@ impl<'src> Checker<'src, '_> {
         name: &'src str,
         scheme: ir::Scheme,
         span: Span,
-        public: bool,
     ) -> ir::EntityID {
         let id = self.create_entity(ir::Entity::Variable(ir::Variable {
             name: name.to_string(),
             scheme,
             loc: span.wrap(self.file),
             depth: self.scope.depth(),
-            public,
             is_captured: false,
         }));
         self.scope.insert(name, id);
@@ -25,9 +23,8 @@ impl<'src> Checker<'src, '_> {
         name: &'src str,
         ty: ir::TypeID,
         span: Span,
-        public: bool,
     ) -> ir::EntityID {
-        self.create_variable_poly(name, ir::Scheme::mono(ty), span, public)
+        self.create_variable_poly(name, ir::Scheme::mono(ty), span)
     }
 
     pub fn get_variable(&self, id: ir::EntityID) -> &ir::Variable {
