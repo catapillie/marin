@@ -191,7 +191,7 @@ impl<'a> Codegen<'a> {
 
         match work.body {
             FunctionCode::Expr(expr) => self.gen_expression(expr)?,
-            FunctionCode::Block(stmts) => self.gen_expression_block(stmts, None)?,
+            FunctionCode::Block(stmts) => self.gen_expression_block(stmts)?,
         }
 
         self.write_opcode(&Opcode::ret)?;
@@ -567,33 +567,19 @@ impl<'a> Codegen<'a> {
         Ok(())
     }
 
-    fn gen_statement_block(
-        &mut self,
-        stmts: &'a [ir::Stmt],
-        label_id: Option<ir::LabelID>,
-    ) -> binary::Result<()> {
+    fn gen_statement_block(&mut self, stmts: &'a [ir::Stmt]) -> binary::Result<()> {
         self.open_frame()?;
-        if let Some(id) = label_id {
-            self.register_label_here(id);
-        }
 
         for stmt in stmts {
             self.gen_statement(stmt)?;
         }
 
-        if let Some(id) = label_id {
-            self.wire_label_breaks_here(id)?;
-        }
         self.close_frame()?;
-        
+
         Ok(())
     }
 
-    fn gen_expression_block(
-        &mut self,
-        stmts: &'a [ir::Stmt],
-        label_id: Option<ir::LabelID>,
-    ) -> binary::Result<()> {
+    fn gen_expression_block(&mut self, stmts: &'a [ir::Stmt]) -> binary::Result<()> {
         use ir::Stmt as S;
         let stmts = stmts
             .iter()
@@ -610,9 +596,6 @@ impl<'a> Codegen<'a> {
         };
 
         self.open_frame()?;
-        if let Some(id) = label_id {
-            self.register_label_here(id);
-        }
 
         match last {
             S::Expr(expr, _) => {
@@ -629,9 +612,6 @@ impl<'a> Codegen<'a> {
             }
         }
 
-        if let Some(id) = label_id {
-            self.wire_label_breaks_here(id)?;
-        }
         self.close_frame()?;
 
         Ok(())
@@ -680,6 +660,23 @@ impl<'a> Codegen<'a> {
         Ok(())
     }
 
+    fn gen_skip(&mut self, id: ir::LabelID) -> binary::Result<()> {
+        let label = self.get_label(&id);
+        let label_pos = label.start_position;
+        let label_depth = label.depth;
+        let current_depth = self.frame_depth();
+        debug_assert!(current_depth >= label_depth);
+
+        // close all frames opened so far (after the broken label)
+        for _ in 0..(current_depth - label_depth) {
+            self.write_opcode(&Opcode::end_frame)?;
+        }
+
+        self.write_opcode(&Opcode::jump(label_pos))?;
+
+        Ok(())
+    }
+
     fn gen_expression(&mut self, expr: &'a ir::Expr) -> binary::Result<()> {
         use ir::Expr as E;
         match expr {
@@ -705,12 +702,15 @@ impl<'a> Codegen<'a> {
             }
             E::Array(..) => todo!(),
             E::Block(stmts, label_id) => {
-                self.gen_expression_block(stmts, Some(*label_id))?;
+                self.register_label_here(*label_id);
+                self.gen_expression_block(stmts)?;
+                self.wire_label_breaks_here(*label_id)?;
                 Ok(())
             }
             E::Conditional(branches, is_exhaustive) => {
                 let mut else_jump_positions: Option<Vec<u32>> = None;
                 let mut exit_jump_pos = Vec::new();
+                let mut loop_labels = Vec::new();
 
                 use ir::Branch as B;
                 for branch in branches {
@@ -732,11 +732,17 @@ impl<'a> Codegen<'a> {
                             else_jump_positions = Some(vec![self.write_u32_placeholder()?]);
 
                             // then <body> ...
-                            self.gen_expression_block(body, Some(*label_id))?;
+                            self.register_label_here(*label_id);
+                            self.gen_expression_block(body)?;
+                            self.wire_label_breaks_here(*label_id)?;
+
                             self.cursor.write_u8(opcode::jump)?;
                             exit_jump_pos.push(self.write_u32_placeholder()?);
                         }
                         B::While(guard, body, label_id) => {
+                            // ... 'skip' leads here
+                            self.register_label_here(*label_id);
+
                             // while <guard> ...
                             let while_pos = self.pos();
                             self.gen_expression(guard)?;
@@ -746,18 +752,29 @@ impl<'a> Codegen<'a> {
                             else_jump_positions = Some(vec![self.write_u32_placeholder()?]);
 
                             // do <body> ...
-                            self.gen_statement_block(body, Some(*label_id))?;
+                            self.gen_statement_block(body)?;
                             self.write_opcode(&Opcode::jump(while_pos))?;
+
+                            // ... 'break' will lead to end of conditional
+                            loop_labels.push(*label_id);
                         }
                         B::Loop(body, label_id) => {
+                            // ... 'skip' leads here
+                            self.register_label_here(*label_id);
+
                             // loop <body> ...
                             let loop_pos = self.pos();
-                            self.gen_statement_block(body, Some(*label_id))?;
+                            self.gen_statement_block(body)?;
                             self.write_opcode(&Opcode::jump(loop_pos))?;
+
+                            // ... 'break' will lead to end of conditional
+                            loop_labels.push(*label_id);
                         }
                         B::Else(body, label_id) => {
                             // else <body> ...
-                            self.gen_expression_block(body, Some(*label_id))?;
+                            self.register_label_here(*label_id);
+                            self.gen_expression_block(body)?;
+                            self.wire_label_breaks_here(*label_id)?;
 
                             // no need to wire an 'else' because this branch always succeeds
                             else_jump_positions = None;
@@ -782,6 +799,11 @@ impl<'a> Codegen<'a> {
                     self.patch_u32_placeholder(exit_pos, final_pos)?;
                 }
 
+                // wire breaks from loop conditionals
+                for loop_label_id in loop_labels {
+                    self.wire_label_breaks_here(loop_label_id)?;
+                }
+
                 // if non-exhaustive, then all successful branches
                 // have to pop: they eventually evaluate to unit down below
                 if !*is_exhaustive {
@@ -804,7 +826,7 @@ impl<'a> Codegen<'a> {
             }
             E::Break(Some(expr), label_id) => self.gen_break(*label_id, Some(expr)),
             E::Break(None, label_id) => self.gen_break(*label_id, None),
-            E::Skip(..) => todo!(),
+            E::Skip(label_id) => self.gen_skip(*label_id),
             E::Fun(name, rec_id, signature, expr) => {
                 let id = self.register_user_function(
                     *rec_id,
