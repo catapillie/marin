@@ -57,10 +57,10 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
                 "{:>12} #{} = {}",
                 "load_const",
                 x.to_string().bold(),
-                constants[x as usize].to_string().bold()
+                constants[x as usize].to_string().bold().yellow()
             ),
-            Op::load_local(x) => print!("{:>12} {}", "load_local", x.to_string().bold()),
-            Op::set_local(x) => print!("{:>12} {}", "set_local", x.to_string().bold()),
+            Op::load_local(x) => print!("{:>12} {}", "load_local", x.to_string().bold().red()),
+            Op::set_local(x) => print!("{:>12} {}", "set_local", x.to_string().bold().red()),
             Op::load_nil => print!("{:>12}", "load_nil"),
             Op::jump(pos) => print!("{:>12} -> <{:0>8}>", "jump", pos.to_string().bold()),
             Op::jump_if(pos) => {
