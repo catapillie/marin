@@ -786,7 +786,7 @@ impl<'a> Codegen<'a> {
     fn gen_expression(&mut self, expr: &'a ir::Expr) -> binary::Result<()> {
         use ir::Expr as E;
         match expr {
-            E::Missing => Ok(()),
+            E::Missing => unreachable!("attempted to gen missing code"),
             E::Int(n) => self.gen_constant(exe::Value::Int(*n)),
             E::Float(f) => self.gen_constant(exe::Value::Float(*f)),
             E::String(s) => self.gen_constant(exe::Value::String(s.clone())),

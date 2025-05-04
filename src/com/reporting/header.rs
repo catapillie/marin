@@ -68,6 +68,7 @@ pub enum Header {
     UninstantiatedItems(String),
     UnsatisfiedContraint(ConstraintString),
     AmbiguousConstraintSolution(ConstraintString),
+    TopLevelConstraint(),
     ExpressionAlias(),
 }
 
@@ -115,13 +116,13 @@ impl Header {
             H::UnknownBinding(..) => "unknown_binding",
             H::UnknownVariant(..) => "unknown_variant",
             H::UnknownClassItem(..) => "unknown_class_item",
-            H::UnknownExport(_, _) => "unknown_export",
+            H::UnknownExport(..) => "unknown_export",
             H::TypeMismatch(..) => "type_mismatch",
             H::UnreachableConditionalBranches(..) => "unreachable_conditional_branches",
             H::RefutablePattern(..) => "refutable_pattern",
             H::UnionNoArgs(..) => "union_no_args",
             H::UnionVariantNoArgs(..) => "union_variant_no_args",
-            H::IncompleteVariant(_) => "incomplete_variant",
+            H::IncompleteVariant(..) => "incomplete_variant",
             H::IncorrectVariantArgs(..) => "incorrect_variant_args",
             H::IncorrectVariantArgCount(..) => "incorrect_variant_arg_count",
             H::RecordNoArgs(..) => "record_no_args",
@@ -136,6 +137,7 @@ impl Header {
             H::UninstantiatedItems(..) => "uninstantiated_items",
             H::UnsatisfiedContraint(..) => "unsatisfied_contraint",
             H::AmbiguousConstraintSolution(..) => "ambiguous_constraint_solution",
+            H::TopLevelConstraint(..) => "top_level_constraints",
             H::ExpressionAlias(..) => "expression_alias",
         }
     }
@@ -277,6 +279,8 @@ impl Header {
                 => format!("unsatisfied constraint [{constraint}]"),
             H::AmbiguousConstraintSolution(constraint)
                 => format!("ambiguous solution for constraint [{constraint}]"),
+            H::TopLevelConstraint()
+                => format!("unallowed top-level statement with unsatisfied class constraints"),
             H::ExpressionAlias()
                 => "disallowed usage of 'alias' for an expression".to_string(),
         }

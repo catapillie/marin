@@ -1,5 +1,6 @@
 use crate::com::{
     ast, ir,
+    reporting::{Header, Label, Note, Report},
     sem::checker::{checker_print, Export},
     Checker,
 };
@@ -33,10 +34,33 @@ impl<'src> Checker<'src, '_> {
             self.import_std_prelude();
         }
 
-        let stmts = ast.0.iter().map(|e| self.check_statement(e)).collect();
-        let constraints = self.solve_constraints();
-        if !constraints.is_empty() {
-            panic!("unsolved constraints remain in the file");
+        let mut stmts = Vec::with_capacity(ast.0.len());
+        for e in &ast.0 {
+            let stmt = self.check_statement(e);
+            stmts.push(stmt);
+
+            // constraints on a top-level statement cannot are unallowed
+            // because such a statement cannot be compiled
+            let constraints = self.solve_constraints();
+            if !constraints.is_empty() {
+                let constraint_strings = constraints
+                    .iter()
+                    .map(|constr| self.get_constraint_string(constr))
+                    .collect::<Vec<_>>();
+
+                let mut rep = Report::error(Header::TopLevelConstraint());
+                for (constr, constr_str) in constraints.iter().zip(constraint_strings) {
+                    rep = rep.with_secondary_label(Label::ConstraintOrigin(constr_str), constr.loc);
+                }
+
+                self.reports.push(
+                    rep.with_primary_label(
+                        Label::UnsatisfiedConstraints(constraints.len()),
+                        e.span().wrap(self.file),
+                    )
+                    .with_note(Note::TopLevelUnknownTypes),
+                );
+            }
         }
 
         let (exports, instances) = self.get_public_exports_and_instances();
@@ -56,7 +80,9 @@ impl<'src> Checker<'src, '_> {
             instances,
         };
 
-        ir::Module { stmts }
+        ir::Module {
+            stmts: stmts.into(),
+        }
     }
 
     // (exports, instances)

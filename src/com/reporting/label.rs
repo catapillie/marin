@@ -52,6 +52,7 @@ pub enum Label {
     MissingItems(Box<[String]>, String),
     ConstraintOrigin(ConstraintString),
     MatchingInstances(ConstraintString),
+    UnsatisfiedConstraints(usize),
     SuchInstance,
     CannotAliasExpression,
     PublicStatement,
@@ -191,6 +192,10 @@ impl Label {
                 => format!("unsatisfied constraint [{constraint}] originating from here"),
             L::MatchingInstances(constraint)
                 => format!("there are more than one instance of [{constraint}] in the current scope"),
+            L::UnsatisfiedConstraints(1)
+                => "1 unsatisfied constraint".to_string(),
+            L::UnsatisfiedConstraints(count)
+                => format!("{count} unsatisfied constraints"),
             L::SuchInstance
                 => "this instance matches".to_string(),
             L::CannotAliasExpression
