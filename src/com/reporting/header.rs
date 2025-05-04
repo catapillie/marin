@@ -280,7 +280,7 @@ impl Header {
             H::AmbiguousConstraintSolution(constraint)
                 => format!("ambiguous solution for constraint [{constraint}]"),
             H::TopLevelConstraint()
-                => format!("unallowed top-level statement with unsatisfied class constraints"),
+                => "unallowed top-level statement with unsatisfied class constraints".to_string(),
             H::ExpressionAlias()
                 => "disallowed usage of 'alias' for an expression".to_string(),
         }

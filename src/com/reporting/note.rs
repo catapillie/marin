@@ -58,7 +58,7 @@ impl Note {
             N::ItemQuerySyntax
                 => "an imported item from an 'import-from' statement must be an identifier, or the '..' syntax to import every item".to_string(),
             N::TopLevelUnknownTypes
-                => "a possible reason is the statement produces types that cannot fully be inferred; consider adding annotations?".to_string(),
+                => "this occurs because the statement produces types that cannot fully be inferred; consider adding annotations?".to_string(),
         }
     }
 }
