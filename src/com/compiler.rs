@@ -56,6 +56,7 @@ pub struct ParsedInfo {
 
 pub struct CheckedInfo {
     entities: Vec<Entity>,
+    dependency_order: Vec<usize>,
 }
 
 pub struct CompiledInfo {
@@ -293,6 +294,8 @@ impl Compiler<Parsed, ParsedInfo> {
             }
         }
 
+        let dependency_order = order.into_iter().flatten().collect();
+
         let entities = checker.entities;
         self.reports.append(&mut reports);
 
@@ -309,7 +312,10 @@ impl Compiler<Parsed, ParsedInfo> {
         Compiler {
             reports: self.reports,
             files: Files(checked_files),
-            info: CheckedInfo { entities },
+            info: CheckedInfo {
+                entities,
+                dependency_order,
+            },
         }
     }
 }
@@ -323,7 +329,8 @@ impl Compiler<Checked, CheckedInfo> {
             compiled_files.push((file, path, Compiled));
         }
 
-        let mut codegen = gen::Codegen::new(&modules, self.info.entities);
+        let mut codegen =
+            gen::Codegen::new(&modules, self.info.dependency_order, self.info.entities);
         codegen.gen().expect("codegen failed");
         let bytecode = codegen.done().expect("codegen finalize failed");
 

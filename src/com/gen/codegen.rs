@@ -22,7 +22,7 @@ struct Frame {
 
 enum FunctionCode<'a> {
     Expr(&'a ir::Expr),
-    Block(&'a [ir::Stmt]),
+    Block(Vec<&'a ir::Stmt>),
 }
 
 struct FunctionWork<'a> {
@@ -41,6 +41,7 @@ struct LabelGen {
 
 pub struct Codegen<'a> {
     ir: &'a [ir::Module],
+    dependency_order: Vec<usize>,
     _entities: Vec<ir::Entity>,
 
     constants: Vec<exe::Value>,
@@ -59,9 +60,14 @@ pub struct Codegen<'a> {
 }
 
 impl<'a> Codegen<'a> {
-    pub fn new(ir: &'a [ir::Module], entities: Vec<ir::Entity>) -> Self {
+    pub fn new(
+        ir: &'a [ir::Module],
+        dependency_order: Vec<usize>,
+        entities: Vec<ir::Entity>,
+    ) -> Self {
         Self {
             ir,
+            dependency_order,
             _entities: entities,
 
             constants: Vec::new(),
@@ -142,16 +148,15 @@ impl<'a> Codegen<'a> {
     }
 
     pub fn gen(&mut self) -> binary::Result<()> {
-        // initial function
-        for (i, ir) in self.ir.iter().enumerate() {
-            let name = format!("<main{i}>");
-            self.create_function(
-                &name,
-                None,
-                FunctionCode::Block(&ir.stmts),
-                Default::default(),
-            );
+        // let's build a single main function
+        // which executes the files, respecting dependency order
+        let mut stmts = Vec::new();
+        for &file in &self.dependency_order {
+            stmts.extend(&self.ir[file].stmts);
         }
+
+        let code = FunctionCode::Block(stmts);
+        self.create_function("<main>", None, code, Default::default());
 
         // generate all functions
         while let Some(work) = self.remaining_work.pop() {
@@ -254,11 +259,21 @@ impl<'a> Codegen<'a> {
                 self.write_opcode(&Opcode::bundle(2))?;
                 self.write_opcode(&Opcode::ret)?; // return it
             }
+        } else {
+            // function still needs to have a name
+            self.function_table.insert(pos, work.name);
         }
 
         match work.body {
             FunctionCode::Expr(expr) => self.gen_expression(expr)?,
-            FunctionCode::Block(stmts) => self.gen_expression_block(stmts)?,
+
+            // should only be used by internal main function generation
+            FunctionCode::Block(stmts) => {
+                for stmt in stmts {
+                    self.gen_statement(stmt)?;
+                }
+                self.gen_unit()?;
+            }
         }
 
         self.write_opcode(&Opcode::ret)?;
