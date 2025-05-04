@@ -12,7 +12,6 @@ use crate::{
 
 struct Function {
     pos: Option<u32>,
-    name: String,
     placeholders: Vec<u32>,
     captured: BTreeSet<ir::EntityID>,
 }
@@ -28,6 +27,7 @@ enum FunctionCode<'a> {
 
 struct FunctionWork<'a> {
     id: usize,
+    name: String,
     signature: Option<&'a ir::Signature>,
     body: FunctionCode<'a>,
 }
@@ -48,11 +48,14 @@ pub struct Codegen<'a> {
 
     cursor: Cursor<Vec<u8>>,
     frames: Vec<Frame>,
+
     local_index: u8,
     locals_by_id: HashMap<ir::EntityID, u8>,
+    labels_by_id: HashMap<ir::LabelID, LabelGen>,
+
     remaining_work: Vec<FunctionWork<'a>>,
     functions_by_id: HashMap<ir::EntityID, usize>,
-    labels_by_id: HashMap<ir::LabelID, LabelGen>,
+    function_table: HashMap<u32, String>,
 }
 
 impl<'a> Codegen<'a> {
@@ -66,11 +69,14 @@ impl<'a> Codegen<'a> {
 
             cursor: Cursor::new(Vec::new()),
             frames: Vec::new(),
+
             local_index: 0,
             locals_by_id: HashMap::new(),
+            labels_by_id: HashMap::new(),
+
             remaining_work: Vec::new(),
             functions_by_id: HashMap::new(),
-            labels_by_id: HashMap::new(),
+            function_table: HashMap::new(),
         }
     }
 
@@ -123,12 +129,12 @@ impl<'a> Codegen<'a> {
         let id = self.functions.len();
         self.functions.push(Function {
             pos: None,
-            name: name.to_string(),
             placeholders: Vec::new(),
             captured,
         });
         self.remaining_work.push(FunctionWork {
             id,
+            name: name.to_string(),
             signature,
             body,
         });
@@ -156,10 +162,6 @@ impl<'a> Codegen<'a> {
     }
 
     fn gen_function(&mut self, work: FunctionWork<'a>) -> binary::Result<()> {
-        // reset local counter and registered locals
-        self.local_index = 0;
-        self.locals_by_id.clear();
-
         // update function's code position
         let pos = self.pos();
         let fun = self
@@ -167,39 +169,90 @@ impl<'a> Codegen<'a> {
             .get_mut(work.id)
             .expect("generating an unregistered function");
         fun.pos = Some(pos);
-        let captured_variables = fun.captured.clone();
-        for placeholder in fun.placeholders.clone() {
+
+        // start with variables captured in the function body
+        let mut captured_variables = fun.captured.iter().copied().collect::<Vec<_>>();
+
+        // wire calls to this function with the current position
+        for placeholder in std::mem::take(&mut fun.placeholders) {
             self.patch_u32_placeholder(placeholder, pos)?;
         }
 
         use ir::Signature as Sig;
-        if let Some(sig) = work.signature {
-            let Sig::Args(args, next) = sig else {
-                unreachable!("invalid function signature");
-            };
+        if let Some(mut sig) = work.signature {
+            let mut prev_func_placeholder = None;
+            let mut i = 0;
 
-            let Sig::Done = &**next else {
-                panic!("unhandled higher order functions");
-            };
+            while let Sig::Args(args, next) = sig {
+                i += 1;
 
-            // account for parameters already living on the stack
-            let arg_count: u8 = args
-                .len()
-                .try_into()
-                .expect("function has more than 255 arguments");
-            self.local_index += arg_count;
+                // register (pos, name) in function table
+                let function_pos = self.pos();
+                let function_name = format!("{}<{i}>", work.name);
+                self.function_table.insert(function_pos, function_name);
 
-            // re-register captured variables within the context of this function
-            for captured_id in captured_variables {
-                self.register_local(captured_id);
-            }
+                // wire previous nested function address
+                if let Some(placeholder) = prev_func_placeholder {
+                    self.patch_u32_placeholder(placeholder, self.pos())?;
+                }
 
-            // deconstruct each one of them
-            for (i, arg) in args.iter().enumerate() {
-                let local_id = i as u8;
-                self.gen_register_pattern_locals(arg)?;
-                self.write_opcode(&Opcode::load_local(local_id))?;
-                self.gen_initialize_pattern(arg)?;
+                // reset local counter and registered locals
+                self.local_index = 0;
+                self.locals_by_id.clear();
+
+                // account for parameters already living on the stack
+                let arg_count: u8 = args
+                    .len()
+                    .try_into()
+                    .expect("function has more than 255 arguments");
+                self.local_index += arg_count;
+
+                // re-register captured variables within the context of this function
+                for &captured_id in &captured_variables {
+                    self.register_local(captured_id);
+                }
+
+                // deconstruct each one of them
+                for (i, arg) in args.iter().enumerate() {
+                    let local_id = i as u8;
+                    self.gen_register_pattern_locals(arg)?;
+                    self.write_opcode(&Opcode::load_local(local_id))?;
+                    self.gen_initialize_pattern(arg)?;
+                }
+
+                // if this was the last argument signature
+                // we break to the actual function code generation
+                if let Sig::Done = &**next {
+                    break;
+                }
+
+                sig = next;
+
+                // for higher order functions, we need to immediately re-capture arguments
+                for arg in args {
+                    Self::collect_bindings(arg, &mut captured_variables);
+                }
+
+                // generate the code for the next nested function
+                let captured_count: u8 = captured_variables
+                    .len()
+                    .try_into()
+                    .expect("function cannot capture more than 255 variables");
+
+                // next function address (will be patched next iteration)
+                self.cursor.write_u8(opcode::load_fun)?;
+                let next_fun_addr_pos = self.write_u32_placeholder()?;
+                prev_func_placeholder = Some(next_fun_addr_pos);
+
+                // captured variables bundle
+                for &captured_id in &captured_variables {
+                    self.gen_variable(captured_id)?;
+                }
+                self.write_opcode(&Opcode::bundle(captured_count))?;
+
+                // gen bundle pair (func, (x_1, ..., x_n))
+                self.write_opcode(&Opcode::bundle(2))?;
+                self.write_opcode(&Opcode::ret)?; // return it
             }
         }
 
@@ -225,6 +278,31 @@ impl<'a> Codegen<'a> {
             S::Let(pattern, expr) => {
                 self.gen_deconstruct(pattern, expr)?;
                 Ok(())
+            }
+        }
+    }
+
+    fn collect_bindings(pat: &'a ir::Pattern, ids: &mut Vec<ir::EntityID>) {
+        use ir::Pattern as P;
+        match pat {
+            P::Missing | P::Discard => {}
+            P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => {}
+            P::Binding(id) => ids.push(*id),
+            P::Tuple(items) => {
+                for item in items {
+                    Self::collect_bindings(item, ids);
+                }
+            }
+            P::Variant(_, _, None) => {}
+            P::Variant(_, _, Some(items)) => {
+                for item in items {
+                    Self::collect_bindings(item, ids);
+                }
+            }
+            P::Record(_, fields) => {
+                for field in fields {
+                    Self::collect_bindings(field, ids);
+                }
             }
         }
     }
@@ -995,17 +1073,7 @@ impl<'a> Codegen<'a> {
     }
 
     pub fn done(self) -> binary::Result<Vec<u8>> {
-        let function_table = self
-            .functions
-            .into_iter()
-            .map(|f| {
-                (
-                    f.pos
-                        .expect("generated function does not have a code position"),
-                    f.name,
-                )
-            })
-            .collect();
+        let function_table = self.function_table;
         let mut code = self.cursor.into_inner();
 
         let final_size_approx = code.len() + binary::MAGIC.len() + 1;
