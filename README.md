@@ -5,7 +5,7 @@ An experimental functional+imperative programming language, inspired by OCaml, w
 The main features of Marin are :
 * A type system based on Hindley-Milner, extended with type-`class`, and various useful constructs such as `union`, `record`.
 * Full type inference which attempts to type `let`-bindings with the most general type-scheme, taking into account type-class constraints.
-* An functional+imperative feel, as seen in [OCaml](https://ocaml.org/), or [Rust](https://www.rust-lang.org/).
+* A functional+imperative feel, as seen in [OCaml](https://ocaml.org/), or [Rust](https://www.rust-lang.org/).
 * Clean and readable syntax, strongly inspired by [Lua](https://www.lua.org/)'s.
 * Runs on a tiny virtual machine with its own bytecode.
 
