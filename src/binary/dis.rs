@@ -10,17 +10,33 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
     let function_table = super::read_function_table(r)?;
 
     println!("         ╥");
+
     println!(
         "    {} ║ :: {} {}",
         "info".bold(),
         "constant pool size".underline(),
         constants.len().to_string().bold()
     );
+    for (i, constant) in constants.iter().enumerate() {
+        println!(
+            "         ║      #{i} = {}",
+            constant.to_string().bold().yellow()
+        );
+    }
+
     println!(
         "         ║ :: {} {}",
         "function table size".underline(),
         function_table.len().to_string().bold()
     );
+    for (pos, name) in &function_table {
+        println!(
+            "         ║      {} -> <{:0>8}>",
+            name.bold().bright_blue(),
+            pos.to_string().bold()
+        );
+    }
+
     println!("         ║ ");
 
     let orig = r.stream_position()?;
@@ -45,7 +61,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
         let opcode = super::read_opcode(r)?;
         match opcode {
             Op::load_fun(pos) => print!(
-                "{:>12} {} <{:0>8}>",
+                "{:>12} {} -> <{:0>8}>",
                 "load_fun",
                 function_table.get(&pos).unwrap().bold().bright_blue(),
                 pos.to_string().bold()

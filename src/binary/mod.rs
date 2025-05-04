@@ -9,7 +9,7 @@ pub use opcode::Opcode;
 use crate::exe::Value;
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     io::{self},
 };
 
@@ -271,9 +271,9 @@ pub fn write_function_info<W: io::Write>(w: &mut W, pos: u32, name: &str) -> Res
     Ok(())
 }
 
-pub fn read_function_table<R: io::Read>(r: &mut R) -> Result<HashMap<u32, String>> {
+pub fn read_function_table<R: io::Read>(r: &mut R) -> Result<BTreeMap<u32, String>> {
     let count = r.read_u16::<LE>()? as usize;
-    let mut table = HashMap::with_capacity(count);
+    let mut table = BTreeMap::new();
     for _ in 0..count {
         let (pos, name) = read_function_info(r)?;
         table.insert(pos, name);
