@@ -33,7 +33,7 @@ pub struct Checker<'src, 'e> {
 
     pub scope: Scope<&'src str, ScopeInfo, ir::AnyID>,
     pub label_scope: Scope<&'src str, (), ir::LabelID>,
-    
+
     pub entities: ir::Entities,
     pub labels: Vec<ir::Label>,
     pub types: Vec<ir::TypeNode>,

@@ -1,7 +1,4 @@
-use crate::com::{
-    ast, ir,
-    Checker,
-};
+use crate::com::{ast, ir, Checker};
 
 impl Checker<'_, '_> {
     pub fn check_call_type(&mut self, t: &ast::Call) -> ir::TypeID {

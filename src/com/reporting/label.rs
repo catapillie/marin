@@ -1,4 +1,7 @@
-use crate::com::{ir::{ConstraintString, TypeString}, Token};
+use crate::com::{
+    ir::{ConstraintString, TypeString},
+    Token,
+};
 
 #[derive(Clone)]
 pub enum Label {
@@ -170,7 +173,7 @@ impl Label {
                 => "no record type in this scope contains all these fields at the same time".to_string(),
             L::MissingFields(fields, record) if fields.len() == 1
                 => format!("record type '{record}' is missing field: '{}'", &fields[0]),
-            L::MissingFields(fields, record) 
+            L::MissingFields(fields, record)
                 => format!("record type '{record}' is missing fields: {}", fields.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
             L::WithinClassDefinition(name)
                 => format!("within the definition of class '{name}'"),
@@ -186,7 +189,7 @@ impl Label {
                 => format!("within an instantiation of class '{name}'"),
             L::MissingItems(items, class) if items.len() == 1
                 => format!("instantiation of '{class}' is missing item: '{}'", &items[0]),
-            L::MissingItems(items, class) 
+            L::MissingItems(items, class)
                 => format!("instantiation of '{class}' is missing items: {}", items.iter().map(|s| format!("'{s}'")).collect::<Vec<_>>().join(", ")),
             L::ConstraintOrigin(constraint)
                 => format!("unsatisfied constraint [{constraint}] originating from here"),
