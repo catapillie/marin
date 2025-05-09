@@ -1,17 +1,15 @@
 use super::{
-    ast,
+    Checker, Parser, ast,
     ir::{self},
     low,
     reporting::{Header, Report},
     sem::{self},
-    Checker, Parser,
 };
 use codespan_reporting::{
     files::{self, SimpleFile},
     term::{
-        self,
+        self, Config,
         termcolor::{ColorChoice, StandardStream},
-        Config,
     },
 };
 use std::path::{Path, PathBuf};
@@ -322,7 +320,7 @@ impl Compiler<Parsed, ParsedInfo> {
 }
 
 impl Compiler<Checked, CheckedInfo> {
-    pub fn gen(self) -> Compiler<Compiled, CompiledInfo> {
+    pub fn emit(self) -> Compiler<Compiled, CompiledInfo> {
         let mut modules = Vec::with_capacity(self.files.0.len());
         let mut compiled_files = Vec::with_capacity(self.files.0.len());
         for (file, path, Checked(module)) in self.files.0 {

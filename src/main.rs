@@ -33,7 +33,7 @@ fn main() {
         std::process::exit(1);
     }
 
-    let compiler = compiler.gen();
+    let compiler = compiler.emit();
     let bytecode = compiler.into_content().bytecode;
 
     let mut cursor = std::io::Cursor::new(&bytecode);
