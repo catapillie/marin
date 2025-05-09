@@ -329,16 +329,13 @@ impl Compiler<Checked, CheckedInfo> {
             compiled_files.push((file, path, Compiled));
         }
 
-        let mut codegen =
-            gen::Codegen::new(&modules, self.info.dependency_order, self.info.entities);
-        codegen.gen().expect("codegen failed");
-        let bytecode = codegen.done().expect("codegen finalize failed");
+        todo!("codegen")
 
-        Compiler {
-            reports: self.reports,
-            files: Files(compiled_files),
-            info: CompiledInfo { bytecode },
-        }
+        // Compiler {
+        //     reports: self.reports,
+        //     files: Files(compiled_files),
+        //     info: CompiledInfo { bytecode },
+        // }
     }
 }
 
