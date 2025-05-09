@@ -6,15 +6,15 @@ impl<'src> Checker<'src, '_> {
         name: &'src str,
         scheme: ir::Scheme,
         span: Span,
-    ) -> ir::EntityID {
-        let id = self.create_entity(ir::Entity::Variable(ir::Variable {
+    ) -> ir::VariableID {
+        let id = self.entities.create_variable(ir::VariableInfo {
             name: name.to_string(),
             scheme,
             loc: span.wrap(self.file),
             depth: self.scope.depth(),
             is_captured: false,
-        }));
-        self.scope.insert(name, id);
+        });
+        self.scope.insert(name, id.wrap());
         id
     }
 
@@ -23,25 +23,7 @@ impl<'src> Checker<'src, '_> {
         name: &'src str,
         ty: ir::TypeID,
         span: Span,
-    ) -> ir::EntityID {
+    ) -> ir::VariableID {
         self.create_variable_poly(name, ir::Scheme::mono(ty), span)
-    }
-
-    pub fn get_variable(&self, id: ir::EntityID) -> &ir::Variable {
-        match self.get_entity(id) {
-            ir::Entity::Variable(v) => v,
-            _ => panic!("id '{}' is not that of an entity", id.0),
-        }
-    }
-
-    pub fn get_variable_mut(&mut self, id: ir::EntityID) -> &mut ir::Variable {
-        match self.get_entity_mut(id) {
-            ir::Entity::Variable(v) => v,
-            _ => panic!("id '{}' is not that of an entity", id.0),
-        }
-    }
-
-    pub fn mark_variable_as_captured(&mut self, id: ir::EntityID) {
-        self.get_variable_mut(id).is_captured = true;
     }
 }

@@ -24,7 +24,7 @@ impl Checker<'_, '_> {
             }
         };
 
-        let info = self.get_class_info(class_id);
+        let info = self.entities.get_class_info(class_id);
         let class_name = info.name.clone();
         let within_label = Label::WithinClassInstantiation(class_name.to_string());
 
@@ -45,12 +45,12 @@ impl Checker<'_, '_> {
 
             let (_, bindings) = self.check_let_bindings(item, false);
             for binding in bindings {
-                let binding_info = self.get_variable(binding);
+                let binding_info = self.entities.get_variable_info(binding);
                 registered.insert(binding_info.name.clone(), binding);
             }
         }
 
-        let info = self.get_class_info(class_id);
+        let info = self.entities.get_class_info(class_id);
         let arity = info.arity;
         let mut instantiated_items = Vec::new();
         let mut missing_items = Vec::new();
@@ -60,7 +60,7 @@ impl Checker<'_, '_> {
                 continue;
             };
 
-            let binding_info = self.get_variable(binding);
+            let binding_info = self.entities.get_variable_info(binding);
             let scheme = binding_info.scheme.clone();
             let expected_scheme = item.scheme.clone();
             instantiated_items.push((expected_scheme, scheme));
@@ -124,14 +124,14 @@ impl Checker<'_, '_> {
         self.close_scope();
 
         if is_complete {
-            let instance_id = self.next_entity_id();
-            self.create_entity(ir::Entity::Instance(ir::InstanceInfo {
+            let instance_id = self.entities.next_instance_id();
+            self.entities.create_instance(ir::InstanceInfo {
                 loc: span.wrap(self.file),
                 scheme,
                 original: instance_id,
-            }));
+            });
             self.scope.infos_mut().instances.insert(instance_id);
-            self.set_entity_public(instance_id, public);
+            self.set_entity_public(instance_id.wrap(), public);
         }
 
         ir::Stmt::Nothing

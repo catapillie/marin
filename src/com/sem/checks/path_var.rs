@@ -4,21 +4,20 @@ use crate::com::{
     Checker,
 };
 
-use ir::Entity as Ent;
 use ir::PathQuery as Q;
 
 impl Checker<'_, '_> {
-    pub fn check_entity_into_path(&self, id: ir::EntityID) -> Q {
-        match self.get_entity(id) {
-            Ent::Dummy => unreachable!(),
-            Ent::Variable(_) => Q::Var(id),
-            Ent::Type(id) => Q::Type(*id),
-            Ent::Record(_) => Q::Record(id),
-            Ent::Union(_) => Q::Union(id),
-            Ent::Class(_) => Q::Class(id),
-            Ent::Instance(_) => unreachable!(),
-            Ent::Import(_) => Q::Import(id),
-            Ent::Alias(info) => info.path.clone(),
+    pub fn check_entity_into_path(&self, id: ir::AnyID) -> Q {
+        use ir::AnyID as ID;
+        match id {
+            ID::Variable(id) => Q::Var(id),
+            ID::UserType(id) => Q::Type(self.entities.get_user_type_info(id).id),
+            ID::Record(id) => Q::Record(id),
+            ID::Union(id) => Q::Union(id),
+            ID::Class(id) => Q::Class(id),
+            ID::Instance(_) => unreachable!(),
+            ID::Import(id) => Q::Import(id),
+            ID::Alias(id) => self.entities.get_alias_info(id).path.clone(),
         }
     }
 

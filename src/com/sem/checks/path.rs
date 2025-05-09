@@ -46,20 +46,12 @@ impl Checker<'_, '_> {
         }
     }
 
-    fn check_var_path_into_expr(&mut self, id: ir::EntityID, span: Span) -> ir::CheckedExpr {
-        let info = self.get_variable(id);
+    fn check_var_path_into_expr(&mut self, id: ir::VariableID, span: Span) -> ir::CheckedExpr {
+        let info = self.entities.get_variable_info(id);
         let name = info.name.to_string();
         let loc = info.loc;
-        let var_depth = info.depth;
 
-        // if variable has just been captured, mark it as captured and remember it
-        let fun_info = self.get_function_info();
-        if var_depth <= fun_info.depth {
-            self.mark_variable_as_captured(id);
-            self.get_function_info_mut().captured.insert(id);
-        }
-
-        let info = self.get_variable(id);
+        let info = self.entities.get_variable_info(id);
         let instantiated = self.instantiate_scheme(info.scheme.clone(), Some(span.wrap(self.file)));
         let ty = self.clone_type_repr(instantiated);
         self.set_type_span(ty, span);
@@ -70,13 +62,11 @@ impl Checker<'_, '_> {
 
     fn check_variant_path_into_expr(
         &mut self,
-        id: ir::EntityID,
+        id: ir::UnionID,
         tag: usize,
         span: Span,
     ) -> ir::CheckedExpr {
-        let info = self.get_union_info(id);
-
-        let variant = &info.variants[tag];
+        let (info, variant) = self.entities.get_union_variant_info(id, tag);
         let provenance = TypeProvenance::VariantDefinition(
             variant.loc,
             variant.name.clone(),
@@ -95,16 +85,16 @@ impl Checker<'_, '_> {
 
     fn check_class_item_into_expr(
         &mut self,
-        id: ir::EntityID,
+        id: ir::ClassID,
         index: usize,
         span: Span,
     ) -> ir::CheckedExpr {
-        let info = self.get_class_info(id);
+        let info = self.entities.get_class_info(id);
 
         let class_loc = info.loc;
         let class_name = info.name.clone();
 
-        let item_info = self.get_class_item_info(id, index);
+        let item_info = self.entities.get_class_item_info(id, index);
         let item_loc = item_info.loc;
         let item_name = item_info.name.clone();
 

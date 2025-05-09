@@ -62,13 +62,13 @@ impl Checker<'_, '_> {
 
         let arity = (arg_ids.len(), associated_arg_ids.len());
 
-        let class_id = self.create_entity(ir::Entity::Class(ir::ClassInfo {
+        let class_id = self.entities.create_class(ir::ClassInfo {
             name: class_name.to_string(),
             loc: span.wrap(self.file),
             items: Default::default(),
             arity,
-        }));
-        self.set_entity_public(class_id, public);
+        });
+        self.set_entity_public(class_id.wrap(), public);
 
         let mut items = Vec::new();
         let mut constraint = ir::Constraint {
@@ -157,13 +157,14 @@ impl Checker<'_, '_> {
             });
         }
 
-        let info = self.get_class_info_mut(class_id);
+        let info = self.entities.get_class_info_mut(class_id);
         info.items = items.into();
 
         self.close_scope();
-        self.scope.insert(class_name, class_id);
+        self.scope.insert(class_name, class_id.wrap());
 
         let items = self
+            .entities
             .get_class_info(class_id)
             .items
             .iter()

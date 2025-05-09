@@ -25,7 +25,7 @@ impl Checker<'_, '_> {
         let (stmt, bindings) = self.check_let_bindings(e, public);
 
         for binding in bindings {
-            let info = self.get_variable(binding);
+            let info = self.entities.get_variable_info(binding);
             let name = info.name.clone();
             let scheme = info.scheme.clone();
             checker_print!(
@@ -43,7 +43,7 @@ impl Checker<'_, '_> {
         &mut self,
         e: &ast::Let,
         public: bool,
-    ) -> (ir::Stmt, Vec<ir::EntityID>) {
+    ) -> (ir::Stmt, Vec<ir::VariableID>) {
         let binding_span = Span::combine(e.let_kw, e.pattern.span());
         let lhs = self.check_pattern_or_signature(&e.pattern);
         match lhs {
@@ -67,15 +67,19 @@ impl Checker<'_, '_> {
 
                 let bindings = pattern.get_binding_ids();
                 for var_id in bindings.iter().copied() {
-                    let ty = self.get_variable(var_id).scheme.uninstantiated;
+                    let ty = self
+                        .entities
+                        .get_variable_info(var_id)
+                        .scheme
+                        .uninstantiated;
 
                     let mut scheme = self.generalize_type(ty);
                     for constraint in relevant_constraints.clone() {
                         self.add_class_constraint(&mut scheme, constraint);
                     }
 
-                    self.get_variable_mut(var_id).scheme = scheme.clone();
-                    self.set_entity_public(var_id, public);
+                    self.entities.get_variable_info_mut(var_id).scheme = scheme.clone();
+                    self.set_entity_public(var_id.wrap(), public);
                 }
 
                 (ir::Stmt::Let(pattern, value), bindings)
@@ -97,7 +101,6 @@ impl Checker<'_, '_> {
                     }
                 }
 
-                let prev_fun_info = self.create_function_info();
                 self.open_scope(true);
 
                 let name = self.signature_name(&signature);
@@ -115,7 +118,6 @@ impl Checker<'_, '_> {
 
                 let full_function_name = self.build_scope_name();
                 self.close_scope();
-                let fun_info = self.restore_function_info(prev_fun_info);
 
                 let Some((name, name_span)) = name else {
                     if !matches!(signature, ast::Signature::Missing) {
@@ -134,18 +136,13 @@ impl Checker<'_, '_> {
                     self.add_class_constraint(&mut scheme, constraint);
                 }
 
-                let id = self.create_variable_poly(name, scheme, name_span);
-                self.set_entity_public(id, public);
-                let pattern = ir::Pattern::Binding(id);
-                let lambda = ir::Expr::Fun(
-                    full_function_name,
-                    rec_id,
-                    fun_info,
-                    Box::new(sig),
-                    Box::new(val),
-                );
+                let var_id = self.create_variable_poly(name, scheme, name_span);
+                self.set_entity_public(var_id.wrap(), public);
+                let pattern = ir::Pattern::Binding(var_id);
+                let lambda =
+                    ir::Expr::Fun(full_function_name, rec_id, Box::new(sig), Box::new(val));
 
-                (ir::Stmt::Let(pattern, lambda), vec![id])
+                (ir::Stmt::Let(pattern, lambda), vec![var_id])
             }
         }
     }

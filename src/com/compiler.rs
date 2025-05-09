@@ -1,6 +1,6 @@
 use super::{
-    ast, gen,
-    ir::{self, Entity},
+    ast,
+    ir::{self},
     reporting::{Header, Report},
     sem::{self},
     Checker, Parser,
@@ -55,7 +55,7 @@ pub struct ParsedInfo {
 }
 
 pub struct CheckedInfo {
-    entities: Vec<Entity>,
+    entities: ir::Entities,
     dependency_order: Vec<usize>,
 }
 

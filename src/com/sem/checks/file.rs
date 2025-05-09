@@ -88,7 +88,7 @@ impl<'src> Checker<'src, '_> {
     // (exports, instances)
     fn get_public_exports_and_instances(
         &self,
-    ) -> (HashMap<&'src str, ir::EntityID>, Vec<ir::EntityID>) {
+    ) -> (HashMap<&'src str, ir::AnyID>, Vec<ir::InstanceID>) {
         let mut exports = HashMap::new();
         for (name, id) in self.scope.iter() {
             if self.is_entity_public(*id) {
@@ -98,7 +98,7 @@ impl<'src> Checker<'src, '_> {
 
         let mut instances = Vec::new();
         for id in self.scope.infos_iter().flat_map(|info| &info.instances) {
-            if self.is_entity_public(*id) {
+            if self.is_entity_public(id.wrap()) {
                 instances.push(*id);
             }
         }

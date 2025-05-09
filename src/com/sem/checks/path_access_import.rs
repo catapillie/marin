@@ -10,7 +10,7 @@ use ir::PathQuery as Q;
 impl Checker<'_, '_> {
     pub fn check_import_access_path(
         &mut self,
-        id: ir::EntityID,
+        id: ir::ImportID,
         accessor: &ast::Expr,
         span: Span,
     ) -> Q {
@@ -18,7 +18,7 @@ impl Checker<'_, '_> {
             return Q::Missing;
         };
 
-        let info = self.get_import_info(id);
+        let info = self.entities.get_import_info(id);
         let file = info.file;
         debug_assert_ne!(file, self.file, "should be unable to import from self");
 

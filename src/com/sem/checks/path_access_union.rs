@@ -7,12 +7,12 @@ use crate::com::{
 use ir::PathQuery as Q;
 
 impl Checker<'_, '_> {
-    pub fn check_union_access_path(&mut self, id: ir::EntityID, accessor: &ast::Expr) -> Q {
+    pub fn check_union_access_path(&mut self, id: ir::UnionID, accessor: &ast::Expr) -> Q {
         let Some((name, name_span)) = self.check_identifier_accessor(accessor) else {
             return Q::Missing;
         };
 
-        let info = self.get_union_info(id);
+        let info = self.entities.get_union_info(id);
 
         let Some((tag, _)) = info
             .variants

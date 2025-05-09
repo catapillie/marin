@@ -46,18 +46,8 @@ impl Checker<'_, '_> {
             }
         }
 
-        use ir::Entity as Ent;
         let field_names = fields.keys().copied().collect::<Vec<_>>();
-        let mut record_types = self
-            .entities
-            .iter()
-            .enumerate()
-            .filter_map(|(i, ent)| match ent {
-                Ent::Record(info) => Some((ir::EntityID(i), info)),
-                _ => None,
-            })
-            .filter(|(_, info)| Self::is_record_admissible(info, &field_names))
-            .collect::<Vec<_>>();
+        let mut record_types = self.get_admissible_records(&field_names);
 
         if record_types.is_empty() {
             self.reports.push(
@@ -91,7 +81,7 @@ impl Checker<'_, '_> {
         // check that all fields are actually set
         let mut missing_fields = Vec::new();
         let mut set_fields = Vec::new();
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         for (i, field_info) in info.fields.clone().iter().enumerate() {
             let Some((field_value, field_value_ty)) = fields.remove(field_info.name.as_str())
             else {
@@ -111,7 +101,7 @@ impl Checker<'_, '_> {
             self.unify(field_value_ty, field_ty, provenances);
         }
 
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         if !missing_fields.is_empty() {
             let missing_field_names = missing_fields
                 .into_iter()

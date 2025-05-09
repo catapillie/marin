@@ -1,11 +1,11 @@
-use colored::Colorize;
-
-use super::EntityID;
 use crate::com::{
     loc::Loc,
     reporting::{Label, Report},
 };
+use colored::Colorize;
 use std::{collections::BTreeSet, fmt::Display};
+
+use super::{ClassID, RecordID, UnionID};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeID(pub usize);
@@ -44,7 +44,7 @@ pub struct InstanceScheme {
 
 #[derive(Clone)]
 pub struct Constraint {
-    pub id: EntityID,
+    pub id: ClassID,
     pub loc: Loc,
     pub class_args: Box<[TypeID]>,
     pub associated_args: Box<[TypeID]>,
@@ -60,8 +60,8 @@ pub enum Type {
     Tuple(Box<[TypeID]>),
     Array(TypeID),
     Lambda(Box<[TypeID]>, TypeID),
-    Record(EntityID, Option<Box<[TypeID]>>),
-    Union(EntityID, Option<Box<[TypeID]>>),
+    Record(RecordID, Option<Box<[TypeID]>>),
+    Union(UnionID, Option<Box<[TypeID]>>),
 }
 
 impl Type {

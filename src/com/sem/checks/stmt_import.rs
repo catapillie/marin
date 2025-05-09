@@ -45,13 +45,13 @@ impl Checker<'_, '_> {
                 "as".bold()
             );
 
-            let import_id = self.create_entity(ir::Entity::Import(ir::ImportInfo {
+            let import_id = self.entities.create_import(ir::ImportInfo {
                 name: import_name.to_string(),
                 loc: e.span().wrap(self.file),
                 file: dep_file,
-            }));
-            self.scope.insert(import_name, import_id);
-            self.set_entity_public(import_id, public);
+            });
+            self.scope.insert(import_name, import_id.wrap());
+            self.set_entity_public(import_id.wrap(), public);
 
             // import all instances of classes in our scope
             self.import_all_instances(dep_file);
@@ -129,12 +129,12 @@ impl Checker<'_, '_> {
                 }
             };
 
-            let alias_id = self.create_entity(ir::Entity::Alias(ir::AliasInfo {
+            let alias_id = self.entities.create_alias(ir::AliasInfo {
                 name: import_name.to_string(),
                 path,
-            }));
-            self.scope.insert(import_name, alias_id);
-            self.set_entity_public(alias_id, public);
+            });
+            self.scope.insert(import_name, alias_id.wrap());
+            self.set_entity_public(alias_id.wrap(), public);
 
             checker_print!(self, "    {item_name} {} '{import_name}'", "as".bold());
         }
@@ -151,12 +151,12 @@ impl Checker<'_, '_> {
             .collect::<Vec<_>>();
         for (name, id) in dep_exports {
             let path = self.check_entity_into_path(id);
-            let alias_id = self.create_entity(ir::Entity::Alias(ir::AliasInfo {
+            let alias_id = self.entities.create_alias(ir::AliasInfo {
                 name: name.to_string(),
                 path,
-            }));
-            self.scope.insert(name, alias_id);
-            self.set_entity_public(alias_id, public);
+            });
+            self.scope.insert(name, alias_id.wrap());
+            self.set_entity_public(alias_id.wrap(), public);
         }
     }
 

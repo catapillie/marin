@@ -52,22 +52,21 @@ impl Checker<'_, '_> {
 
         // register the union type now
         // allows for recursion
-        let union_id = self.create_entity_dummy();
+        let union_id = self.entities.next_union_id();
         let union_type = self.create_type(ir::Type::Union(union_id, arg_ids), None);
         let union_scheme = self.generalize_type(union_type);
         let union_loc = span.wrap(self.file);
-        let info = ir::Entity::Union(ir::UnionInfo {
+        self.entities.create_union(ir::UnionInfo {
             name: union_name.to_string(),
             type_args: arg_info,
             loc: union_loc,
             scheme: union_scheme,
             variants: Box::new([]),
         });
-        *self.get_entity_mut(union_id) = info;
-        self.set_entity_public(union_id, public);
+        self.set_entity_public(union_id.wrap(), public);
 
         // bind it to its name now so that it can be used recursively
-        self.scope.insert(union_name, union_id);
+        self.scope.insert(union_name, union_id.wrap());
 
         // check variants
         let mut variants = Vec::new();
@@ -130,9 +129,9 @@ impl Checker<'_, '_> {
 
         // close scope, but export the union's name binding
         self.close_scope();
-        self.scope.insert(union_name, union_id);
+        self.scope.insert(union_name, union_id.wrap());
 
-        let info = self.get_union_info_mut(union_id);
+        let info = self.entities.get_union_info_mut(union_id);
         info.variants = variants.into();
 
         // done
@@ -146,7 +145,7 @@ impl Checker<'_, '_> {
             None => ir::Expr::Variant(tag, None),
             Some(arity) => {
                 let arg_ids = (0..arity)
-                    .map(|_| self.create_entity_dummy())
+                    .map(|_| ir::VariableID::dummy())
                     .collect::<Vec<_>>();
                 let arg_patterns = arg_ids.iter().map(|id| ir::Pattern::Binding(*id)).collect();
                 let arg_exprs = arg_ids.iter().map(|id| ir::Expr::Var(*id)).collect();
@@ -154,7 +153,6 @@ impl Checker<'_, '_> {
                 ir::Expr::Fun(
                     name,
                     None,
-                    Default::default(),
                     Box::new(ir::Signature::Args(
                         arg_patterns,
                         Box::new(ir::Signature::Done),
@@ -171,11 +169,11 @@ impl Checker<'_, '_> {
     /// Produces an error report if the provided arguments don't match the union type's signature
     pub fn create_union_type(
         &mut self,
-        union_id: ir::EntityID,
+        union_id: ir::UnionID,
         args: Option<Box<[ir::TypeID]>>,
         span: Span,
     ) -> Option<ir::TypeID> {
-        let info = self.get_union_info(union_id);
+        let info = self.entities.get_union_info(union_id);
         let Some(args) = args else {
             match &info.type_args {
                 None => return Some(self.create_type(ir::Type::Union(union_id, None), Some(span))),
@@ -197,7 +195,7 @@ impl Checker<'_, '_> {
             }
         };
 
-        let info = self.get_union_info(union_id);
+        let info = self.entities.get_union_info(union_id);
         let Some(type_args) = &info.type_args else {
             self.reports.push(
                 Report::error(Header::UnionArgMismatch(info.name.to_string()))
@@ -215,7 +213,7 @@ impl Checker<'_, '_> {
         let union_ty = self.clone_type_repr(union_ty);
         self.set_type_span(union_ty, span);
 
-        let info = self.get_union_info(union_id);
+        let info = self.entities.get_union_info(union_id);
         if arity == args.len() {
             let ty = self.create_type(ir::Type::Union(union_id, Some(args)), Some(span));
             self.unify(ty, union_ty, &[]);

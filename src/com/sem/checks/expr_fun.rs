@@ -19,7 +19,6 @@ impl Checker<'_, '_> {
             }
         }
 
-        let prev_fun_info = self.create_function_info();
         self.open_scope(true);
 
         let fun_uid_name = format!("fun_{}", self.get_generic_unique_id());
@@ -34,10 +33,9 @@ impl Checker<'_, '_> {
 
         let fun_name = self.build_scope_name();
         self.close_scope();
-        let fun_info = self.restore_function_info(prev_fun_info);
 
         (
-            ir::Expr::Fun(fun_name, id, fun_info, Box::new(sig), Box::new(val)),
+            ir::Expr::Fun(fun_name, id, Box::new(sig), Box::new(val)),
             sig_type,
         )
     }

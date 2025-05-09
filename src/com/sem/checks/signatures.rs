@@ -89,7 +89,12 @@ impl<'src> Checker<'src, '_> {
     pub fn declare_signature(
         &mut self,
         s: &ast::Signature,
-    ) -> (ir::Signature, ir::TypeID, ir::TypeID, Option<ir::EntityID>) {
+    ) -> (
+        ir::Signature,
+        ir::TypeID,
+        ir::TypeID,
+        Option<ir::VariableID>,
+    ) {
         use ast::Signature as S;
         use ir::Signature as I;
         match s {

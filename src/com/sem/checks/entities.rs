@@ -1,56 +1,57 @@
+use crate::com::{ir, Checker};
 use colored::Colorize;
 
-use crate::com::{ir, Checker};
-
 impl Checker<'_, '_> {
-    pub fn next_entity_id(&self) -> ir::EntityID {
-        ir::EntityID(self.entities.len())
+    pub fn is_entity_public(&self, id: ir::AnyID) -> bool {
+        self.publics.contains(&id)
     }
 
-    // only function allowed to grow 'self.entities' and 'self.entity_public'
-    pub fn create_entity(&mut self, entity: ir::Entity) -> ir::EntityID {
-        let id = self.next_entity_id();
-        self.entities.push(entity);
-        self.entity_public.push(false);
-        id
+    pub fn set_entity_public(&mut self, id: ir::AnyID, public: bool) {
+        match public {
+            true => self.publics.insert(id),
+            false => self.publics.remove(&id),
+        };
     }
 
-    pub fn create_entity_dummy(&mut self) -> ir::EntityID {
-        self.create_entity(ir::Entity::Dummy)
-    }
-
-    pub fn get_entity(&self, id: ir::EntityID) -> &ir::Entity {
-        &self.entities[id.0]
-    }
-
-    pub fn get_entity_mut(&mut self, id: ir::EntityID) -> &mut ir::Entity {
-        &mut self.entities[id.0]
-    }
-
-    pub fn is_entity_public(&self, id: ir::EntityID) -> bool {
-        self.entity_public[id.0]
-    }
-
-    pub fn set_entity_public(&mut self, id: ir::EntityID, public: bool) {
-        self.entity_public[id.0] = public;
-    }
-
-    pub fn get_entity_display(&self, id: ir::EntityID) -> String {
-        use ir::Entity as Ent;
-        match &self.entities[id.0] {
-            Ent::Dummy => format!("({})", "dummy".bold()),
-            Ent::Variable(info) => format!("({}) {}", "variable".bold(), info.name),
-            Ent::Type(id) => format!("({}) {}", "type".bold(), self.get_type_string(*id)),
-            Ent::Record(info) => format!("({}) {}", "record".bold(), info.name),
-            Ent::Union(info) => format!("({}) {}", "union".bold(), info.name),
-            Ent::Class(info) => format!("({}) {}", "class".bold(), info.name),
-            Ent::Instance(info) => format!(
-                "({}) {}",
-                "instance".bold(),
-                self.get_instance_scheme_string(&info.scheme)
-            ),
-            Ent::Import(info) => format!("({}) {}", "import".bold(), info.name),
-            Ent::Alias(info) => format!("({}) {}", "alias".bold(), info.name),
+    pub fn get_entity_display(&self, id: ir::AnyID) -> String {
+        use ir::AnyID as ID;
+        match id {
+            ID::Variable(id) => {
+                let info = self.entities.get_variable_info(id);
+                format!("({}) {}", "variable".bold(), info.name)
+            }
+            ID::UserType(id) => {
+                let info = self.entities.get_user_type_info(id);
+                format!("({}) {}", "type".bold(), self.get_type_string(info.id))
+            }
+            ID::Record(id) => {
+                let info = self.entities.get_record_info(id);
+                format!("({}) {}", "record".bold(), info.name)
+            }
+            ID::Union(id) => {
+                let info = self.entities.get_union_info(id);
+                format!("({}) {}", "union".bold(), info.name)
+            }
+            ID::Class(id) => {
+                let info = self.entities.get_class_info(id);
+                format!("({}) {}", "class".bold(), info.name)
+            }
+            ID::Instance(id) => {
+                let info = self.entities.get_instance_info(id);
+                format!(
+                    "({}) {}",
+                    "instance".bold(),
+                    self.get_instance_scheme_string(&info.scheme)
+                )
+            }
+            ID::Import(id) => {
+                let info = self.entities.get_import_info(id);
+                format!("({}) {}", "import".bold(), info.name)
+            }
+            ID::Alias(id) => {
+                let info = self.entities.get_alias_info(id);
+                format!("({}) {}", "alias".bold(), info.name)
+            }
         }
     }
 }

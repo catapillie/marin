@@ -137,7 +137,7 @@ impl Checker<'_, '_> {
         use ir::Pattern as I;
         match q {
             Q::Variant(id, tag) => {
-                let (info, variant) = self.get_union_variant_info(id, tag);
+                let (info, variant) = self.entities.get_union_variant_info(id, tag);
 
                 let Some(variant_args) = &variant.type_args else {
                     self.reports.push(
@@ -175,7 +175,7 @@ impl Checker<'_, '_> {
                     );
                 }
 
-                let (info, variant) = self.get_union_variant_info(id, tag);
+                let (info, variant) = self.entities.get_union_variant_info(id, tag);
                 let union_type = info.scheme.uninstantiated;
 
                 let sub = self.build_type_substitution(variant.scheme.forall.clone());
@@ -218,11 +218,11 @@ impl Checker<'_, '_> {
 
     fn declare_argless_variant_pattern(
         &mut self,
-        id: ir::EntityID,
+        id: ir::UnionID,
         tag: usize,
         span: Span,
     ) -> (ir::Pattern, ir::TypeID) {
-        let (info, variant) = self.get_union_variant_info(id, tag);
+        let (info, variant) = self.entities.get_union_variant_info(id, tag);
 
         if let Some(variant_args) = &variant.type_args {
             self.reports.push(
@@ -264,18 +264,8 @@ impl Checker<'_, '_> {
             fields.insert(field_name, pat);
         }
 
-        use ir::Entity as Ent;
         let field_names = fields.keys().copied().collect::<Vec<_>>();
-        let mut record_types = self
-            .entities
-            .iter()
-            .enumerate()
-            .filter_map(|(i, ent)| match ent {
-                Ent::Record(info) => Some((ir::EntityID(i), info)),
-                _ => None,
-            })
-            .filter(|(_, info)| Self::is_record_admissible(info, &field_names))
-            .collect::<Vec<_>>();
+        let mut record_types = self.get_admissible_records(&field_names);
 
         if record_types.is_empty() {
             self.reports.push(
@@ -309,7 +299,7 @@ impl Checker<'_, '_> {
         // check that all fields are actually set
         let mut missing_fields = Vec::new();
         let mut set_fields = Vec::new();
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         for (i, field_info) in info.fields.clone().iter().enumerate() {
             let Some((field_pat, field_pat_ty)) = fields.remove(field_info.name.as_str()) else {
                 missing_fields.push(i);
@@ -328,7 +318,7 @@ impl Checker<'_, '_> {
             self.unify(field_pat_ty, field_ty, provenances);
         }
 
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         if !missing_fields.is_empty() {
             let missing_field_names = missing_fields
                 .into_iter()

@@ -105,9 +105,9 @@ impl Checker<'_, '_> {
             return None;
         } else if matching_instances.len() > 1 {
             let id_a = matching_instances[0].0;
-            let loc_a = self.get_instance_info(id_a).loc;
+            let loc_a = self.entities.get_instance_info(id_a).loc;
             let id_b = matching_instances[1].0;
-            let loc_b = self.get_instance_info(id_b).loc;
+            let loc_b = self.entities.get_instance_info(id_b).loc;
             self.reports.push(
                 Report::error(Header::AmbiguousConstraintSolution(constr_string.clone()))
                     .with_primary_label(
@@ -129,12 +129,12 @@ impl Checker<'_, '_> {
         Some(additional_constraints)
     }
 
-    fn get_known_instances(&self) -> Vec<(ir::EntityID, ir::InstanceInfo)> {
+    fn get_known_instances(&self) -> Vec<(ir::InstanceID, ir::InstanceInfo)> {
         let mut in_scope = self
             .scope
             .infos_iter()
             .flat_map(|info| &info.instances)
-            .map(|id| (*id, self.get_instance_info(*id).clone()))
+            .map(|id| (*id, self.entities.get_instance_info(*id).clone()))
             .collect::<Vec<_>>();
         in_scope.sort_by_key(|(_, info)| info.original.0);
         in_scope.dedup_by_key(|(_, info)| info.original.0);

@@ -30,9 +30,9 @@ impl<'src> Checker<'src, '_> {
         self.create_user_type(name, id);
     }
 
-    pub fn create_user_type(&mut self, name: &'src str, info: ir::TypeID) -> ir::EntityID {
-        let id = self.create_entity(ir::Entity::Type(info));
-        self.scope.insert(name, id);
+    pub fn create_user_type(&mut self, name: &'src str, id: ir::TypeID) -> ir::UserTypeID {
+        let id = self.entities.create_user_type(ir::UserTypeInfo { id });
+        self.scope.insert(name, id.wrap());
         id
     }
 
@@ -53,87 +53,6 @@ impl<'src> Checker<'src, '_> {
                 );
                 (self.create_fresh_type(Some(e.span())), None)
             }
-        }
-    }
-
-    pub fn get_record_info(&self, id: ir::EntityID) -> &ir::RecordInfo {
-        match self.get_entity(id) {
-            ir::Entity::Record(info) => info,
-            _ => panic!("id '{}' is not that of a record type", id.0),
-        }
-    }
-
-    pub fn get_record_info_mut(&mut self, id: ir::EntityID) -> &mut ir::RecordInfo {
-        match self.get_entity_mut(id) {
-            ir::Entity::Record(info) => info,
-            _ => panic!("id '{}' is not that of a record type", id.0),
-        }
-    }
-
-    pub fn get_record_field_info(
-        &self,
-        id: ir::EntityID,
-        tag: usize,
-    ) -> (&ir::RecordInfo, &ir::RecordFieldInfo) {
-        let info = self.get_record_info(id);
-        (info, &info.fields[tag])
-    }
-
-    pub fn get_union_info(&self, id: ir::EntityID) -> &ir::UnionInfo {
-        match self.get_entity(id) {
-            ir::Entity::Union(info) => info,
-            _ => panic!("id '{}' is not that of a union type", id.0),
-        }
-    }
-
-    pub fn get_union_info_mut(&mut self, id: ir::EntityID) -> &mut ir::UnionInfo {
-        match self.get_entity_mut(id) {
-            ir::Entity::Union(info) => info,
-            _ => panic!("id '{}' is not that of a union type", id.0),
-        }
-    }
-
-    pub fn get_union_variant_info(
-        &self,
-        id: ir::EntityID,
-        tag: usize,
-    ) -> (&ir::UnionInfo, &ir::VariantInfo) {
-        let info = self.get_union_info(id);
-        (info, &info.variants[tag])
-    }
-
-    pub fn get_class_info(&self, id: ir::EntityID) -> &ir::ClassInfo {
-        match self.get_entity(id) {
-            ir::Entity::Class(info) => info,
-            _ => panic!("id '{}' is not that of a class", id.0),
-        }
-    }
-
-    pub fn get_class_info_mut(&mut self, id: ir::EntityID) -> &mut ir::ClassInfo {
-        match self.get_entity_mut(id) {
-            ir::Entity::Class(info) => info,
-            _ => panic!("id '{}' is not that of a class", id.0),
-        }
-    }
-
-    pub fn get_class_item_info(&self, id: ir::EntityID, index: usize) -> &ir::ClassItemInfo {
-        match self.get_entity(id) {
-            ir::Entity::Class(info) => &info.items[index],
-            _ => panic!("id '{}' is not that of a class", id.0),
-        }
-    }
-
-    pub fn get_instance_info(&self, id: ir::EntityID) -> &ir::InstanceInfo {
-        match self.get_entity(id) {
-            ir::Entity::Instance(info) => info,
-            _ => panic!("id '{}' is not that of an instance", id.0),
-        }
-    }
-
-    pub fn get_import_info(&self, id: ir::EntityID) -> &ir::ImportInfo {
-        match self.get_entity(id) {
-            ir::Entity::Import(info) => info,
-            _ => panic!("id '{}' is not that of an import", id.0),
         }
     }
 
@@ -727,7 +646,7 @@ impl<'src> Checker<'src, '_> {
                 Box::new(self.get_type_string_map(*ret, name_map, hide)),
             ),
             T::Record(eid, Some(items)) => {
-                let info = self.get_record_info(*eid);
+                let info = self.entities.get_record_info(*eid);
                 let name = info.name.clone();
                 S::Constructor(
                     name,
@@ -738,12 +657,12 @@ impl<'src> Checker<'src, '_> {
                 )
             }
             T::Record(eid, None) => {
-                let info = self.get_record_info(*eid);
+                let info = self.entities.get_record_info(*eid);
                 let name = info.name.clone();
                 S::Name(name)
             }
             T::Union(eid, Some(items)) => {
-                let info = self.get_union_info(*eid);
+                let info = self.entities.get_union_info(*eid);
                 let name = info.name.clone();
                 S::Constructor(
                     name,
@@ -754,7 +673,7 @@ impl<'src> Checker<'src, '_> {
                 )
             }
             T::Union(eid, None) => {
-                let info = self.get_union_info(*eid);
+                let info = self.entities.get_union_info(*eid);
                 let name = info.name.clone();
                 S::Name(name)
             }
@@ -855,7 +774,7 @@ impl<'src> Checker<'src, '_> {
         hide: bool,
     ) -> ir::ConstraintString {
         ir::ConstraintString {
-            name: self.get_class_info(constraint.id).name.to_string(),
+            name: self.entities.get_class_info(constraint.id).name.to_string(),
             class_args: constraint
                 .class_args
                 .iter()

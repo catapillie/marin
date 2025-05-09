@@ -20,7 +20,7 @@ impl Checker<'_, '_> {
 
     fn check_union_call_path(
         &mut self,
-        union_id: ir::EntityID,
+        union_id: ir::UnionID,
         args: &[ast::Expr],
         span: Span,
     ) -> Q {
@@ -36,7 +36,7 @@ impl Checker<'_, '_> {
 
     fn check_record_call_path(
         &mut self,
-        record_id: ir::EntityID,
+        record_id: ir::RecordID,
         args: &[ast::Expr],
         span: Span,
     ) -> Q {

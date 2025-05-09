@@ -7,12 +7,12 @@ use crate::com::{
 use ir::PathQuery as Q;
 
 impl Checker<'_, '_> {
-    pub fn check_record_access_path(&mut self, id: ir::EntityID, accessor: &ast::Expr) -> Q {
+    pub fn check_record_access_path(&mut self, id: ir::RecordID, accessor: &ast::Expr) -> Q {
         let Some((name, name_span)) = self.check_identifier_accessor(accessor) else {
             return Q::Missing;
         };
 
-        let info = self.get_record_info(id);
+        let info = self.entities.get_record_info(id);
 
         let Some((tag, _)) = info
             .fields
@@ -28,7 +28,7 @@ impl Checker<'_, '_> {
             return Q::Missing;
         };
 
-        let (info, field_info) = self.get_record_field_info(id, tag);
+        let (info, field_info) = self.entities.get_record_field_info(id, tag);
         let getter_full_name = format!("{}.{}", info.name, field_info.name);
 
         let domain = info.scheme.forall.clone();
@@ -39,11 +39,10 @@ impl Checker<'_, '_> {
         let record_type = self.apply_type_substitution(uninstantiated_record, &sub);
         let field_type = self.apply_type_substitution(uninstantiated_field, &sub);
 
-        let arg_id = self.create_entity_dummy();
+        let arg_id = ir::VariableID::dummy();
         let getter_expr = ir::Expr::Fun(
             getter_full_name,
             None,
-            Default::default(),
             Box::new(ir::Signature::Args(
                 Box::new([ir::Pattern::Binding(arg_id)]),
                 Box::new(ir::Signature::Done),

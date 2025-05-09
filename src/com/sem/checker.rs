@@ -1,18 +1,18 @@
 use super::{checks::CheckModuleOptions, deps};
 use crate::com::{
-    ir::{self},
+    ir::{self, Entities},
     reporting::Report,
     scope::Scope,
 };
 use std::collections::{HashMap, HashSet};
 
-pub type Instances = HashSet<ir::EntityID>;
+pub type Instances = HashSet<ir::InstanceID>;
 
 #[derive(Default)]
 pub struct Export<'src> {
     pub was_checked: bool,
-    pub exports: HashMap<&'src str, ir::EntityID>,
-    pub instances: Vec<ir::EntityID>,
+    pub exports: HashMap<&'src str, ir::AnyID>,
+    pub instances: Vec<ir::InstanceID>,
 }
 
 #[derive(Default)]
@@ -31,14 +31,14 @@ pub struct Checker<'src, 'e> {
     pub deps: &'e deps::Dependencies,
     pub exports: Vec<Export<'src>>,
 
-    pub scope: Scope<&'src str, ScopeInfo, ir::EntityID>,
+    pub scope: Scope<&'src str, ScopeInfo, ir::AnyID>,
     pub label_scope: Scope<&'src str, (), ir::LabelID>,
-    pub entities: Vec<ir::Entity>,
-    pub entity_public: Vec<bool>,
+    
+    pub entities: ir::Entities,
     pub labels: Vec<ir::Label>,
     pub types: Vec<ir::TypeNode>,
+    pub publics: HashSet<ir::AnyID>,
     pub current_constraints: Vec<ir::Constraint>,
-    pub current_function: ir::FunInfo,
 
     generic_counter: usize,
 }
@@ -61,12 +61,11 @@ impl<'e> Checker<'_, 'e> {
 
             scope: Scope::root(),
             label_scope: Scope::root(),
-            entities: Vec::new(),
-            entity_public: Vec::new(),
+            entities: Entities::default(),
             labels: Vec::new(),
             types: Vec::new(),
+            publics: HashSet::new(),
             current_constraints: Vec::new(),
-            current_function: Default::default(),
 
             generic_counter: 0,
         };

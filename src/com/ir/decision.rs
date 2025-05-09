@@ -1,8 +1,8 @@
-use super::{EntityID, Expr, Pattern, Stmt};
+use super::{Expr, Pattern, Stmt, VariableID};
 
 #[derive(Debug, Clone)]
 pub enum Decision {
     Failure,
     Success(Box<[Stmt]>, Box<Expr>),
-    Test(EntityID, Box<Pattern>, Box<Decision>, Box<Decision>),
+    Test(VariableID, Box<Pattern>, Box<Decision>, Box<Decision>),
 }

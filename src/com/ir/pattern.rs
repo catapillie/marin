@@ -1,17 +1,17 @@
-use super::EntityID;
+use super::{RecordID, UnionID, VariableID};
 
 #[derive(Debug, Clone)]
 pub enum Pattern {
     Missing,
     Discard,
-    Binding(EntityID),
+    Binding(VariableID),
     Int(i64),
     Float(f64),
     String(String),
     Bool(bool),
     Tuple(Box<[Pattern]>),
-    Variant(EntityID, usize, Option<Box<[Pattern]>>),
-    Record(EntityID, Box<[Pattern]>),
+    Variant(UnionID, usize, Option<Box<[Pattern]>>),
+    Record(RecordID, Box<[Pattern]>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,8 +22,8 @@ pub enum Constructor {
     String(String),
     Bool(bool),
     Tuple(usize),
-    Variant(EntityID, usize),
-    Record(EntityID),
+    Variant(UnionID, usize),
+    Record(RecordID),
 }
 
 impl Pattern {
@@ -74,7 +74,7 @@ impl Pattern {
         }
     }
 
-    fn collect_bindings(&self, bindings: &mut Vec<EntityID>) {
+    fn collect_bindings(&self, bindings: &mut Vec<VariableID>) {
         match self {
             Self::Missing => {}
             Self::Int(_) => {}
@@ -102,7 +102,7 @@ impl Pattern {
         }
     }
 
-    pub fn get_binding_ids(&self) -> Vec<EntityID> {
+    pub fn get_binding_ids(&self) -> Vec<VariableID> {
         let mut bindings = Vec::new();
         self.collect_bindings(&mut bindings);
         bindings

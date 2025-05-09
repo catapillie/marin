@@ -52,22 +52,21 @@ impl Checker<'_, '_> {
 
         // register the record type now
         // allows for recursion
-        let record_id = self.create_entity_dummy();
+        let record_id = self.entities.next_record_id();
         let record_type = self.create_type(ir::Type::Record(record_id, arg_ids), None);
         let record_scheme = self.generalize_type(record_type);
         let record_loc = span.wrap(self.file);
-        let info = ir::Entity::Record(ir::RecordInfo {
+        self.entities.create_record(ir::RecordInfo {
             name: record_name.to_string(),
             type_args: arg_info,
             loc: record_loc,
             scheme: record_scheme,
             fields: Box::new([]),
         });
-        *self.get_entity_mut(record_id) = info;
-        self.set_entity_public(record_id, public);
+        self.set_entity_public(record_id.wrap(), public);
 
         // bind it to its name now so that it can be used recursively
-        self.scope.insert(record_name, record_id);
+        self.scope.insert(record_name, record_id.wrap());
 
         // check fields
         let mut fields = Vec::new();
@@ -94,16 +93,33 @@ impl Checker<'_, '_> {
 
         // close scope, but export the record's name binding
         self.close_scope();
-        self.scope.insert(record_name, record_id);
+        self.scope.insert(record_name, record_id.wrap());
 
-        let info = self.get_record_info_mut(record_id);
+        let info = self.entities.get_record_info_mut(record_id);
         info.fields = fields.into();
 
         // done
         ir::Stmt::Nothing
     }
 
-    pub fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {
+    pub fn get_admissible_records(
+        &mut self,
+        field_names: &[&str],
+    ) -> Vec<(ir::RecordID, &ir::RecordInfo)> {
+        self.entities
+            .records
+            .iter()
+            .enumerate()
+            .filter_map(
+                |(i, info)| match Self::is_record_admissible(info, field_names) {
+                    true => Some((ir::RecordID(i), info)),
+                    false => todo!(),
+                },
+            )
+            .collect::<Vec<_>>()
+    }
+
+    fn is_record_admissible(info: &ir::RecordInfo, names: &[&str]) -> bool {
         for name in names {
             let found_field = info.fields.iter().any(|rec| &rec.name == name);
             if !found_field {
@@ -117,11 +133,11 @@ impl Checker<'_, '_> {
     /// Produces an error report if the provided arguments don't match the record type's signature
     pub fn create_record_type(
         &mut self,
-        record_id: ir::EntityID,
+        record_id: ir::RecordID,
         args: Option<Box<[ir::TypeID]>>,
         span: Span,
     ) -> Option<ir::TypeID> {
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         let Some(args) = args else {
             match &info.type_args {
                 None => {
@@ -145,7 +161,7 @@ impl Checker<'_, '_> {
             }
         };
 
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         let Some(type_args) = &info.type_args else {
             self.reports.push(
                 Report::error(Header::RecordArgMismatch(info.name.to_string()))
@@ -163,7 +179,7 @@ impl Checker<'_, '_> {
         let record_ty = self.clone_type_repr(record_ty);
         self.set_type_span(record_ty, span);
 
-        let info = self.get_record_info(record_id);
+        let info = self.entities.get_record_info(record_id);
         if arity == args.len() {
             let ty = self.create_type(ir::Type::Record(record_id, Some(args)), Some(span));
             self.unify(ty, record_ty, &[]);

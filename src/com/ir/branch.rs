@@ -1,4 +1,4 @@
-use super::{Decision, EntityID, Expr, LabelID, Stmt};
+use super::{Decision, Expr, LabelID, Stmt, VariableID};
 
 #[derive(Debug, Clone)]
 pub enum Branch {
@@ -6,5 +6,5 @@ pub enum Branch {
     While(Box<Expr>, Box<[Stmt]>, LabelID),
     Loop(Box<[Stmt]>, LabelID),
     Else(Box<[Stmt]>, LabelID),
-    Match(EntityID, Box<Expr>, Box<Decision>),
+    Match(VariableID, Box<Expr>, Box<Decision>),
 }

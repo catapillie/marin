@@ -1,6 +1,5 @@
 mod constraints;
 mod entities;
-mod functions;
 mod labels;
 mod patterns;
 mod signatures;
