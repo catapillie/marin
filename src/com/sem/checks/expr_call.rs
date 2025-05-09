@@ -17,6 +17,12 @@ impl Checker<'_, '_> {
         let result_ty = self.clone_type_repr(ret_type);
         self.set_type_span(result_ty, e.span());
 
-        (ir::Expr::Call(Box::new(callee), args.into()), result_ty)
+        (
+            ir::Expr::Call {
+                callee: Box::new(callee),
+                args: args.into(),
+            },
+            result_ty,
+        )
     }
 }

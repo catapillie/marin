@@ -4,6 +4,6 @@ use super::{Expr, Pattern, TypeID};
 pub enum Stmt {
     Missing,
     Nothing,
-    Expr(Expr, TypeID),
-    Let(Pattern, Expr),
+    Expr { expr: Expr, ty: TypeID },
+    Let { lhs: Pattern, rhs: Expr },
 }

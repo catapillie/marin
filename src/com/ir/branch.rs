@@ -2,9 +2,27 @@ use super::{Decision, Expr, LabelID, Stmt, VariableID};
 
 #[derive(Debug, Clone)]
 pub enum Branch {
-    If(Box<Expr>, Box<[Stmt]>, LabelID),
-    While(Box<Expr>, Box<[Stmt]>, LabelID),
-    Loop(Box<[Stmt]>, LabelID),
-    Else(Box<[Stmt]>, LabelID),
-    Match(VariableID, Box<Expr>, Box<Decision>),
+    If {
+        guard: Box<Expr>,
+        body: Box<[Stmt]>,
+        label: LabelID,
+    },
+    While {
+        guard: Box<Expr>,
+        body: Box<[Stmt]>,
+        label: LabelID,
+    },
+    Loop {
+        body: Box<[Stmt]>,
+        label: LabelID,
+    },
+    Else {
+        body: Box<[Stmt]>,
+        label: LabelID,
+    },
+    Match {
+        scrutinee_var: VariableID,
+        scrutinee: Box<Expr>,
+        decision: Box<Decision>,
+    },
 }

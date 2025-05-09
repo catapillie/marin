@@ -17,7 +17,7 @@ impl Checker<'_, '_> {
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
             if iter.peek().is_none() {
-                if let ir::Stmt::Expr(_, ty) = &s {
+                if let ir::Stmt::Expr { expr: _, ty } = &s {
                     last_type = *ty;
                 }
             }
@@ -59,6 +59,6 @@ impl Checker<'_, '_> {
     pub fn check_block(&mut self, e: &ast::Block) -> ir::CheckedExpr {
         let (stmts, label_id, last_type) =
             self.check_expression_block(&e.label, &e.items, e.span());
-        (ir::Expr::Block(stmts, label_id), last_type)
+        (ir::Expr::Block { stmts, label: label_id }, last_type)
     }
 }

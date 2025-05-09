@@ -117,7 +117,7 @@ impl<'src> Checker<'src, '_> {
                     .map(|arg| self.declare_pattern(arg, false))
                     .unzip();
                 (
-                    I::Args(arg_patterns.into(), Box::new(sig)),
+                    I::Args { args: arg_patterns.into(), next: Box::new(sig) },
                     self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),
                     ret_type,
                     None,

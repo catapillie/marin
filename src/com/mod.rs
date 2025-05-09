@@ -1,6 +1,6 @@
 mod ast;
-mod gen;
 mod ir;
+mod low;
 mod sem;
 
 mod loc;

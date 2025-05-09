@@ -39,7 +39,7 @@ impl<'src> Checker<'src, '_> {
     pub fn check_int(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         (
             self.read_source_int(e.span)
-                .map(ir::Expr::Int)
+                .map(|val| ir::Expr::Int { val })
                 .unwrap_or(ir::Expr::Missing),
             self.create_type(ir::Type::Int, Some(e.span)),
         )
@@ -48,7 +48,7 @@ impl<'src> Checker<'src, '_> {
     pub fn check_float(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         (
             self.read_source_float(e.span)
-                .map(ir::Expr::Float)
+                .map(|val| ir::Expr::Float { val })
                 .unwrap_or(ir::Expr::Missing),
             self.create_type(ir::Type::Float, Some(e.span)),
         )
@@ -56,14 +56,16 @@ impl<'src> Checker<'src, '_> {
 
     pub fn check_string(&mut self, e: &ast::Lexeme) -> ir::CheckedExpr {
         (
-            ir::Expr::String(self.read_source_string(e.span).to_string()),
+            ir::Expr::String {
+                val: self.read_source_string(e.span).to_string(),
+            },
             self.create_type(ir::Type::String, Some(e.span)),
         )
     }
 
     pub fn check_bool(&mut self, e: &ast::Lexeme, b: bool) -> ir::CheckedExpr {
         (
-            ir::Expr::Bool(b),
+            ir::Expr::Bool { val: b },
             self.create_type(ir::Type::Bool, Some(e.span)),
         )
     }

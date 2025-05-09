@@ -40,15 +40,18 @@ impl Checker<'_, '_> {
         let field_type = self.apply_type_substitution(uninstantiated_field, &sub);
 
         let arg_id = ir::VariableID::dummy();
-        let getter_expr = ir::Expr::Fun(
-            getter_full_name,
-            None,
-            Box::new(ir::Signature::Args(
-                Box::new([ir::Pattern::Binding(arg_id)]),
-                Box::new(ir::Signature::Done),
-            )),
-            Box::new(ir::Expr::Access(Box::new(ir::Expr::Var(arg_id)), tag)),
-        );
+        let getter_expr = ir::Expr::Fun {
+            name: getter_full_name,
+            recursive_binding: None,
+            signature: Box::new(ir::Signature::Args {
+                args: Box::new([ir::Pattern::Binding(arg_id)]),
+                next: Box::new(ir::Signature::Done),
+            }),
+            expr: Box::new(ir::Expr::Access {
+                accessed: Box::new(ir::Expr::Var { id: arg_id }),
+                index: tag,
+            }),
+        };
 
         let getter_type =
             self.create_type(ir::Type::Lambda(Box::new([record_type]), field_type), None);

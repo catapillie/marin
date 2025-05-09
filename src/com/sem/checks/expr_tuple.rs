@@ -8,7 +8,7 @@ impl Checker<'_, '_> {
 
         let (items, item_types) = self.check_expression_list(&e.items);
         (
-            ir::Expr::Tuple(items.into()),
+            ir::Expr::Tuple { items: items.into() },
             self.create_type(ir::Type::Tuple(item_types.into()), Some(e.span())),
         )
     }

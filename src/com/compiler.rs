@@ -1,6 +1,7 @@
 use super::{
     ast,
     ir::{self},
+    low,
     reporting::{Header, Report},
     sem::{self},
     Checker, Parser,
@@ -329,7 +330,8 @@ impl Compiler<Checked, CheckedInfo> {
             compiled_files.push((file, path, Compiled));
         }
 
-        todo!("codegen")
+        low::lower(modules, self.info.entities, self.info.dependency_order);
+        todo!("codegen");
 
         // Compiler {
         //     reports: self.reports,

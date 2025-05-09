@@ -11,7 +11,7 @@ impl Checker<'_, '_> {
         }
 
         (
-            ir::Expr::Array(items.into()),
+            ir::Expr::Array { items: items.into() },
             self.create_type(ir::Type::Array(array_item_type), Some(e.span())),
         )
     }

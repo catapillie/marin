@@ -38,7 +38,7 @@ impl Checker<'_, '_> {
             E::Have(e) => self.check_have(e, false),
             _ => {
                 let (expr, ty) = self.check_expression(e);
-                ir::Stmt::Expr(expr, ty)
+                ir::Stmt::Expr { expr, ty }
             }
         }
     }

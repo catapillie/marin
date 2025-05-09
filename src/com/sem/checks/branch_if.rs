@@ -10,7 +10,11 @@ impl Checker<'_, '_> {
         self.unify(condition_type, bool_type, provenances);
 
         let (stmts, label_id, branch_type) = self.check_expression_block(&b.label, &b.body, span);
-        let branch = ir::Branch::If(Box::new(condition), stmts, label_id);
+        let branch = ir::Branch::If {
+            guard: Box::new(condition),
+            body: stmts,
+            label: label_id,
+        };
         (branch, branch_type, false)
     }
 }

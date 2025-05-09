@@ -5,20 +5,61 @@ pub type CheckedExpr = (Expr, TypeID);
 #[derive(Debug, Clone)]
 pub enum Expr {
     Missing,
-    Int(i64),
-    Float(f64),
-    String(String),
-    Bool(bool),
-    Var(VariableID),
-    Tuple(Box<[Expr]>),
-    Array(Box<[Expr]>),
-    Block(Box<[Stmt]>, LabelID),
-    Conditional(Box<[Branch]>, bool),
-    Break(Option<Box<Expr>>, LabelID),
-    Skip(LabelID),
-    Fun(String, Option<VariableID>, Box<Signature>, Box<Expr>),
-    Call(Box<Expr>, Box<[Expr]>),
-    Variant(usize, Option<Box<[Expr]>>),
-    Record(Box<[Expr]>),
-    Access(Box<Expr>, usize),
+    Int {
+        val: i64,
+    },
+    Float {
+        val: f64,
+    },
+    String {
+        val: String,
+    },
+    Bool {
+        val: bool,
+    },
+    Var {
+        id: VariableID,
+    },
+    Tuple {
+        items: Box<[Expr]>,
+    },
+    Array {
+        items: Box<[Expr]>,
+    },
+    Block {
+        stmts: Box<[Stmt]>,
+        label: LabelID,
+    },
+    Conditional {
+        branches: Box<[Branch]>,
+        is_exhaustive: bool,
+    },
+    Break {
+        expr: Option<Box<Expr>>,
+        label: LabelID,
+    },
+    Skip {
+        label: LabelID,
+    },
+    Fun {
+        name: String,
+        recursive_binding: Option<VariableID>,
+        signature: Box<Signature>,
+        expr: Box<Expr>,
+    },
+    Call {
+        callee: Box<Expr>,
+        args: Box<[Expr]>,
+    },
+    Variant {
+        tag: usize,
+        items: Option<Box<[Expr]>>,
+    },
+    Record {
+        fields: Box<[Expr]>,
+    },
+    Access {
+        accessed: Box<Expr>,
+        index: usize,
+    },
 }

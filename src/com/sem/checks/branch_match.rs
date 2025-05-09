@@ -38,7 +38,11 @@ impl Checker<'_, '_> {
         let (decision, is_exhaustive) = self.build_decision_tree(cases);
 
         (
-            ir::Branch::Match(scrut_var, Box::new(scrut), Box::new(decision)),
+            ir::Branch::Match {
+                scrutinee_var: scrut_var,
+                scrutinee: Box::new(scrut),
+                decision: Box::new(decision),
+            },
             result_type,
             is_exhaustive,
         )
@@ -59,7 +63,7 @@ impl Checker<'_, '_> {
 
             for MatchTest(x, pat) in irrefutables {
                 // push let <pat> = <x> on the rhs
-                stmts.push(ir::Stmt::Let(pat, ir::Expr::Var(x)));
+                stmts.push(ir::Stmt::Let { lhs: pat, rhs: ir::Expr::Var { id: x } });
             }
         }
 
@@ -71,7 +75,7 @@ impl Checker<'_, '_> {
         // this case has no test, it always passes at this point
         if first_lhs.is_empty() {
             let MatchRhs(expr, stmts) = cases.swap_remove(0).1;
-            return (ir::Decision::Success(stmts.into(), Box::new(expr)), true);
+            return (ir::Decision::Success { stmts: stmts.into(), result: Box::new(expr) }, true);
         }
 
         // select a test in the first case
@@ -110,12 +114,7 @@ impl Checker<'_, '_> {
 
                 for (pat, (decision, decision_exhaustive)) in decisions {
                     is_exhaustive &= decision_exhaustive;
-                    final_decision = ir::Decision::Test(
-                        checked_variable,
-                        Box::new(pat),
-                        Box::new(decision),
-                        Box::new(final_decision),
-                    );
+                    final_decision = ir::Decision::Test { tested_var: checked_variable, pattern: Box::new(pat), success: Box::new(decision), failure: Box::new(final_decision) };
                 }
 
                 (final_decision, is_exhaustive)
@@ -131,12 +130,7 @@ impl Checker<'_, '_> {
                 let (failure_decision, failure_exhaustive) = self.build_decision_tree(failure);
 
                 (
-                    ir::Decision::Test(
-                        checked_variable,
-                        Box::new(pat),
-                        Box::new(success_decision),
-                        Box::new(failure_decision),
-                    ),
+                    ir::Decision::Test { tested_var: checked_variable, pattern: Box::new(pat), success: Box::new(success_decision), failure: Box::new(failure_decision) },
                     success_exhaustive && failure_exhaustive,
                 )
             }

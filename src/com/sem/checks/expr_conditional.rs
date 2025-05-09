@@ -74,7 +74,10 @@ impl Checker<'_, '_> {
         };
 
         (
-            ir::Expr::Conditional(branches.into(), is_exhaustive),
+            ir::Expr::Conditional {
+                branches: branches.into(),
+                is_exhaustive,
+            },
             result_type,
         )
     }

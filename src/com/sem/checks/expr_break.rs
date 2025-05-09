@@ -43,7 +43,7 @@ impl Checker<'_, '_> {
         self.unify(ty, label_info.ty, provenances);
 
         (
-            ir::Expr::Break(value.map(Box::new), label_id),
+            ir::Expr::Break { expr: value.map(Box::new), label: label_id },
             self.create_fresh_type(Some(e.span())),
         )
     }

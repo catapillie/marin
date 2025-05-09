@@ -57,7 +57,7 @@ impl Checker<'_, '_> {
         self.set_type_span(ty, span);
         self.add_type_provenance(ty, TypeProvenance::VariableDefinition(loc, name));
 
-        (ir::Expr::Var(id), ty)
+        (ir::Expr::Var { id }, ty)
     }
 
     fn check_variant_path_into_expr(

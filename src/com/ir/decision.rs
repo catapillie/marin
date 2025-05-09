@@ -3,6 +3,14 @@ use super::{Expr, Pattern, Stmt, VariableID};
 #[derive(Debug, Clone)]
 pub enum Decision {
     Failure,
-    Success(Box<[Stmt]>, Box<Expr>),
-    Test(VariableID, Box<Pattern>, Box<Decision>, Box<Decision>),
+    Success {
+        stmts: Box<[Stmt]>,
+        result: Box<Expr>,
+    },
+    Test {
+        tested_var: VariableID,
+        pattern: Box<Pattern>,
+        success: Box<Decision>,
+        failure: Box<Decision>,
+    },
 }

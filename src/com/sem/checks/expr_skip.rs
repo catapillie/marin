@@ -29,7 +29,7 @@ impl Checker<'_, '_> {
         };
 
         (
-            ir::Expr::Skip(label_id),
+            ir::Expr::Skip { label: label_id },
             self.create_fresh_type(Some(e.span())),
         )
     }

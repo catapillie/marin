@@ -35,7 +35,7 @@ impl Checker<'_, '_> {
         self.close_scope();
 
         (
-            ir::Expr::Fun(fun_name, id, Box::new(sig), Box::new(val)),
+            ir::Expr::Fun { name: fun_name, recursive_binding: id, signature: Box::new(sig), expr: Box::new(val) },
             sig_type,
         )
     }

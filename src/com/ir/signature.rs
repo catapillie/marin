@@ -3,6 +3,9 @@ use super::Pattern;
 #[derive(Debug, Clone)]
 pub enum Signature {
     Missing,
-    Args(Box<[Pattern]>, Box<Signature>),
+    Args {
+        args: Box<[Pattern]>,
+        next: Box<Signature>,
+    },
     Done,
 }

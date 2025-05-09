@@ -1,5 +1,3 @@
-use std::usize;
-
 use super::{Expr, InstanceScheme, PathQuery, Scheme, TypeID};
 use crate::com::loc::Loc;
 
@@ -220,6 +218,7 @@ macro_rules! entity_impl {
             &self.$field[id.0]
         }
 
+        #[allow(dead_code)]
         pub fn $get_mut_name(&mut self, id: $ID) -> &mut $Info {
             &mut self.$field[id.0]
         }

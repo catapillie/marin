@@ -117,6 +117,6 @@ impl Checker<'_, '_> {
             );
         }
 
-        (ir::Expr::Record(set_fields.into()), record_value_type)
+        (ir::Expr::Record { fields: set_fields.into() }, record_value_type)
     }
 }

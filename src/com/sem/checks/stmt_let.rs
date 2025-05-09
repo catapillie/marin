@@ -82,7 +82,7 @@ impl Checker<'_, '_> {
                     self.set_entity_public(var_id.wrap(), public);
                 }
 
-                (ir::Stmt::Let(pattern, value), bindings)
+                (ir::Stmt::Let { lhs: pattern, rhs: value }, bindings)
             }
             Either::Right(signature) => {
                 for arg_pattern in signature.arg_patterns() {
@@ -140,9 +140,9 @@ impl Checker<'_, '_> {
                 self.set_entity_public(var_id.wrap(), public);
                 let pattern = ir::Pattern::Binding(var_id);
                 let lambda =
-                    ir::Expr::Fun(full_function_name, rec_id, Box::new(sig), Box::new(val));
+                    ir::Expr::Fun { name: full_function_name, recursive_binding: rec_id, signature: Box::new(sig), expr: Box::new(val) };
 
-                (ir::Stmt::Let(pattern, lambda), vec![var_id])
+                (ir::Stmt::Let { lhs: pattern, rhs: lambda }, vec![var_id])
             }
         }
     }

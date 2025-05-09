@@ -142,23 +142,15 @@ impl Checker<'_, '_> {
         self.open_scope(true);
 
         let expr = match arity {
-            None => ir::Expr::Variant(tag, None),
+            None => ir::Expr::Variant { tag, items: None },
             Some(arity) => {
                 let arg_ids = (0..arity)
                     .map(|_| ir::VariableID::dummy())
                     .collect::<Vec<_>>();
                 let arg_patterns = arg_ids.iter().map(|id| ir::Pattern::Binding(*id)).collect();
-                let arg_exprs = arg_ids.iter().map(|id| ir::Expr::Var(*id)).collect();
+                let arg_exprs = arg_ids.iter().map(|id| ir::Expr::Var { id: *id }).collect();
 
-                ir::Expr::Fun(
-                    name,
-                    None,
-                    Box::new(ir::Signature::Args(
-                        arg_patterns,
-                        Box::new(ir::Signature::Done),
-                    )),
-                    Box::new(ir::Expr::Variant(tag, Some(arg_exprs))),
-                )
+                ir::Expr::Fun { name, recursive_binding: None, signature: Box::new(ir::Signature::Args { args: arg_patterns, next: Box::new(ir::Signature::Done) }), expr: Box::new(ir::Expr::Variant { tag, items: Some(arg_exprs) }) }
             }
         };
 
