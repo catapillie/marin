@@ -136,6 +136,17 @@ impl<'a> VM<'a> {
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
                 }
+                opcode::spill => {
+                    let offset = self.read_u16() as usize;
+                    let index = self.stack.len() - offset - 1;
+                    let Val::Bundle(u) = self.stack.remove(index) else {
+                        panic!("invalid spill on a non-bundle value");
+                    };
+
+                    let values = self.heap.deref_val_array(u);
+                    self.stack.extend_from_slice(values);
+                    self.stack[index..].rotate_right(values.len());
+                }
                 opcode::load_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());
@@ -230,6 +241,11 @@ impl<'a> VM<'a> {
                 }
                 opcode::pop => {
                     self.pop();
+                }
+                opcode::pop_offset => {
+                    let offset = self.read_u16() as usize;
+                    let index = self.stack.len() - offset - 1;
+                    self.stack.remove(index);
                 }
                 opcode::dup => {
                     let value = self.peek().clone();

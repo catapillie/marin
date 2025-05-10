@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::collections::HashMap;
 
 use super::ir;
 
@@ -15,21 +15,25 @@ pub enum Expr {
     Bool {
         val: bool,
     },
-    Tuple {
-        items: Box<[Expr]>,
-    },
-    Array {
+    Bundle {
         items: Box<[Expr]>,
     },
     Block {
         stmts: Box<[Stmt]>,
         result: Box<Expr>,
     },
+    Variant {
+        tag: i64,
+        items: Box<[Expr]>,
+    },
+    Local {
+        local: u8,
+    },
 }
 
 impl Expr {
     fn unit() -> Self {
-        Self::Tuple {
+        Self::Bundle {
             items: Box::new([]),
         }
     }
@@ -37,21 +41,23 @@ impl Expr {
 
 pub enum Stmt {
     Expr { expr: Box<Expr> },
+    Let { bindings: Box<[(Pat, Expr)]> },
 }
 
 pub enum Pat {
-    Binding(),
+    Discard,
     Int(i64),
     Float(f64),
     String(String),
     Bool(bool),
-    Tuple(Box<[Pat]>),
-    Variant(usize, Option<Box<[Pat]>>),
+    Local(u8),
+    Bundle(Box<[Pat]>),
+    Variant(usize, Box<[Pat]>),
 }
 
 pub struct Function {
     pub name: String,
-    pub expr: Box<Expr>,
+    pub expr: Expr,
 }
 
 pub struct Program {
@@ -59,12 +65,17 @@ pub struct Program {
 }
 
 struct Work {
+    name: String,
     signature: ir::Signature,
+    expr: ir::Expr,
 }
 
 struct Lowerer {
     entities: ir::Entities,
     work: Vec<Work>,
+
+    local_index: usize,
+    local_by_var: HashMap<ir::VariableID, u8>,
 }
 
 impl Lowerer {
@@ -72,6 +83,9 @@ impl Lowerer {
         Self {
             entities,
             work: Vec::new(),
+
+            local_index: 0,
+            local_by_var: HashMap::new(),
         }
     }
 
@@ -86,12 +100,20 @@ impl Lowerer {
             stmts.extend_from_slice(&file_stmts);
         }
 
-        let main_function = Function {
+        // build main function task
+        use ir::Signature as Sig;
+        self.work.push(Work {
             name: "<main>".to_string(),
-            expr: Box::new(self.lower_block_expression(stmts)),
-        };
-        let mut functions = vec![main_function];
+            expr: ir::Expr::BlockUnlabelled {
+                stmts: stmts.into(),
+            },
+            signature: Sig::Args {
+                args: Box::new([]),
+                next: Box::new(Sig::Done),
+            },
+        });
 
+        let mut functions = Vec::new();
         while let Some(work) = self.work.pop() {
             let fun = self.lower_function_work(work);
             functions.push(fun);
@@ -101,7 +123,12 @@ impl Lowerer {
     }
 
     fn lower_function_work(&mut self, work: Work) -> Function {
-        todo!()
+        self.local_index = 0;
+
+        Function {
+            name: work.name,
+            expr: self.lower_expression(work.expr),
+        }
     }
 
     fn lower_statement(&mut self, stmt: ir::Stmt) -> Stmt {
@@ -110,7 +137,7 @@ impl Lowerer {
             S::Missing => unreachable!("attempt to generate missing statement"),
             S::Nothing => unreachable!("attempt to generate 'nothing' statement"),
             S::Expr { expr, ty: _ } => self.lower_expression_statement(expr),
-            S::Let { lhs, rhs } => todo!("lower let"),
+            S::Let { lhs, rhs } => self.lower_let_statement(lhs, rhs),
         }
     }
 
@@ -139,6 +166,92 @@ impl Lowerer {
         }
     }
 
+    fn simplify_deconstruct(lhs: Pat, rhs: Expr, bindings: &mut Vec<(Pat, Expr)>) {
+        match (lhs, rhs) {
+            (Pat::Int(_), Expr::Int { .. }) => {}
+            (Pat::Float(_), Expr::Float { .. }) => {}
+            (Pat::String(_), Expr::String { .. }) => {}
+            (Pat::Bool(_), Expr::Bool { .. }) => {}
+
+            (Pat::Bundle(left_items), Expr::Bundle { items: right_items })
+            | (
+                Pat::Variant(_, left_items),
+                Expr::Variant {
+                    tag: _,
+                    items: right_items,
+                },
+            ) => {
+                for (left_item, right_item) in left_items.into_iter().zip(right_items) {
+                    Self::simplify_deconstruct(left_item, right_item, bindings);
+                }
+            }
+
+            (pat, expr) => bindings.push((pat, expr)),
+        }
+    }
+
+    fn lower_let_statement(&mut self, lhs: ir::Pattern, rhs: ir::Expr) -> Stmt {
+        let pat = self.lower_pattern(lhs);
+        let expr = self.lower_expression(rhs);
+
+        let mut bindings = Vec::new();
+        Self::simplify_deconstruct(pat, expr, &mut bindings);
+
+        Stmt::Let {
+            bindings: bindings.into(),
+        }
+    }
+
+    fn register_local(&mut self, id: ir::VariableID) -> u8 {
+        let local: u8 = self
+            .local_index
+            .try_into()
+            .expect("function cannot have more than 255 variables");
+        self.local_by_var.insert(id, local);
+        self.local_index += 1;
+        local
+    }
+
+    fn get_local(&self, id: ir::VariableID) -> u8 {
+        match self.local_by_var.get(&id) {
+            Some(local) => *local,
+            None => panic!("unregistered variable '{}'", id.0),
+        }
+    }
+
+    fn lower_pattern(&mut self, pat: ir::Pattern) -> Pat {
+        use ir::Pattern as P;
+        match pat {
+            P::Missing => unreachable!("attempt to lower missing pattern"),
+            P::Discard => Pat::Discard,
+            P::Binding(id) => Pat::Local(self.register_local(id)),
+            P::Int(val) => Pat::Int(val),
+            P::Float(val) => Pat::Float(val),
+            P::String(val) => Pat::String(val),
+            P::Bool(val) => Pat::Bool(val),
+            P::Tuple(items) => Pat::Bundle(
+                items
+                    .into_iter()
+                    .map(|item| self.lower_pattern(item))
+                    .collect(),
+            ),
+            P::Variant(_, tag, None) => Pat::Variant(tag, Box::new([])),
+            P::Variant(_, tag, Some(items)) => Pat::Variant(
+                tag,
+                items
+                    .into_iter()
+                    .map(|item| self.lower_pattern(item))
+                    .collect(),
+            ),
+            P::Record(_, fields) => Pat::Bundle(
+                fields
+                    .into_iter()
+                    .map(|item| self.lower_pattern(item))
+                    .collect(),
+            ),
+        }
+    }
+
     fn lower_expression(&mut self, expr: ir::Expr) -> Expr {
         use ir::Expr as E;
         match expr {
@@ -147,10 +260,11 @@ impl Lowerer {
             E::Float { val } => Self::lower_float(val),
             E::String { val } => Self::lower_string(val),
             E::Bool { val } => Self::lower_bool(val),
-            E::Var { id } => todo!(),
-            E::Tuple { items } => self.lower_tuple(items),
-            E::Array { items } => self.lower_array(items),
+            E::Var { id } => self.lower_local(id),
+            E::Tuple { items } => self.lower_small_bundle(items),
+            E::Array { items } => self.lower_small_bundle(items),
             E::Block { stmts, label } => self.lower_block_expression(stmts),
+            E::BlockUnlabelled { stmts } => self.lower_block_expression(stmts),
             E::Conditional {
                 branches,
                 is_exhaustive,
@@ -164,8 +278,8 @@ impl Lowerer {
                 expr,
             } => todo!(),
             E::Call { callee, args } => todo!(),
-            E::Variant { tag, items } => todo!(),
-            E::Record { fields } => todo!(),
+            E::Variant { tag, items } => self.lower_variant(tag, items),
+            E::Record { fields } => self.lower_small_bundle(fields),
             E::Access { accessed, index } => todo!(),
         }
     }
@@ -186,21 +300,31 @@ impl Lowerer {
         Expr::Bool { val }
     }
 
-    fn lower_tuple(&mut self, items: Box<[ir::Expr]>) -> Expr {
-        Expr::Tuple {
-            items: items
-                .into_iter()
-                .map(|item| self.lower_expression(item))
-                .collect(),
+    fn lower_local(&self, id: ir::VariableID) -> Expr {
+        let local = self.get_local(id);
+        Expr::Local { local }
+    }
+
+    fn lower_expression_list(&mut self, items: impl IntoIterator<Item = ir::Expr>) -> Vec<Expr> {
+        items
+            .into_iter()
+            .map(|item| self.lower_expression(item))
+            .collect()
+    }
+
+    fn lower_small_bundle(&mut self, items: Box<[ir::Expr]>) -> Expr {
+        Expr::Bundle {
+            items: self.lower_expression_list(items).into(),
         }
     }
 
-    fn lower_array(&mut self, items: Box<[ir::Expr]>) -> Expr {
-        Expr::Array {
-            items: items
-                .into_iter()
-                .map(|item| self.lower_expression(item))
-                .collect(),
+    fn lower_variant(&mut self, tag: usize, items: Option<Box<[ir::Expr]>>) -> Expr {
+        Expr::Variant {
+            tag: tag as i64,
+            items: match items {
+                Some(items) => self.lower_expression_list(items).into(),
+                None => Box::new([]),
+            },
         }
     }
 
@@ -209,6 +333,10 @@ impl Lowerer {
 
         let last = match stmts.pop() {
             Some(Stmt::Expr { expr }) => *expr,
+            Some(stmt) => {
+                stmts.push(stmt);
+                Expr::unit()
+            }
             None => Expr::unit(),
         };
 

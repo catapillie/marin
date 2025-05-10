@@ -6,6 +6,7 @@ opcodes! {
     0x13 index_big_dup(u64)
     0x14 index(u8)
     0x16 index_big(u64)
+    0x17 spill(u16)
     0xa0 load_const(u16)
     0xa2 load_local(u8)
     0xa3 set_local(u8)
@@ -20,7 +21,8 @@ opcodes! {
     0xbe call(u8)
     0xbf ret
     0xe0 pop
-    0xe1 dup
+    0xe1 pop_offset(u16)
+    0xe2 dup
 }
 
 macro_rules! opcodes {

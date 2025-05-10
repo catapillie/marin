@@ -7,7 +7,7 @@ pub mod opcode;
 pub use opcode::Opcode;
 
 use crate::exe::Value;
-use byteorder::{ReadBytesExt, WriteBytesExt, LE};
+use byteorder::{LE, ReadBytesExt, WriteBytesExt};
 use std::{
     collections::{BTreeMap, HashMap},
     io::{self},
@@ -38,6 +38,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::index_big_dup => Ok(Opcode::index_big_dup(r.read_u64::<LE>()?)),
         opcode::index => Ok(Opcode::index(r.read_u8()?)),
         opcode::index_big => Ok(Opcode::index_big(r.read_u64::<LE>()?)),
+        opcode::spill => Ok(Opcode::spill(r.read_u16::<LE>()?)),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -52,6 +53,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::call => Ok(Opcode::call(r.read_u8()?)),
         opcode::ret => Ok(Opcode::ret),
         opcode::pop => Ok(Opcode::pop),
+        opcode::pop_offset => Ok(Opcode::pop_offset(r.read_u16::<LE>()?)),
         opcode::dup => Ok(Opcode::dup),
         byte => Err(Error::IllegalOpcode(byte)),
     }
@@ -92,6 +94,11 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         Opcode::index_big(count) => {
             w.write_u8(opcode::index_big)?;
             w.write_u64::<LE>(*count)?;
+            Ok(())
+        }
+        Opcode::spill(offset) => {
+            w.write_u8(opcode::spill)?;
+            w.write_u16::<LE>(*offset)?;
             Ok(())
         }
         Opcode::load_const(x) => {
@@ -157,6 +164,11 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::pop => {
             w.write_u8(opcode::pop)?;
+            Ok(())
+        }
+        Opcode::pop_offset(offset) => {
+            w.write_u8(opcode::pop_offset)?;
+            w.write_u16::<LE>(*offset)?;
             Ok(())
         }
         Opcode::dup => {

@@ -30,6 +30,9 @@ pub enum Expr {
         stmts: Box<[Stmt]>,
         label: LabelID,
     },
+    BlockUnlabelled {
+        stmts: Box<[Stmt]>,
+    },
     Conditional {
         branches: Box<[Branch]>,
         is_exhaustive: bool,

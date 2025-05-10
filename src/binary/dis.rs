@@ -61,47 +61,51 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
         let opcode = super::read_opcode(r)?;
         match opcode {
             Op::load_fun(pos) => print!(
-                "{:>12} {} -> <{:0>8}>",
+                "{:>14} {} -> <{:0>8}>",
                 "load_fun",
                 function_table.get(&pos).unwrap().bold().bright_blue(),
                 pos.to_string().bold()
             ),
-            Op::bundle(count) => print!("{:>12} [{}]", "bundle", count.to_string().bold()),
-            Op::bundle_big(count) => print!("{:>12} [{}]", "bundle_big", count.to_string().bold()),
-            Op::index_dup(count) => print!("{:>12} {}", "index_dup", count.to_string().bold()),
+            Op::bundle(count) => print!("{:>14} [{}]", "bundle", count.to_string().bold()),
+            Op::bundle_big(count) => print!("{:>14} [{}]", "bundle_big", count.to_string().bold()),
+            Op::index_dup(count) => print!("{:>14} {}", "index_dup", count.to_string().bold()),
             Op::index_big_dup(count) => {
-                print!("{:>12} {}", "index_big_dup", count.to_string().bold())
+                print!("{:>14} {}", "index_big_dup", count.to_string().bold())
             }
-            Op::index(count) => print!("{:>12} {}", "index", count.to_string().bold()),
-            Op::index_big(count) => print!("{:>12} {}", "index_big", count.to_string().bold()),
+            Op::index(count) => print!("{:>14} {}", "index", count.to_string().bold()),
+            Op::index_big(count) => print!("{:>14} {}", "index_big", count.to_string().bold()),
+            Op::spill(offset) => {
+                print!("{:>14} {}", "spill_offset", offset.to_string().bold())
+            }
             Op::load_const(x) => print!(
-                "{:>12} #{} = {}",
+                "{:>14} #{} = {}",
                 "load_const",
                 x.to_string().bold(),
                 constants[x as usize].to_string().bold().yellow()
             ),
-            Op::load_local(x) => print!("{:>12} {}", "load_local", x.to_string().bold().red()),
-            Op::set_local(x) => print!("{:>12} {}", "set_local", x.to_string().bold().red()),
-            Op::load_nil => print!("{:>12}", "load_nil"),
-            Op::jump(pos) => print!("{:>12} -> <{:0>8}>", "jump", pos.to_string().bold()),
+            Op::load_local(x) => print!("{:>14} {}", "load_local", x.to_string().bold().red()),
+            Op::set_local(x) => print!("{:>14} {}", "set_local", x.to_string().bold().red()),
+            Op::load_nil => print!("{:>14}", "load_nil"),
+            Op::jump(pos) => print!("{:>14} -> <{:0>8}>", "jump", pos.to_string().bold()),
             Op::jump_if(pos) => {
-                print!("{:>12} -> <{:0>8}>", "jump_if", pos.to_string().bold())
+                print!("{:>14} -> <{:0>8}>", "jump_if", pos.to_string().bold())
             }
             Op::jump_if_not(pos) => {
-                print!("{:>12} -> <{:0>8}>", "jump_if_not", pos.to_string().bold())
+                print!("{:>14} -> <{:0>8}>", "jump_if_not", pos.to_string().bold())
             }
             Op::jump_eq(pos) => {
-                print!("{:>12} -> <{:0>8}>", "jump_eq", pos.to_string().bold())
+                print!("{:>14} -> <{:0>8}>", "jump_eq", pos.to_string().bold())
             }
             Op::jump_ne(pos) => {
-                print!("{:>12} -> <{:0>8}>", "jump_ne", pos.to_string().bold())
+                print!("{:>14} -> <{:0>8}>", "jump_ne", pos.to_string().bold())
             }
-            Op::do_frame => print!("{:>12}", "do_frame"),
-            Op::end_frame => print!("{:>12}", "end_frame"),
-            Op::call(count) => print!("{:>12} [{}]", "call", count.to_string().bold()),
-            Op::ret => print!("{:>12}", "ret"),
-            Op::pop => print!("{:>12}", "pop"),
-            Op::dup => print!("{:>12}", "dup"),
+            Op::do_frame => print!("{:>14}", "do_frame"),
+            Op::end_frame => print!("{:>14}", "end_frame"),
+            Op::call(count) => print!("{:>14} [{}]", "call", count.to_string().bold()),
+            Op::ret => print!("{:>14}", "ret"),
+            Op::pop => print!("{:>14}", "pop"),
+            Op::pop_offset(offset) => print!("{:>14} {}", "pop_offset", offset.to_string().bold()),
+            Op::dup => print!("{:>14}", "dup"),
         }
         println!();
     }
