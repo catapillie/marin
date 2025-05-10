@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, i64};
 
 use super::ir;
+
+#[derive(Clone, Copy)]
+pub struct FunID(pub usize);
 
 pub enum Expr {
     Int {
@@ -43,6 +46,13 @@ pub enum Expr {
     Loop {
         body: Box<Stmt>,
     },
+    Fun {
+        id: FunID,
+    },
+    Call {
+        callee: Box<Expr>,
+        args: Box<[Expr]>,
+    },
 }
 
 impl Expr {
@@ -79,6 +89,8 @@ pub enum Pat {
 
 pub struct Function {
     pub name: String,
+    pub id: FunID,
+    pub args: Box<[Pat]>,
     pub expr: Expr,
 }
 
@@ -88,6 +100,8 @@ pub struct Program {
 
 struct Work {
     name: String,
+    id: FunID,
+    recursive_binding: Option<ir::VariableID>,
     signature: ir::Signature,
     expr: ir::Expr,
 }
@@ -96,6 +110,7 @@ struct Lowerer {
     entities: ir::Entities,
     work: Vec<Work>,
 
+    function_index: usize,
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
 }
@@ -106,9 +121,15 @@ impl Lowerer {
             entities,
             work: Vec::new(),
 
+            function_index: 0,
             local_index: 0,
             local_by_var: HashMap::new(),
         }
+    }
+
+    fn next_function_id(&mut self) -> FunID {
+        self.function_index += 1;
+        FunID(self.function_index - 1)
     }
 
     fn lower_program(
@@ -124,8 +145,11 @@ impl Lowerer {
 
         // build main function task
         use ir::Signature as Sig;
+        let id = self.next_function_id();
         self.work.push(Work {
             name: "<main>".to_string(),
+            id,
+            recursive_binding: None,
             expr: ir::Expr::BlockUnlabelled {
                 stmts: stmts.into(),
             },
@@ -145,11 +169,42 @@ impl Lowerer {
     }
 
     fn lower_function_work(&mut self, work: Work) -> Function {
+        self.local_by_var.clear();
         self.local_index = 0;
+
+        use ir::Signature as S;
+        let S::Args { args, next } = work.signature else {
+            panic!("attempt to lower function work with invalid signature");
+        };
+
+        let args = args
+            .into_iter()
+            .map(|arg| self.lower_pattern(arg))
+            .collect();
+
+        if let S::Done = &*next {
+            return Function {
+                name: work.name,
+                id: work.id,
+                args,
+                expr: self.lower_expression(work.expr),
+            };
+        }
+
+        let next_id = self.next_function_id();
+        self.work.push(Work {
+            name: format!("{}'", work.name),
+            id: next_id,
+            recursive_binding: None,
+            signature: *next,
+            expr: work.expr,
+        });
 
         Function {
             name: work.name,
-            expr: self.lower_expression(work.expr),
+            id: work.id,
+            args,
+            expr: Expr::Fun { id: next_id },
         }
     }
 
@@ -316,8 +371,8 @@ impl Lowerer {
                 recursive_binding,
                 signature,
                 expr,
-            } => todo!(),
-            E::Call { callee, args } => todo!(),
+            } => self.lower_fun(name, recursive_binding, *signature, *expr),
+            E::Call { callee, args } => self.lower_call(*callee, args),
             E::Variant { tag, items } => self.lower_variant(tag, items),
             E::Record { fields } => self.lower_small_bundle(fields),
             E::Access { accessed, index } => todo!(),
@@ -427,6 +482,31 @@ impl Lowerer {
             stmts: stmts.into(),
             result: Box::new(last),
             needs_frame,
+        }
+    }
+
+    fn lower_fun(
+        &mut self,
+        name: String,
+        recursive_binding: Option<ir::VariableID>,
+        signature: ir::Signature,
+        expr: ir::Expr,
+    ) -> Expr {
+        let id = self.next_function_id();
+        self.work.push(Work {
+            name,
+            id,
+            recursive_binding,
+            signature,
+            expr,
+        });
+        Expr::Fun { id }
+    }
+
+    fn lower_call(&mut self, callee: ir::Expr, args: Box<[ir::Expr]>) -> Expr {
+        Expr::Call {
+            callee: Box::new(self.lower_expression(callee)),
+            args: self.lower_expression_list(args).into(),
         }
     }
 }

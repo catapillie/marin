@@ -1,6 +1,6 @@
 use byteorder::{LE, WriteBytesExt};
 
-use super::low;
+use super::low::{self, FunID};
 use crate::{
     binary::{self, Opcode, opcode},
     exe::Value,
@@ -30,11 +30,15 @@ enum JumpMode {
 
 enum PseudoOp {
     Op(Opcode),
+    LoadFun(low::FunID),
 }
 
 struct BytecodeBuilder {
     constants: Vec<Value>,
+
     function_table: HashMap<u32, String>,
+    function_positions: Vec<Placeholder>,
+
     opcodes: Vec<(PseudoOp, Option<Marker>)>,
     cursor: Cursor<Vec<u8>>,
     markers: Vec<MarkerInfo>,
@@ -44,7 +48,10 @@ impl BytecodeBuilder {
     fn new() -> Self {
         Self {
             constants: Vec::new(),
+
             function_table: HashMap::new(),
+            function_positions: Vec::new(),
+
             opcodes: Vec::new(),
             cursor: Cursor::new(Vec::new()),
             markers: Vec::new(),
@@ -57,6 +64,10 @@ impl BytecodeBuilder {
 
     fn write_opcode(&mut self, opcode: Opcode) {
         self.opcodes.push((PseudoOp::Op(opcode), None))
+    }
+
+    fn write_load_fun(&mut self, id: FunID) {
+        self.opcodes.push((PseudoOp::LoadFun(id), None))
     }
 
     fn mark(&mut self) -> Marker {
@@ -78,6 +89,7 @@ impl BytecodeBuilder {
     }
 
     fn build_program(&mut self, program: low::Program) -> binary::Result<()> {
+        self.function_positions = vec![Placeholder::Unpatched(vec![]); program.functions.len()];
         for fun in program.functions {
             self.build_function(fun)?;
         }
@@ -90,10 +102,29 @@ impl BytecodeBuilder {
         self.markers.clear();
         self.markers.push(MarkerInfo::default()); // top marker
 
+        // patch placeholders to this function, and register function position
+        let fun_pos = self.pos();
+        if let Placeholder::Unpatched(unpatched) = &self.function_positions[function.id.0] {
+            for pos in unpatched {
+                self.cursor.set_position(*pos as u64);
+                self.cursor.write_u32::<LE>(fun_pos)?;
+            }
+            self.cursor.set_position(fun_pos as u64);
+        }
+        self.function_positions[function.id.0] = Placeholder::Patched(fun_pos);
+
+        // deconstruct arguments
+        let size = function.args.len() as u16;
+        for (i, item) in function.args.into_iter().enumerate() {
+            let offset = size - 1 - i as u16;
+            self.build_deconstruct(item, offset);
+        }
+
+        // generate expression and return
         self.build_expression(function.expr);
         self.write_opcode(Opcode::ret);
 
-        self.function_table.insert(self.pos(), function.name);
+        self.function_table.insert(fun_pos, function.name);
         self.emit_bytecode()?;
         Ok(())
     }
@@ -201,6 +232,18 @@ impl BytecodeBuilder {
                 else_branch,
             } => self.build_while(*guard, *do_branch, *else_branch),
             E::Loop { body } => self.build_loop(*body),
+            E::Fun { id } => self.build_fun(id),
+            E::Call { callee, args } => {
+                let arg_count: u8 = args
+                    .len()
+                    .try_into()
+                    .expect("function call cannot have more than 255 arguments");
+                for arg in args {
+                    self.build_expression(arg);
+                }
+                self.build_expression(*callee);
+                self.write_opcode(Opcode::call(arg_count));
+            }
         }
     }
 
@@ -266,6 +309,12 @@ impl BytecodeBuilder {
         self.wire_jump(JumpMode::Always, loop_end_marker, loop_start_marker);
     }
 
+    fn build_fun(&mut self, id: low::FunID) {
+        self.write_load_fun(id);
+        self.write_opcode(Opcode::bundle(0));
+        self.write_opcode(Opcode::bundle(2));
+    }
+
     fn emit_bytecode(&mut self) -> binary::Result<()> {
         // initialize marker gen info
         let mut placeholders = vec![Placeholder::Unpatched(vec![]); self.markers.len()];
@@ -273,7 +322,21 @@ impl BytecodeBuilder {
 
         for (opcode, marker) in &self.opcodes {
             match opcode {
+                // simple opcode
                 PseudoOp::Op(op) => binary::write_opcode(&mut self.cursor, op)?,
+
+                // 'load_fun' opcode might have to use a placeholder
+                PseudoOp::LoadFun(id) => {
+                    self.cursor.write_u8(opcode::load_fun)?;
+                    let pos = self.pos();
+                    match &mut self.function_positions[id.0] {
+                        Placeholder::Unpatched(unpatched) => {
+                            unpatched.push(pos);
+                            self.cursor.write_u32::<LE>(0)?;
+                        }
+                        Placeholder::Patched(pos) => self.cursor.write_u32::<LE>(*pos)?,
+                    }
+                }
             }
 
             if let Some(marker) = marker {

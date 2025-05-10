@@ -75,7 +75,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::index(count) => print!("{:>14} {}", "index", count.to_string().bold()),
             Op::index_big(count) => print!("{:>14} {}", "index_big", count.to_string().bold()),
             Op::spill(offset) => {
-                print!("{:>14} {}", "spill_offset", offset.to_string().bold())
+                print!("{:>14} {}", "spill", offset.to_string().bold())
             }
             Op::load_const(x) => print!(
                 "{:>14} #{} = {}",
