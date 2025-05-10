@@ -1,5 +1,5 @@
 use super::{
-    Checker, Parser, ast,
+    Checker, Parser, ast, emit,
     ir::{self},
     low,
     reporting::{Header, Report},
@@ -328,14 +328,14 @@ impl Compiler<Checked, CheckedInfo> {
             compiled_files.push((file, path, Compiled));
         }
 
-        low::lower(modules, self.info.entities, self.info.dependency_order);
-        todo!("codegen");
+        let lowered = low::lower(modules, self.info.entities, self.info.dependency_order);
+        let bytecode = emit::emit(lowered).expect("failed to generate bytecode");
 
-        // Compiler {
-        //     reports: self.reports,
-        //     files: Files(compiled_files),
-        //     info: CompiledInfo { bytecode },
-        // }
+        Compiler {
+            reports: self.reports,
+            files: Files(compiled_files),
+            info: CompiledInfo { bytecode },
+        }
     }
 }
 

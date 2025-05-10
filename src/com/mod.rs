@@ -1,4 +1,5 @@
 mod ast;
+mod emit;
 mod ir;
 mod low;
 mod sem;
