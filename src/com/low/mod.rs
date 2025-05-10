@@ -21,6 +21,7 @@ pub enum Expr {
     Block {
         stmts: Box<[Stmt]>,
         result: Box<Expr>,
+        needs_frame: bool,
     },
     Variant {
         tag: i64,
@@ -28,6 +29,19 @@ pub enum Expr {
     },
     Local {
         local: u8,
+    },
+    If {
+        guard: Box<Expr>,
+        then_branch: Box<Expr>,
+        else_branch: Box<Expr>,
+    },
+    While {
+        guard: Box<Expr>,
+        do_branch: Box<Stmt>,
+        else_branch: Box<Expr>,
+    },
+    Loop {
+        body: Box<Stmt>,
     },
 }
 
@@ -40,8 +54,16 @@ impl Expr {
 }
 
 pub enum Stmt {
-    Expr { expr: Box<Expr> },
-    Let { bindings: Box<[(Pat, Expr)]> },
+    Expr {
+        expr: Box<Expr>,
+    },
+    Let {
+        bindings: Box<[(Pat, Expr)]>,
+    },
+    Block {
+        stmts: Box<[Stmt]>,
+        needs_frame: bool,
+    },
 }
 
 pub enum Pat {
@@ -154,10 +176,28 @@ impl Lowerer {
     }
 
     fn lower_statement_block(&mut self, stmts: impl IntoIterator<Item = ir::Stmt>) -> Expr {
+        let local_index_orig = self.local_index;
+        let stmts = self.lower_statement_list(stmts).into();
+        let needs_frame = self.local_index != local_index_orig;
+        self.local_index = local_index_orig;
+
         Expr::Block {
-            stmts: self.lower_statement_list(stmts).into(),
+            stmts,
             result: Box::new(Expr::unit()),
+            needs_frame,
         }
+    }
+
+    fn lower_statement_block_as_statement(
+        &mut self,
+        stmts: impl IntoIterator<Item = ir::Stmt>,
+    ) -> Stmt {
+        let local_index_orig = self.local_index;
+        let stmts = self.lower_statement_list(stmts).into();
+        let needs_frame = self.local_index != local_index_orig;
+        self.local_index = local_index_orig;
+
+        Stmt::Block { stmts, needs_frame }
     }
 
     fn lower_expression_statement(&mut self, expr: ir::Expr) -> Stmt {
@@ -268,7 +308,7 @@ impl Lowerer {
             E::Conditional {
                 branches,
                 is_exhaustive,
-            } => todo!(),
+            } => self.lower_conditional(branches, is_exhaustive),
             E::Break { expr, label } => todo!(),
             E::Skip { label } => todo!(),
             E::Fun {
@@ -318,6 +358,45 @@ impl Lowerer {
         }
     }
 
+    fn lower_conditional(&mut self, branches: Box<[ir::Branch]>, is_exhaustive: bool) -> Expr {
+        let mut fallback = Expr::unit();
+        for branch in branches.into_iter().rev() {
+            use ir::Branch as B;
+            match branch {
+                B::If { guard, body, label } => {
+                    fallback = Expr::If {
+                        guard: Box::new(self.lower_expression(*guard)),
+                        then_branch: match is_exhaustive {
+                            true => Box::new(self.lower_block_expression(body)),
+                            false => Box::new(self.lower_statement_block(body)),
+                        },
+                        else_branch: Box::new(fallback),
+                    };
+                }
+                B::While { guard, body, label } => {
+                    fallback = Expr::While {
+                        guard: Box::new(self.lower_expression(*guard)),
+                        do_branch: Box::new(self.lower_statement_block_as_statement(body)),
+                        else_branch: Box::new(fallback),
+                    }
+                }
+                B::Loop { body, label } => {
+                    fallback = Expr::Loop {
+                        body: Box::new(self.lower_statement_block_as_statement(body)),
+                    }
+                }
+                B::Else { body, label } => fallback = self.lower_block_expression(body),
+                B::Match {
+                    scrutinee_var,
+                    scrutinee,
+                    decision,
+                } => todo!(),
+            }
+        }
+
+        fallback
+    }
+
     fn lower_variant(&mut self, tag: usize, items: Option<Box<[ir::Expr]>>) -> Expr {
         Expr::Variant {
             tag: tag as i64,
@@ -329,8 +408,9 @@ impl Lowerer {
     }
 
     fn lower_block_expression(&mut self, stmts: impl IntoIterator<Item = ir::Stmt>) -> Expr {
-        let mut stmts = self.lower_statement_list(stmts);
+        let local_index_orig = self.local_index;
 
+        let mut stmts = self.lower_statement_list(stmts);
         let last = match stmts.pop() {
             Some(Stmt::Expr { expr }) => *expr,
             Some(stmt) => {
@@ -340,9 +420,13 @@ impl Lowerer {
             None => Expr::unit(),
         };
 
+        let needs_frame = self.local_index != local_index_orig;
+        self.local_index = local_index_orig;
+
         Expr::Block {
             stmts: stmts.into(),
             result: Box::new(last),
+            needs_frame,
         }
     }
 }

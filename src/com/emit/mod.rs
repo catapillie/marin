@@ -1,15 +1,43 @@
+use byteorder::{LE, WriteBytesExt};
+
 use super::low;
 use crate::{
-    binary::{self, Opcode},
-    exe::{self, Value},
+    binary::{self, Opcode, opcode},
+    exe::Value,
 };
 use std::{collections::HashMap, io::Cursor};
+
+#[derive(Clone, Copy)]
+struct Marker(usize);
+
+#[derive(Default)]
+struct MarkerInfo {
+    incoming: Vec<Marker>,
+    outgoing: Option<(Marker, JumpMode)>,
+}
+
+#[derive(Clone)]
+enum Placeholder {
+    Unpatched(Vec<u32>),
+    Patched(u32),
+}
+
+enum JumpMode {
+    Always,
+    IfTrue,
+    IfFalse,
+}
+
+enum PseudoOp {
+    Op(Opcode),
+}
 
 struct BytecodeBuilder {
     constants: Vec<Value>,
     function_table: HashMap<u32, String>,
-    opcodes: Vec<Opcode>,
+    opcodes: Vec<(PseudoOp, Option<Marker>)>,
     cursor: Cursor<Vec<u8>>,
+    markers: Vec<MarkerInfo>,
 }
 
 impl BytecodeBuilder {
@@ -19,6 +47,7 @@ impl BytecodeBuilder {
             function_table: HashMap::new(),
             opcodes: Vec::new(),
             cursor: Cursor::new(Vec::new()),
+            markers: Vec::new(),
         }
     }
 
@@ -27,7 +56,25 @@ impl BytecodeBuilder {
     }
 
     fn write_opcode(&mut self, opcode: Opcode) {
-        self.opcodes.push(opcode);
+        self.opcodes.push((PseudoOp::Op(opcode), None))
+    }
+
+    fn mark(&mut self) -> Marker {
+        match self.opcodes.last_mut() {
+            Some((_, Some(marker))) => *marker,
+            Some((_, marker @ None)) => {
+                let m = Marker(self.markers.len());
+                self.markers.push(MarkerInfo::default());
+                *marker = Some(m);
+                m
+            }
+            None => Marker(0), // top marker
+        }
+    }
+
+    fn wire_jump(&mut self, mode: JumpMode, from: Marker, to: Marker) {
+        self.markers[from.0].outgoing = Some((to, mode));
+        self.markers[to.0].incoming.push(from);
     }
 
     fn build_program(&mut self, program: low::Program) -> binary::Result<()> {
@@ -38,7 +85,10 @@ impl BytecodeBuilder {
     }
 
     fn build_function(&mut self, function: low::Function) -> binary::Result<()> {
+        // reset state
         self.opcodes.clear();
+        self.markers.clear();
+        self.markers.push(MarkerInfo::default()); // top marker
 
         self.build_expression(function.expr);
         self.write_opcode(Opcode::ret);
@@ -61,6 +111,17 @@ impl BytecodeBuilder {
                     self.build_deconstruct(pat, 0);
                 }
             }
+            S::Block { stmts, needs_frame } => {
+                if needs_frame {
+                    self.write_opcode(Opcode::do_frame);
+                }
+                for stmt in stmts {
+                    self.build_statement(stmt);
+                }
+                if needs_frame {
+                    self.write_opcode(Opcode::end_frame);
+                }
+            }
         }
     }
 
@@ -68,7 +129,7 @@ impl BytecodeBuilder {
         use low::Pat as P;
         match pat {
             P::Discard | P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => {
-                self.write_opcode(Opcode::pop_offset(at))
+                self.write_opcode(Opcode::pop_offset(at));
             }
             P::Local(_) => {}
             P::Bundle(items) => {
@@ -103,22 +164,47 @@ impl BytecodeBuilder {
             E::String { val } => self.build_constant(Value::String(val)),
             E::Bool { val } => self.build_constant(Value::Bool(val)),
             E::Bundle { items } => self.build_small_bundle(items),
-            E::Block { stmts, result } => {
+            E::Block {
+                stmts,
+                result,
+                needs_frame,
+            } => {
+                if needs_frame {
+                    self.write_opcode(Opcode::do_frame);
+                }
+
                 for stmt in stmts {
                     self.build_statement(stmt);
                 }
                 self.build_expression(*result);
+
+                if needs_frame {
+                    self.write_opcode(Opcode::end_frame);
+                }
             }
             E::Variant { tag, items } => {
                 self.build_constant(Value::Int(tag));
                 self.build_small_bundle(items);
                 self.write_opcode(Opcode::bundle(2));
             }
-            E::Local { local } => self.write_opcode(Opcode::load_local(local)),
+            E::Local { local } => {
+                self.write_opcode(Opcode::load_local(local));
+            }
+            E::If {
+                guard,
+                then_branch,
+                else_branch,
+            } => self.build_if(*guard, *then_branch, *else_branch),
+            E::While {
+                guard,
+                do_branch,
+                else_branch,
+            } => self.build_while(*guard, *do_branch, *else_branch),
+            E::Loop { body } => self.build_loop(*body),
         }
     }
 
-    fn build_constant(&mut self, value: exe::Value) {
+    fn build_constant(&mut self, value: Value) {
         let index: u16 = match self.constants.iter().position(|v| value.eq(v)) {
             Some(i) => i,
             None => {
@@ -144,9 +230,81 @@ impl BytecodeBuilder {
         self.write_opcode(Opcode::bundle(size));
     }
 
+    fn build_if(&mut self, guard: low::Expr, then_branch: low::Expr, else_branch: low::Expr) {
+        self.build_expression(guard);
+        let guard_end_marker = self.mark();
+
+        self.build_expression(then_branch);
+        let then_end_marker = self.mark();
+
+        self.build_expression(else_branch);
+        let else_end_marker = self.mark();
+
+        self.wire_jump(JumpMode::IfFalse, guard_end_marker, then_end_marker);
+        self.wire_jump(JumpMode::Always, then_end_marker, else_end_marker);
+    }
+
+    fn build_while(&mut self, guard: low::Expr, do_branch: low::Stmt, else_branch: low::Expr) {
+        let guard_start_marker = self.mark();
+        self.build_expression(guard);
+        let guard_end_marker = self.mark();
+
+        self.build_statement(do_branch);
+        let block_end_marker = self.mark();
+
+        self.build_expression(else_branch);
+
+        self.wire_jump(JumpMode::IfFalse, guard_end_marker, block_end_marker);
+        self.wire_jump(JumpMode::Always, block_end_marker, guard_start_marker);
+    }
+
+    fn build_loop(&mut self, body: low::Stmt) {
+        let loop_start_marker = self.mark();
+        self.build_statement(body);
+        let loop_end_marker = self.mark();
+
+        self.wire_jump(JumpMode::Always, loop_end_marker, loop_start_marker);
+    }
+
     fn emit_bytecode(&mut self) -> binary::Result<()> {
-        for opcode in &self.opcodes {
-            binary::write_opcode(&mut self.cursor, opcode)?;
+        // initialize marker gen info
+        let mut placeholders = vec![Placeholder::Unpatched(vec![]); self.markers.len()];
+        placeholders[0] = Placeholder::Patched(0); // top marker
+
+        for (opcode, marker) in &self.opcodes {
+            match opcode {
+                PseudoOp::Op(op) => binary::write_opcode(&mut self.cursor, op)?,
+            }
+
+            if let Some(marker) = marker {
+                // emit jumps from here to other markers
+                if let Some((dest, mode)) = &self.markers[marker.0].outgoing {
+                    match mode {
+                        JumpMode::Always => self.cursor.write_u8(opcode::jump)?,
+                        JumpMode::IfTrue => self.cursor.write_u8(opcode::jump_if)?,
+                        JumpMode::IfFalse => self.cursor.write_u8(opcode::jump_if_not)?,
+                    }
+
+                    match &mut placeholders[dest.0] {
+                        Placeholder::Unpatched(unpatched) => {
+                            unpatched.push(self.pos());
+                            self.cursor.write_u32::<LE>(0)?;
+                        }
+                        Placeholder::Patched(dest_pos) => self.cursor.write_u32::<LE>(*dest_pos)?,
+                    }
+                }
+
+                // patch or emit jumps to this marker
+                let marker_pos = self.pos();
+                if let Placeholder::Unpatched(unpatched) = &placeholders[marker.0] {
+                    for pos in unpatched {
+                        self.cursor.set_position(*pos as u64);
+                        self.cursor.write_u32::<LE>(marker_pos)?;
+                    }
+                    self.cursor.set_position(marker_pos as u64);
+                }
+                placeholders[marker.0] = Placeholder::Patched(marker_pos);
+            }
         }
         Ok(())
     }
