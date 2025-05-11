@@ -62,7 +62,8 @@ impl Checker<'_, '_> {
                 let (pattern, pattern_type) = self.declare_pattern(&pattern, public);
 
                 self.unify(ty, pattern_type, &[]);
-                let relevant_constraints = self.solve_constraints();
+                let (solutions, relevant_constraints) = self.solve_constraints();
+                let is_concrete = relevant_constraints.is_empty();
 
                 let bindings = pattern.get_binding_ids();
                 for var_id in bindings.iter().copied() {
@@ -85,6 +86,8 @@ impl Checker<'_, '_> {
                     ir::Stmt::Let {
                         lhs: pattern,
                         rhs: value,
+                        is_concrete,
+                        solutions,
                     },
                     bindings,
                 )
@@ -119,7 +122,8 @@ impl Checker<'_, '_> {
 
                 let (val, val_type) = self.check_expression(&e.value);
                 self.unify(val_type, ret_type, &[]);
-                let relevant_contraints = self.solve_constraints();
+                let (solutions, relevant_constraints) = self.solve_constraints();
+                let is_concrete = relevant_constraints.is_empty();
 
                 let full_function_name = self.build_scope_name();
                 self.close_scope();
@@ -137,7 +141,7 @@ impl Checker<'_, '_> {
                 };
 
                 let mut scheme = self.generalize_type(sig_type);
-                for constraint in relevant_contraints {
+                for constraint in relevant_constraints {
                     self.add_class_constraint(&mut scheme, constraint);
                 }
 
@@ -155,6 +159,8 @@ impl Checker<'_, '_> {
                     ir::Stmt::Let {
                         lhs: pattern,
                         rhs: lambda,
+                        is_concrete,
+                        solutions,
                     },
                     vec![var_id],
                 )

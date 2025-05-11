@@ -211,7 +211,7 @@ impl Checker<'_, '_> {
         };
 
         let arity = type_args.len();
-        let union_ty = self.instantiate_scheme(info.scheme.clone(), None);
+        let (_, union_ty) = self.instantiate_scheme(info.scheme.clone(), None);
         let union_ty = self.clone_type_repr(union_ty);
         self.set_type_span(union_ty, span);
 

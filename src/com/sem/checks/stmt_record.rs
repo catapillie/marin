@@ -174,7 +174,7 @@ impl Checker<'_, '_> {
         };
 
         let arity = type_args.len();
-        let record_ty = self.instantiate_scheme(info.scheme.clone(), None);
+        let (_, record_ty) = self.instantiate_scheme(info.scheme.clone(), None);
         let record_ty = self.clone_type_repr(record_ty);
         self.set_type_span(record_ty, span);
 

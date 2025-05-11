@@ -34,13 +34,14 @@ impl<'src> Checker<'src, '_> {
         }
 
         let mut stmts = Vec::with_capacity(ast.0.len());
+        let mut module_solutions = Vec::new();
         for e in &ast.0 {
             let stmt = self.check_statement(e);
             stmts.push(stmt);
 
             // constraints on a top-level statement cannot are unallowed
             // because such a statement cannot be compiled
-            let constraints = self.solve_constraints();
+            let (mut solutions, constraints) = self.solve_constraints();
             if !constraints.is_empty() {
                 let constraint_strings = constraints
                     .iter()
@@ -60,6 +61,8 @@ impl<'src> Checker<'src, '_> {
                     .with_note(Note::TopLevelUnknownTypes),
                 );
             }
+
+            module_solutions.append(&mut solutions);
         }
 
         let (exports, instances) = self.get_public_exports_and_instances();
@@ -81,6 +84,7 @@ impl<'src> Checker<'src, '_> {
 
         ir::Module {
             stmts: stmts.into(),
+            solutions: module_solutions,
         }
     }
 

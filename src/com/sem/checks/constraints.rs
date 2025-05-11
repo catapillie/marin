@@ -16,9 +16,10 @@ impl Checker<'_, '_> {
         self.current_constraints = constraints;
     }
 
-    pub fn solve_constraints(&mut self) -> Vec<ir::Constraint> {
+    pub fn solve_constraints(&mut self) -> (Vec<ir::Solution>, Vec<ir::Constraint>) {
         let mut current_constraints = self.take_constraint_context();
         let mut irrelevant = Vec::new();
+        let mut solutions = Vec::new();
 
         loop {
             let mut partial = Vec::new();
@@ -35,7 +36,7 @@ impl Checker<'_, '_> {
 
                 // if not, it might still be relevant
                 // which means intuitively that it constrains at least one type variable
-                // living deeper than were the contraints are being solved
+                // living deeper than were the constraints are being solved
                 if self.is_relevant_constraint(&constraint) {
                     partial.push(constraint);
                     continue;
@@ -60,18 +61,26 @@ impl Checker<'_, '_> {
             // each concrete constraint is checked to have a matching instance
             // which may generate additional constraints
             // so we need to decide whether to continue the loop or not
-            for constraint in concrete {
-                if let Some(mut additional) = self.check_constraint(constraint) {
+            for mut constraint in concrete {
+                let constraint_id = std::mem::take(&mut constraint.constraint_id);
+                if let Some((instance_id, mut additional)) = self.check_constraint(constraint) {
+                    solutions.push(ir::Solution {
+                        constraint_id,
+                        instance_id,
+                    });
                     current_constraints.append(&mut additional);
                 }
             }
         }
 
         self.restore_constraint_context(irrelevant);
-        current_constraints
+        (solutions, current_constraints)
     }
 
-    fn check_constraint(&mut self, constraint: ir::Constraint) -> Option<Vec<ir::Constraint>> {
+    fn check_constraint(
+        &mut self,
+        constraint: ir::Constraint,
+    ) -> Option<(ir::InstanceID, Vec<ir::Constraint>)> {
         // get available instances
         let mut matching_instances = Vec::new();
         for (instance_id, instance) in self.get_known_instances() {
@@ -95,7 +104,7 @@ impl Checker<'_, '_> {
         let constr_string = self.get_constraint_string(&constraint);
         if matching_instances.is_empty() {
             self.reports.push(
-                Report::error(Header::UnsatisfiedContraint(constr_string.clone()))
+                Report::error(Header::UnsatisfiedConstraint(constr_string.clone()))
                     .with_primary_label(
                         Label::ConstraintOrigin(constr_string.clone()),
                         constraint.loc,
@@ -122,10 +131,11 @@ impl Checker<'_, '_> {
         // retrieve the matching instance
         // unify the associated type arguments
 
-        let (_, matching_constraint, additional_constraints) = matching_instances.pop().unwrap();
+        let (instance_id, matching_constraint, additional_constraints) =
+            matching_instances.pop().unwrap();
         self.unify_constraint(&constraint, &matching_constraint);
 
-        Some(additional_constraints)
+        Some((instance_id, additional_constraints))
     }
 
     fn get_known_instances(&self) -> Vec<(ir::InstanceID, ir::InstanceInfo)> {

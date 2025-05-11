@@ -5,7 +5,7 @@ use crate::com::{
 use colored::Colorize;
 use std::{collections::BTreeSet, fmt::Display};
 
-use super::{ClassID, RecordID, UnionID};
+use super::{ClassID, InstanceID, RecordID, UnionID};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeID(pub usize);
@@ -48,6 +48,24 @@ pub struct Constraint {
     pub loc: Loc,
     pub class_args: Box<[TypeID]>,
     pub associated_args: Box<[TypeID]>,
+    pub constraint_id: ConstraintID,
+}
+
+#[derive(Debug, Default, Clone)]
+pub enum ConstraintID {
+    #[default]
+    Empty,
+
+    ID {
+        id: usize,
+        dep: Box<ConstraintID>,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub struct Solution {
+    pub constraint_id: ConstraintID,
+    pub instance_id: InstanceID,
 }
 
 #[derive(Clone, Debug)]

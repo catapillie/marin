@@ -1,4 +1,4 @@
-use super::{Branch, LabelID, Signature, Stmt, TypeID, VariableID};
+use super::{Branch, ClassID, LabelID, Signature, Stmt, TypeID, VariableID};
 
 pub type CheckedExpr = (Expr, TypeID);
 
@@ -64,5 +64,9 @@ pub enum Expr {
     Access {
         accessed: Box<Expr>,
         index: usize,
+    },
+    ClassItem {
+        item_id: usize,
+        constraint_id: usize,
     },
 }

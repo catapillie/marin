@@ -1,6 +1,8 @@
-use std::collections::{BTreeSet, HashMap, HashSet};
-
-use super::ir;
+use super::{
+    ir::{self, Solution},
+    scope::Scope,
+};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy)]
 pub struct FunID(pub usize);
@@ -111,6 +113,7 @@ struct Work {
     signature: ir::Signature,
     expr: ir::Expr,
     capture_info: CaptureInfo,
+    solutions: Vec<Solution>,
 }
 
 struct Lowerer {
@@ -120,6 +123,9 @@ struct Lowerer {
     function_index: usize,
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
+
+    solutions: Scope<usize, (), ir::InstanceID>,
+    instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
 }
 
 impl Lowerer {
@@ -131,6 +137,9 @@ impl Lowerer {
             function_index: 0,
             local_index: 0,
             local_by_var: HashMap::new(),
+
+            solutions: Scope::root(),
+            instances: HashMap::new(),
         }
     }
 
@@ -145,9 +154,11 @@ impl Lowerer {
         dependency_order: Vec<usize>,
     ) -> Program {
         let mut stmts = Vec::new();
+        let mut solutions = Vec::new();
         for file_id in dependency_order {
             let file_stmts = std::mem::take(&mut modules[file_id].stmts);
             stmts.extend_from_slice(&file_stmts);
+            solutions.append(&mut modules[file_id].solutions);
         }
 
         // build main function task
@@ -165,6 +176,7 @@ impl Lowerer {
                 next: Box::new(Sig::Done),
             },
             capture_info: CaptureInfo::default(),
+            solutions,
         });
 
         let mut functions = Vec::new();
@@ -176,9 +188,23 @@ impl Lowerer {
         Program { functions }
     }
 
+    fn register_solutions(&mut self, solutions: Vec<ir::Solution>) {
+        self.solutions.open(false);
+        for solution in solutions {
+            if let ir::ConstraintID::ID { id, dep: _ } = solution.constraint_id {
+                self.solutions.insert(id, solution.instance_id);
+            }
+        }
+    }
+
+    fn unregister_solutions(&mut self) {
+        self.solutions.close();
+    }
+
     fn lower_function_work(&mut self, work: Work) -> Function {
         self.local_by_var.clear();
         self.local_index = 0;
+        self.solutions = Scope::root();
 
         use ir::Signature as S;
         let S::Args { args, next } = work.signature else {
@@ -206,6 +232,7 @@ impl Lowerer {
 
         // if this was the last argment signature, we are done
         if let S::Done = &*next {
+            self.register_solutions(work.solutions);
             return Function {
                 name: work.name,
                 id: work.id,
@@ -240,6 +267,7 @@ impl Lowerer {
             signature: *next,
             expr: work.expr,
             capture_info: new_capture_info,
+            solutions: work.solutions,
         });
 
         Function {
@@ -261,7 +289,17 @@ impl Lowerer {
             S::Missing => unreachable!("attempt to generate missing statement"),
             S::Nothing => unreachable!("attempt to generate 'nothing' statement"),
             S::Expr { expr, ty: _ } => self.lower_expression_statement(expr),
-            S::Let { lhs, rhs } => self.lower_let_statement(lhs, rhs),
+            S::Let {
+                lhs,
+                rhs,
+                is_concrete,
+                solutions,
+            } => self.lower_let_statement(lhs, rhs, is_concrete, solutions),
+            S::Have {
+                instance_id,
+                stmts,
+                item_bindings,
+            } => self.lower_have_statement(instance_id, stmts, item_bindings),
         }
     }
 
@@ -332,7 +370,17 @@ impl Lowerer {
         }
     }
 
-    fn lower_let_statement(&mut self, lhs: ir::Pattern, rhs: ir::Expr) -> Stmt {
+    fn lower_let_statement(
+        &mut self,
+        lhs: ir::Pattern,
+        rhs: ir::Expr,
+        is_concrete: bool,
+        solutions: Vec<ir::Solution>,
+    ) -> Stmt {
+        if !is_concrete {
+            todo!("abstract let binding")
+        }
+
         let pat = self.lower_pattern(lhs);
         let expr = self.lower_expression(rhs);
 
@@ -341,6 +389,20 @@ impl Lowerer {
 
         Stmt::Let {
             bindings: bindings.into(),
+        }
+    }
+
+    fn lower_have_statement(
+        &mut self,
+        instance_id: ir::InstanceID,
+        stmts: Box<[ir::Stmt]>,
+        item_bindings: Box<[ir::VariableID]>,
+    ) -> Stmt {
+        let stmts = self.lower_statement_list(stmts);
+        self.instances.insert(instance_id, item_bindings);
+        Stmt::Block {
+            stmts: stmts.into(),
+            needs_frame: false,
         }
     }
 
@@ -423,6 +485,21 @@ impl Lowerer {
             E::Variant { tag, items } => self.lower_variant(tag, items),
             E::Record { fields } => self.lower_small_bundle(fields),
             E::Access { accessed, index } => todo!(),
+            E::ClassItem {
+                item_id,
+                constraint_id,
+            } => {
+                let instance_id = self
+                    .solutions
+                    .search(constraint_id)
+                    .expect("unknown solution");
+                let item_bindings = self
+                    .instances
+                    .get(instance_id)
+                    .expect("unregister instance");
+                let var_id = item_bindings[item_id];
+                self.lower_local(var_id)
+            }
         }
     }
 
@@ -557,16 +634,31 @@ impl Lowerer {
             signature,
             expr,
             capture_info,
+            solutions: todo!(),
         });
         Expr::Fun { id }
     }
 
-    fn collect_stmt_captured_locals(&self, stmt: &ir::Stmt, set: &mut HashSet<ir::VariableID>) {
+    fn collect_stmt_captured_variables(&self, stmt: &ir::Stmt, set: &mut HashSet<ir::VariableID>) {
         use ir::Stmt as S;
         match stmt {
             S::Missing | S::Nothing => {}
             S::Expr { expr, ty: _ } => self.collect_expr_captured_variables(expr, set),
-            S::Let { lhs: _, rhs } => self.collect_expr_captured_variables(rhs, set),
+            S::Let {
+                lhs: _,
+                rhs,
+                is_concrete: _,
+                solutions: _,
+            } => self.collect_expr_captured_variables(rhs, set),
+            S::Have {
+                instance_id: _,
+                stmts,
+                item_bindings: _,
+            } => {
+                for stmt in stmts {
+                    self.collect_stmt_captured_variables(stmt, set);
+                }
+            }
         }
     }
 
@@ -586,7 +678,7 @@ impl Lowerer {
             }
             E::Block { stmts, label: _ } | E::BlockUnlabelled { stmts } => {
                 for stmt in stmts {
-                    self.collect_stmt_captured_locals(stmt, set);
+                    self.collect_stmt_captured_variables(stmt, set);
                 }
             }
             E::Conditional {
@@ -608,12 +700,12 @@ impl Lowerer {
                         } => {
                             self.collect_expr_captured_variables(guard, set);
                             for stmt in body {
-                                self.collect_stmt_captured_locals(stmt, set);
+                                self.collect_stmt_captured_variables(stmt, set);
                             }
                         }
                         B::Loop { body, label: _ } | B::Else { body, label: _ } => {
                             for stmt in body {
-                                self.collect_stmt_captured_locals(stmt, set);
+                                self.collect_stmt_captured_variables(stmt, set);
                             }
                         }
                         B::Match {
@@ -656,6 +748,10 @@ impl Lowerer {
             E::Access { accessed, index: _ } => {
                 self.collect_expr_captured_variables(accessed, set);
             }
+            E::ClassItem {
+                item_id,
+                constraint_id,
+            } => todo!(),
         }
     }
 
@@ -669,7 +765,7 @@ impl Lowerer {
             D::Failure => {}
             D::Success { stmts, result } => {
                 for stmt in stmts {
-                    self.collect_stmt_captured_locals(stmt, set);
+                    self.collect_stmt_captured_variables(stmt, set);
                 }
                 self.collect_expr_captured_variables(result, set);
             }

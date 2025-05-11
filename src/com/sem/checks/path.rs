@@ -51,7 +51,8 @@ impl Checker<'_, '_> {
         let loc = info.loc;
 
         let info = self.entities.get_variable_info(id);
-        let instantiated = self.instantiate_scheme(info.scheme.clone(), Some(span.wrap(self.file)));
+        let (_, instantiated) =
+            self.instantiate_scheme(info.scheme.clone(), Some(span.wrap(self.file)));
         let ty = self.clone_type_repr(instantiated);
         self.set_type_span(ty, span);
         self.add_type_provenance(ty, TypeProvenance::VariableDefinition(loc, name));
@@ -74,7 +75,7 @@ impl Checker<'_, '_> {
         );
 
         let expr = variant.expr.clone();
-        let ty = self.instantiate_scheme(variant.scheme.clone(), None);
+        let (_, ty) = self.instantiate_scheme(variant.scheme.clone(), None);
         let ty = self.clone_type_repr(ty);
         self.set_type_span(ty, span);
         self.add_type_provenance(ty, provenance);
@@ -99,7 +100,7 @@ impl Checker<'_, '_> {
 
         let scheme = item_info.scheme.clone();
 
-        let item_ty = self.instantiate_scheme(scheme, Some(span.wrap(self.file)));
+        let (constraint_id, item_ty) = self.instantiate_scheme(scheme, Some(span.wrap(self.file)));
         let item_ty = self.clone_type_repr(item_ty);
         self.set_type_span(item_ty, span);
         self.add_type_provenance(
@@ -107,7 +108,13 @@ impl Checker<'_, '_> {
             ir::TypeProvenance::ClassItemDefinition(item_loc, item_name, class_loc, class_name),
         );
 
-        (ir::Expr::Missing, item_ty)
+        (
+            ir::Expr::ClassItem {
+                item_id: index,
+                constraint_id,
+            },
+            item_ty,
+        )
     }
 
     pub fn check_path_into_type(&mut self, q: Q, span: Span) -> ir::TypeID {

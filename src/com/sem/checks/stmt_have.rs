@@ -31,6 +31,7 @@ impl Checker<'_, '_> {
 
         use ast::Expr as E;
         let mut registered = HashMap::new();
+        let mut stmts = Vec::new();
         for item in &e.items {
             let E::Let(item) = item else {
                 self.reports.push(
@@ -42,7 +43,8 @@ impl Checker<'_, '_> {
                 continue;
             };
 
-            let (_, bindings) = self.check_let_bindings(item, false);
+            let (stmt, bindings) = self.check_let_bindings(item, false);
+            stmts.push(stmt);
             for binding in bindings {
                 let binding_info = self.entities.get_variable_info(binding);
                 registered.insert(binding_info.name.clone(), binding);
@@ -53,6 +55,7 @@ impl Checker<'_, '_> {
         let arity = info.arity;
         let mut instantiated_items = Vec::new();
         let mut missing_items = Vec::new();
+        let mut item_bindigs = Vec::new();
         for (i, item) in info.items.iter().enumerate() {
             let Some(binding) = registered.get(&item.name).copied() else {
                 missing_items.push(i);
@@ -63,6 +66,7 @@ impl Checker<'_, '_> {
             let scheme = binding_info.scheme.clone();
             let expected_scheme = item.scheme.clone();
             instantiated_items.push((expected_scheme, scheme));
+            item_bindigs.push(binding);
         }
 
         let is_complete = missing_items.is_empty();
@@ -89,22 +93,24 @@ impl Checker<'_, '_> {
             loc: e.class.span().wrap(self.file),
             class_args: (0..arity.0).map(|_| self.create_fresh_type(None)).collect(),
             associated_args: (0..arity.1).map(|_| self.create_fresh_type(None)).collect(),
+            constraint_id: ir::ConstraintID::Empty,
         };
 
         for (wanted_scheme, found_scheme) in instantiated_items {
-            let found_type = self.instantiate_scheme(found_scheme, Some(e.span().wrap(self.file)));
-            let (expected_type, current_contraints) =
+            let (_, found_type) =
+                self.instantiate_scheme(found_scheme, Some(e.span().wrap(self.file)));
+            let (expected_type, current_constraints) =
                 self.instantiate_scheme_keep_constraints(wanted_scheme);
-            debug_assert_eq!(current_contraints.len(), 1);
+            debug_assert_eq!(current_constraints.len(), 1);
 
             self.unify(expected_type, found_type, &[]);
-            self.unify_constraint(&current_constraint, current_contraints.first().unwrap());
+            self.unify_constraint(&current_constraint, current_constraints.first().unwrap());
         }
 
         let mut instantiation_domain = BTreeSet::new();
         self.collect_constraint_variables(&current_constraint, &mut instantiation_domain);
 
-        let instantiation_constraints = self.solve_constraints();
+        let (_, instantiation_constraints) = self.solve_constraints();
         for constraint in &instantiation_constraints {
             self.collect_constraint_variables(constraint, &mut instantiation_domain);
         }
@@ -131,8 +137,15 @@ impl Checker<'_, '_> {
             });
             self.scope.infos_mut().instances.insert(instance_id);
             self.set_entity_public(instance_id.wrap(), public);
+
+            return ir::Stmt::Have {
+                instance_id,
+                stmts: stmts.into(),
+                item_bindings: item_bindigs.into(),
+            };
         }
 
+        // fail
         ir::Stmt::Nothing
     }
 }

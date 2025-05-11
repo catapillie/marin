@@ -236,7 +236,7 @@ impl Checker<'_, '_> {
             return self.declare_missing_pattern();
         };
 
-        let ty = self.instantiate_scheme(info.scheme.clone(), None);
+        let (_, ty) = self.instantiate_scheme(info.scheme.clone(), None);
         self.set_type_span(ty, span);
         (ir::Pattern::Variant(id, tag, None), ty)
     }

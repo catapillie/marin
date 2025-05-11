@@ -65,6 +65,8 @@ impl Checker<'_, '_> {
                 stmts.push(ir::Stmt::Let {
                     lhs: pat,
                     rhs: ir::Expr::Var { id: x },
+                    is_concrete: true,
+                    solutions: vec![],
                 });
             }
         }
