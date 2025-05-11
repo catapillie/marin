@@ -1,9 +1,8 @@
 use crate::com::{
-    ast,
+    Checker, ast,
     ir::{self, TypeProvenance},
     loc::Span,
     reporting::{Header, Label, Report},
-    Checker,
 };
 
 use ir::PathQuery as Q;

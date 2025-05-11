@@ -1,6 +1,6 @@
 use crate::com::{
-    ir::{ConstraintString, TypeString},
     Token,
+    ir::{ConstraintString, TypeString},
 };
 
 #[derive(Clone)]

@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, loc::Span, sem::provenance::Provenance, Checker};
+use crate::com::{Checker, ast, ir, loc::Span, sem::provenance::Provenance};
 
 impl Checker<'_, '_> {
     pub fn check_while(&mut self, b: &ast::WhileBranch, _: Span) -> (ir::Branch, ir::TypeID, bool) {

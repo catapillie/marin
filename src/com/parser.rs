@@ -2,10 +2,10 @@ use logos::{Logos, SpannedIter};
 use std::iter::Peekable;
 
 use super::{
+    Token,
     ast::{self},
     loc::{Loc, Span},
     reporting::{Header, Label, Report},
-    Token,
 };
 
 pub struct Parser<'src, 'e> {

@@ -1,9 +1,8 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Note, Report},
     sem::checker::checker_print,
-    Checker,
 };
 use colored::Colorize;
 use either::Either;

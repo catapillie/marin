@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, Checker};
+use crate::com::{Checker, ast, ir};
 
 impl Checker<'_, '_> {
     pub fn check_access(&mut self, e: &ast::Access) -> ir::CheckedExpr {

@@ -1,8 +1,7 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Note, Report},
-    Checker,
 };
 
 impl Checker<'_, '_> {
@@ -150,7 +149,18 @@ impl Checker<'_, '_> {
                 let arg_patterns = arg_ids.iter().map(|id| ir::Pattern::Binding(*id)).collect();
                 let arg_exprs = arg_ids.iter().map(|id| ir::Expr::Var { id: *id }).collect();
 
-                ir::Expr::Fun { name, recursive_binding: None, signature: Box::new(ir::Signature::Args { args: arg_patterns, next: Box::new(ir::Signature::Done) }), expr: Box::new(ir::Expr::Variant { tag, items: Some(arg_exprs) }) }
+                ir::Expr::Fun {
+                    name,
+                    recursive_binding: None,
+                    signature: Box::new(ir::Signature::Args {
+                        args: arg_patterns,
+                        next: Box::new(ir::Signature::Done),
+                    }),
+                    expr: Box::new(ir::Expr::Variant {
+                        tag,
+                        items: Some(arg_exprs),
+                    }),
+                }
             }
         };
 

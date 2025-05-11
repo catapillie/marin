@@ -1,4 +1,4 @@
-use crate::com::{ir, loc::Span, Checker};
+use crate::com::{Checker, ir, loc::Span};
 
 impl<'src> Checker<'src, '_> {
     pub fn create_variable_poly(

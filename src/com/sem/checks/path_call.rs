@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, loc::Span, Checker};
+use crate::com::{Checker, ast, ir, loc::Span};
 use ir::PathQuery as Q;
 
 impl Checker<'_, '_> {

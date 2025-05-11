@@ -1,8 +1,7 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Note, Report},
-    Checker,
 };
 
 impl Checker<'_, '_> {
@@ -141,7 +140,7 @@ impl Checker<'_, '_> {
         let Some(args) = args else {
             match &info.type_args {
                 None => {
-                    return Some(self.create_type(ir::Type::Record(record_id, None), Some(span)))
+                    return Some(self.create_type(ir::Type::Record(record_id, None), Some(span)));
                 }
                 Some(type_args) => {
                     let arity = type_args.len();

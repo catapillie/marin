@@ -1,7 +1,6 @@
 use crate::com::{
-    ast,
+    Checker, ast,
     ir::{self},
-    Checker,
 };
 
 impl Checker<'_, '_> {

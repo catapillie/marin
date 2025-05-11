@@ -1,4 +1,4 @@
-use crate::com::{ir, Checker};
+use crate::com::{Checker, ir};
 use colored::Colorize;
 
 impl Checker<'_, '_> {

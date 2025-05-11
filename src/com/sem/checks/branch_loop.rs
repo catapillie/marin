@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, loc::Span, Checker};
+use crate::com::{Checker, ast, ir, loc::Span};
 
 impl Checker<'_, '_> {
     pub fn check_loop(&mut self, e: &ast::LoopBranch, _: Span) -> (ir::Branch, ir::TypeID, bool) {

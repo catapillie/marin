@@ -1,7 +1,6 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     reporting::{Header, Label, Report},
-    Checker,
 };
 
 use ir::PathQuery as Q;

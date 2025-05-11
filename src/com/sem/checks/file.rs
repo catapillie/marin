@@ -1,8 +1,7 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     reporting::{Header, Label, Note, Report},
-    sem::checker::{checker_print, Export},
-    Checker,
+    sem::checker::{Export, checker_print},
 };
 use colored::Colorize;
 use std::collections::HashMap;

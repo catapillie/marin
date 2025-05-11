@@ -1,4 +1,4 @@
-use super::{mix_spans, Label};
+use super::{Label, mix_spans};
 use crate::com::loc::Span;
 
 #[derive(Debug, Clone)]

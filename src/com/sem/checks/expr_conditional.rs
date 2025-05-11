@@ -1,10 +1,9 @@
 use crate::com::{
-    ast,
+    Checker, ast,
     ir::{self, TypeProvenance},
     loc::Span,
     reporting::{Header, Label, Report},
     sem::provenance::Provenance,
-    Checker,
 };
 
 impl Checker<'_, '_> {

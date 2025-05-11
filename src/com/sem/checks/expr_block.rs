@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, loc::Span, sem::provenance::Provenance, Checker};
+use crate::com::{Checker, ast, ir, loc::Span, sem::provenance::Provenance};
 
 impl Checker<'_, '_> {
     pub fn check_expression_block(
@@ -59,6 +59,12 @@ impl Checker<'_, '_> {
     pub fn check_block(&mut self, e: &ast::Block) -> ir::CheckedExpr {
         let (stmts, label_id, last_type) =
             self.check_expression_block(&e.label, &e.items, e.span());
-        (ir::Expr::Block { stmts, label: label_id }, last_type)
+        (
+            ir::Expr::Block {
+                stmts,
+                label: label_id,
+            },
+            last_type,
+        )
     }
 }

@@ -2,11 +2,10 @@ use colored::Colorize;
 use either::Either;
 
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
     sem::checker::checker_print,
-    Checker,
 };
 
 impl Checker<'_, '_> {
@@ -82,7 +81,13 @@ impl Checker<'_, '_> {
                     self.set_entity_public(var_id.wrap(), public);
                 }
 
-                (ir::Stmt::Let { lhs: pattern, rhs: value }, bindings)
+                (
+                    ir::Stmt::Let {
+                        lhs: pattern,
+                        rhs: value,
+                    },
+                    bindings,
+                )
             }
             Either::Right(signature) => {
                 for arg_pattern in signature.arg_patterns() {
@@ -139,10 +144,20 @@ impl Checker<'_, '_> {
                 let var_id = self.create_variable_poly(name, scheme, name_span);
                 self.set_entity_public(var_id.wrap(), public);
                 let pattern = ir::Pattern::Binding(var_id);
-                let lambda =
-                    ir::Expr::Fun { name: full_function_name, recursive_binding: rec_id, signature: Box::new(sig), expr: Box::new(val) };
+                let lambda = ir::Expr::Fun {
+                    name: full_function_name,
+                    recursive_binding: rec_id,
+                    signature: Box::new(sig),
+                    expr: Box::new(val),
+                };
 
-                (ir::Stmt::Let { lhs: pattern, rhs: lambda }, vec![var_id])
+                (
+                    ir::Stmt::Let {
+                        lhs: pattern,
+                        rhs: lambda,
+                    },
+                    vec![var_id],
+                )
             }
         }
     }

@@ -1,7 +1,6 @@
 use crate::com::{
-    ir,
+    Checker, ir,
     reporting::{Header, Label, Report},
-    Checker,
 };
 
 impl Checker<'_, '_> {

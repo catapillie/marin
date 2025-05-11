@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, Checker};
+use crate::com::{Checker, ast, ir};
 
 impl Checker<'_, '_> {
     // returns (branch_type, is_exhaustive)

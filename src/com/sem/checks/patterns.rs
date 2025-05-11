@@ -1,9 +1,8 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Note, Report},
     sem::provenance::Provenance,
-    Checker,
 };
 use std::collections::HashMap;
 

@@ -1,10 +1,9 @@
 use crate::com::{
-    ast,
+    Checker, ast,
     ir::{self, TypeProvenance},
     loc::{Loc, Span},
     reporting::{Header, Label, Report},
     sem::provenance::Provenance,
-    Checker,
 };
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 

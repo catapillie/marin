@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, sem::provenance::Provenance, Checker};
+use crate::com::{Checker, ast, ir, sem::provenance::Provenance};
 
 impl Checker<'_, '_> {
     pub fn check_array(&mut self, e: &ast::Array) -> ir::CheckedExpr {
@@ -11,7 +11,9 @@ impl Checker<'_, '_> {
         }
 
         (
-            ir::Expr::Array { items: items.into() },
+            ir::Expr::Array {
+                items: items.into(),
+            },
             self.create_type(ir::Type::Array(array_item_type), Some(e.span())),
         )
     }

@@ -1,4 +1,4 @@
-use crate::com::{ast, ir, sem::provenance::Provenance, Checker};
+use crate::com::{Checker, ast, ir, sem::provenance::Provenance};
 
 impl Checker<'_, '_> {
     pub fn check_call(&mut self, e: &ast::Call) -> ir::CheckedExpr {

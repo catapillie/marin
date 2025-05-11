@@ -1,8 +1,7 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
-    Checker,
 };
 
 impl<'src> Checker<'src, '_> {

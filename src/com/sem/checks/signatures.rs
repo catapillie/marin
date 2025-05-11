@@ -1,8 +1,7 @@
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     loc::Span,
     reporting::{Header, Label, Report},
-    Checker,
 };
 
 impl<'src> Checker<'src, '_> {
@@ -117,7 +116,10 @@ impl<'src> Checker<'src, '_> {
                     .map(|arg| self.declare_pattern(arg, false))
                     .unzip();
                 (
-                    I::Args { args: arg_patterns.into(), next: Box::new(sig) },
+                    I::Args {
+                        args: arg_patterns.into(),
+                        next: Box::new(sig),
+                    },
                     self.create_type(ir::Type::Lambda(arg_types.into(), sig_type), None),
                     ret_type,
                     None,

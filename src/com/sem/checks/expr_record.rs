@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use crate::com::{
-    ast, ir,
+    Checker, ast, ir,
     reporting::{Header, Label, Note, Report},
     sem::provenance::Provenance,
-    Checker,
 };
 
 impl Checker<'_, '_> {
@@ -117,6 +116,11 @@ impl Checker<'_, '_> {
             );
         }
 
-        (ir::Expr::Record { fields: set_fields.into() }, record_value_type)
+        (
+            ir::Expr::Record {
+                fields: set_fields.into(),
+            },
+            record_value_type,
+        )
     }
 }
