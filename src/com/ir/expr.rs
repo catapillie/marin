@@ -20,6 +20,10 @@ pub enum Expr {
     Var {
         id: VariableID,
     },
+    AbstractVar {
+        id: VariableID,
+        constraint_id: usize,
+    },
     Tuple {
         items: Box<[Expr]>,
     },

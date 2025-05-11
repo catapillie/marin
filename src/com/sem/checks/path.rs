@@ -50,14 +50,21 @@ impl Checker<'_, '_> {
         let name = info.name.to_string();
         let loc = info.loc;
 
+        let is_concrete = info.scheme.constraints.is_empty();
+
         let info = self.entities.get_variable_info(id);
-        let (_, instantiated) =
+        let (constraint_id, instantiated) =
             self.instantiate_scheme(info.scheme.clone(), Some(span.wrap(self.file)));
         let ty = self.clone_type_repr(instantiated);
         self.set_type_span(ty, span);
         self.add_type_provenance(ty, TypeProvenance::VariableDefinition(loc, name));
 
-        (ir::Expr::Var { id }, ty)
+        let expr = match is_concrete {
+            false => ir::Expr::AbstractVar { id, constraint_id },
+            true => ir::Expr::Var { id },
+        };
+
+        (expr, ty)
     }
 
     fn check_variant_path_into_expr(

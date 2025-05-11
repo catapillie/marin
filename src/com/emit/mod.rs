@@ -40,6 +40,8 @@ struct BytecodeBuilder {
     function_positions: Vec<Placeholder>,
     function_captures: Vec<Vec<u8>>,
 
+    abstractions: Vec<low::Abstraction>,
+
     opcodes: Vec<(PseudoOp, Option<Marker>)>,
     cursor: Cursor<Vec<u8>>,
     markers: Vec<MarkerInfo>,
@@ -53,6 +55,8 @@ impl BytecodeBuilder {
             function_table: HashMap::new(),
             function_positions: Vec::new(),
             function_captures: Vec::new(),
+
+            abstractions: Vec::new(),
 
             opcodes: Vec::new(),
             cursor: Cursor::new(Vec::new()),
@@ -93,6 +97,8 @@ impl BytecodeBuilder {
     fn build_program(&mut self, mut program: low::Program) -> binary::Result<()> {
         self.function_positions = vec![Placeholder::Unpatched(vec![]); program.functions.len()];
         self.function_captures = vec![vec![]; program.functions.len()];
+        self.abstractions = program.abstractions;
+
         for function in &mut program.functions {
             self.function_captures[function.id.0] = std::mem::take(&mut function.captured_locals);
         }
@@ -160,9 +166,17 @@ impl BytecodeBuilder {
                     self.write_opcode(Opcode::end_frame);
                 }
             }
-            S::AbstractLet => {
-                // unit for now
-                self.write_opcode(Opcode::bundle(0));
+            S::AbstractLet { abstraction_key } => {
+                let abstraction = std::mem::take(&mut self.abstractions[abstraction_key]);
+                let impl_count: u8 = abstraction
+                    .implementations
+                    .len()
+                    .try_into()
+                    .expect("abstraction cannot have more than 255 implementations");
+                for expr in abstraction.implementations {
+                    self.build_expression(expr);
+                }
+                self.write_opcode(Opcode::bundle(impl_count));
             }
         }
     }
@@ -198,8 +212,13 @@ impl BytecodeBuilder {
         }
     }
 
-    fn build_unwrapping(&mut self, unwrapping: low::Unwrapping) {
-        todo!("build_unwrapping")
+    fn build_unwrapping(&mut self, mut unwrapping: low::Unwrapping) {
+        use low::Unwrapping as U;
+        while let U::Bundle { index, next } = unwrapping {
+            let index: u8 = index.try_into().expect("cannot index beyond 255");
+            self.write_opcode(Opcode::index(index));
+            unwrapping = *next;
+        }
     }
 
     fn build_expression(&mut self, expr: low::Expr) {
