@@ -74,7 +74,7 @@ impl Pattern {
         }
     }
 
-    fn collect_bindings(&self, bindings: &mut Vec<VariableID>) {
+    pub fn collect_bindings(&self, bindings: &mut Vec<VariableID>) {
         match self {
             Self::Missing => {}
             Self::Int(_) => {}

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, i64};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use super::ir;
 
@@ -87,11 +87,17 @@ pub enum Pat {
     Variant(usize, Box<[Pat]>),
 }
 
+#[derive(Default)]
+pub struct CaptureInfo {
+    locals: Vec<(ir::VariableID, u8)>,
+}
+
 pub struct Function {
     pub name: String,
     pub id: FunID,
     pub args: Box<[Pat]>,
     pub expr: Expr,
+    pub captured_locals: Vec<u8>,
 }
 
 pub struct Program {
@@ -104,6 +110,7 @@ struct Work {
     recursive_binding: Option<ir::VariableID>,
     signature: ir::Signature,
     expr: ir::Expr,
+    capture_info: CaptureInfo,
 }
 
 struct Lowerer {
@@ -157,6 +164,7 @@ impl Lowerer {
                 args: Box::new([]),
                 next: Box::new(Sig::Done),
             },
+            capture_info: CaptureInfo::default(),
         });
 
         let mut functions = Vec::new();
@@ -177,18 +185,51 @@ impl Lowerer {
             panic!("attempt to lower function work with invalid signature");
         };
 
+        // collect bindings in current args
+        let mut arg_bindings = Vec::new();
+        for arg in &args {
+            arg.collect_bindings(&mut arg_bindings);
+        }
+
+        // declare them
         let args = args
             .into_iter()
             .map(|arg| self.lower_pattern(arg))
             .collect();
 
+        // register captured variables as new locals
+        for (captured, _) in &work.capture_info.locals {
+            self.register_local(*captured);
+        }
+
+        let captured_locals = Self::get_captured_locals_from_info(&work.capture_info);
+
+        // if this was the last argment signature, we are done
         if let S::Done = &*next {
             return Function {
                 name: work.name,
                 id: work.id,
                 args,
                 expr: self.lower_expression(work.expr),
+                captured_locals,
             };
+        }
+
+        // generate a new capture info with updated locals
+        let mut new_capture_info = CaptureInfo {
+            locals: work
+                .capture_info
+                .locals
+                .iter()
+                .map(|(id, _)| (*id, self.local_by_var[id]))
+                .collect(),
+        };
+
+        // current args are immediately captured...
+        for arg_binding in arg_bindings {
+            new_capture_info
+                .locals
+                .push((arg_binding, self.local_by_var[&arg_binding]));
         }
 
         let next_id = self.next_function_id();
@@ -198,6 +239,7 @@ impl Lowerer {
             recursive_binding: None,
             signature: *next,
             expr: work.expr,
+            capture_info: new_capture_info,
         });
 
         Function {
@@ -205,7 +247,12 @@ impl Lowerer {
             id: work.id,
             args,
             expr: Expr::Fun { id: next_id },
+            captured_locals,
         }
+    }
+
+    fn get_captured_locals_from_info(info: &CaptureInfo) -> Vec<u8> {
+        info.locals.iter().map(|(_, local)| *local).collect()
     }
 
     fn lower_statement(&mut self, stmt: ir::Stmt) -> Stmt {
@@ -492,6 +539,16 @@ impl Lowerer {
         signature: ir::Signature,
         expr: ir::Expr,
     ) -> Expr {
+        let mut captured = HashSet::new();
+        self.collect_expr_captured_variables(&expr, &mut captured);
+
+        let capture_info = CaptureInfo {
+            locals: captured
+                .into_iter()
+                .map(|id| (id, self.local_by_var[&id]))
+                .collect(),
+        };
+
         let id = self.next_function_id();
         self.work.push(Work {
             name,
@@ -499,8 +556,133 @@ impl Lowerer {
             recursive_binding,
             signature,
             expr,
+            capture_info,
         });
         Expr::Fun { id }
+    }
+
+    fn collect_stmt_captured_locals(&self, stmt: &ir::Stmt, set: &mut HashSet<ir::VariableID>) {
+        use ir::Stmt as S;
+        match stmt {
+            S::Missing | S::Nothing => {}
+            S::Expr { expr, ty: _ } => self.collect_expr_captured_variables(expr, set),
+            S::Let { lhs: _, rhs } => self.collect_expr_captured_variables(rhs, set),
+        }
+    }
+
+    fn collect_expr_captured_variables(&self, expr: &ir::Expr, set: &mut HashSet<ir::VariableID>) {
+        use ir::Expr as E;
+        match expr {
+            E::Missing | E::Int { .. } | E::Float { .. } | E::String { .. } | E::Bool { .. } => {}
+            E::Var { id } => {
+                if self.local_by_var.contains_key(id) {
+                    set.insert(*id);
+                }
+            }
+            E::Tuple { items } | E::Array { items } => {
+                for item in items {
+                    self.collect_expr_captured_variables(item, set);
+                }
+            }
+            E::Block { stmts, label: _ } | E::BlockUnlabelled { stmts } => {
+                for stmt in stmts {
+                    self.collect_stmt_captured_locals(stmt, set);
+                }
+            }
+            E::Conditional {
+                branches,
+                is_exhaustive: _,
+            } => {
+                for branch in branches {
+                    use ir::Branch as B;
+                    match branch {
+                        B::If {
+                            guard,
+                            body,
+                            label: _,
+                        }
+                        | B::While {
+                            guard,
+                            body,
+                            label: _,
+                        } => {
+                            self.collect_expr_captured_variables(guard, set);
+                            for stmt in body {
+                                self.collect_stmt_captured_locals(stmt, set);
+                            }
+                        }
+                        B::Loop { body, label: _ } | B::Else { body, label: _ } => {
+                            for stmt in body {
+                                self.collect_stmt_captured_locals(stmt, set);
+                            }
+                        }
+                        B::Match {
+                            scrutinee_var: _,
+                            scrutinee: _,
+                            decision,
+                        } => self.collect_decision_captured_variables(decision, set),
+                    }
+                }
+            }
+            E::Break {
+                expr: Some(expr),
+                label: _,
+            } => self.collect_expr_captured_variables(expr, set),
+            E::Break { .. } | E::Skip { .. } => {}
+            E::Fun {
+                name: _,
+                recursive_binding: _,
+                signature: _,
+                expr,
+            } => self.collect_expr_captured_variables(expr, set),
+            E::Call { callee, args } => {
+                self.collect_expr_captured_variables(callee, set);
+                for arg in args {
+                    self.collect_expr_captured_variables(arg, set);
+                }
+            }
+            E::Variant { tag: _, items } => {
+                if let Some(items) = items {
+                    for item in items {
+                        self.collect_expr_captured_variables(item, set);
+                    }
+                }
+            }
+            E::Record { fields } => {
+                for field in fields {
+                    self.collect_expr_captured_variables(field, set);
+                }
+            }
+            E::Access { accessed, index: _ } => {
+                self.collect_expr_captured_variables(accessed, set);
+            }
+        }
+    }
+
+    fn collect_decision_captured_variables(
+        &self,
+        decision: &ir::Decision,
+        set: &mut HashSet<ir::VariableID>,
+    ) {
+        use ir::Decision as D;
+        match decision {
+            D::Failure => {}
+            D::Success { stmts, result } => {
+                for stmt in stmts {
+                    self.collect_stmt_captured_locals(stmt, set);
+                }
+                self.collect_expr_captured_variables(result, set);
+            }
+            D::Test {
+                tested_var: _,
+                pattern: _,
+                success,
+                failure,
+            } => {
+                self.collect_decision_captured_variables(success, set);
+                self.collect_decision_captured_variables(failure, set);
+            }
+        }
     }
 
     fn lower_call(&mut self, callee: ir::Expr, args: Box<[ir::Expr]>) -> Expr {

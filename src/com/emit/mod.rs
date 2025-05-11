@@ -38,6 +38,7 @@ struct BytecodeBuilder {
 
     function_table: HashMap<u32, String>,
     function_positions: Vec<Placeholder>,
+    function_captures: Vec<Vec<u8>>,
 
     opcodes: Vec<(PseudoOp, Option<Marker>)>,
     cursor: Cursor<Vec<u8>>,
@@ -51,6 +52,7 @@ impl BytecodeBuilder {
 
             function_table: HashMap::new(),
             function_positions: Vec::new(),
+            function_captures: Vec::new(),
 
             opcodes: Vec::new(),
             cursor: Cursor::new(Vec::new()),
@@ -88,8 +90,13 @@ impl BytecodeBuilder {
         self.markers[to.0].incoming.push(from);
     }
 
-    fn build_program(&mut self, program: low::Program) -> binary::Result<()> {
+    fn build_program(&mut self, mut program: low::Program) -> binary::Result<()> {
         self.function_positions = vec![Placeholder::Unpatched(vec![]); program.functions.len()];
+        self.function_captures = vec![vec![]; program.functions.len()];
+        for function in &mut program.functions {
+            self.function_captures[function.id.0] = std::mem::take(&mut function.captured_locals);
+        }
+
         for fun in program.functions {
             self.build_function(fun)?;
         }
@@ -311,7 +318,19 @@ impl BytecodeBuilder {
 
     fn build_fun(&mut self, id: low::FunID) {
         self.write_load_fun(id);
-        self.write_opcode(Opcode::bundle(0));
+
+        // captured item bundle
+        let captured_locals = self.function_captures[id.0].clone();
+        let captured_local_count: u8 = captured_locals
+            .len()
+            .try_into()
+            .expect("function cannot capture more than 255 items");
+        for local in captured_locals {
+            self.write_opcode(Opcode::load_local(local));
+        }
+        self.write_opcode(Opcode::bundle(captured_local_count));
+
+        // (fun, [captured...])
         self.write_opcode(Opcode::bundle(2));
     }
 
