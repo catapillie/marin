@@ -86,16 +86,55 @@ where
         self.bindings.iter()
     }
 
+    pub fn iter_all(&self) -> ScopeIterator<K, I, T> {
+        ScopeIterator {
+            iter: self.bindings.iter(),
+            next_scope: self.parent.as_deref(),
+        }
+    }
+
     pub fn infos_mut(&mut self) -> &mut I {
         &mut self.info
     }
 
-    pub fn infos_iter(&self) -> ScopeInfoInterator<K, I, T> {
-        ScopeInfoInterator { scope: Some(self) }
+    pub fn infos_iter(&self) -> ScopeInfoIterator<K, I, T> {
+        ScopeInfoIterator { scope: Some(self) }
     }
 }
 
-pub struct ScopeInfoInterator<'a, K, I, T>
+pub struct ScopeIterator<'a, K, I, T>
+where
+    K: Eq + Hash,
+    I: Default,
+{
+    iter: hash_map::Iter<'a, K, T>,
+    next_scope: Option<&'a Scope<K, I, T>>,
+}
+
+impl<'a, K, I, T> Iterator for ScopeIterator<'a, K, I, T>
+where
+    K: Eq + Hash,
+    I: Default,
+{
+    type Item = (&'a K, &'a T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(item) = self.iter.next() {
+            return Some(item);
+        }
+
+        let scope = self.next_scope?;
+        self.iter = scope.bindings.iter();
+        self.next_scope = match &scope.parent {
+            Some(parent) => Some(parent),
+            None => None,
+        };
+
+        self.next()
+    }
+}
+
+pub struct ScopeInfoIterator<'a, K, I, T>
 where
     K: Eq + Hash,
     I: Default,
@@ -103,7 +142,7 @@ where
     scope: Option<&'a Scope<K, I, T>>,
 }
 
-impl<'a, K, I, T> Iterator for ScopeInfoInterator<'a, K, I, T>
+impl<'a, K, I, T> Iterator for ScopeInfoIterator<'a, K, I, T>
 where
     K: Eq + Hash,
     I: Default,

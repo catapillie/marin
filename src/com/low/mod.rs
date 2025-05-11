@@ -124,7 +124,7 @@ struct Lowerer {
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
 
-    solutions: Scope<usize, (), ir::InstanceID>,
+    solutions: Scope<usize, (), (ir::InstanceID, ir::ConstraintID)>,
     instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
 }
 
@@ -191,14 +191,29 @@ impl Lowerer {
     fn register_solutions(&mut self, solutions: Vec<ir::Solution>) {
         self.solutions.open(false);
         for solution in solutions {
-            if let ir::ConstraintID::ID { id, dep: _ } = solution.constraint_id {
-                self.solutions.insert(id, solution.instance_id);
+            if let ir::ConstraintID::ID { id, dep } = solution.constraint_id {
+                self.solutions.insert(id, (solution.instance_id, *dep));
             }
         }
     }
 
     fn unregister_solutions(&mut self) {
         self.solutions.close();
+    }
+
+    fn rebuild_solutions(&self) -> Vec<ir::Solution> {
+        let solutions = self
+            .solutions
+            .iter_all()
+            .map(|(id, (instance_id, dep))| ir::Solution {
+                constraint_id: ir::ConstraintID::ID {
+                    id: *id,
+                    dep: Box::new(dep.clone()),
+                },
+                instance_id: *instance_id,
+            })
+            .collect();
+        solutions
     }
 
     fn lower_function_work(&mut self, work: Work) -> Function {
@@ -381,8 +396,12 @@ impl Lowerer {
             todo!("abstract let binding")
         }
 
+        self.register_solutions(solutions);
+
         let pat = self.lower_pattern(lhs);
         let expr = self.lower_expression(rhs);
+
+        self.unregister_solutions();
 
         let mut bindings = Vec::new();
         Self::simplify_deconstruct(pat, expr, &mut bindings);
@@ -489,7 +508,7 @@ impl Lowerer {
                 item_id,
                 constraint_id,
             } => {
-                let instance_id = self
+                let (instance_id, _) = self
                     .solutions
                     .search(constraint_id)
                     .expect("unknown solution");
@@ -626,6 +645,8 @@ impl Lowerer {
                 .collect(),
         };
 
+        let solutions = self.rebuild_solutions();
+
         let id = self.next_function_id();
         self.work.push(Work {
             name,
@@ -634,7 +655,7 @@ impl Lowerer {
             signature,
             expr,
             capture_info,
-            solutions: todo!(),
+            solutions,
         });
         Expr::Fun { id }
     }
@@ -751,7 +772,20 @@ impl Lowerer {
             E::ClassItem {
                 item_id,
                 constraint_id,
-            } => todo!(),
+            } => {
+                let (instance_id, _) = self
+                    .solutions
+                    .search(*constraint_id)
+                    .expect("unknown solution");
+                let item_bindings = self
+                    .instances
+                    .get(instance_id)
+                    .expect("unregister instance");
+                let var_id = item_bindings[*item_id];
+                if self.local_by_var.contains_key(&var_id) {
+                    set.insert(var_id);
+                }
+            }
         }
     }
 
