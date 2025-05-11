@@ -617,9 +617,10 @@ impl<'src> Checker<'src, '_> {
                 .iter()
                 .map(|arg| self.apply_type_substitution(*arg, sub))
                 .collect(),
-            constraint_id: ir::ConstraintID::ID {
-                id: new_constraint_id,
-                dep: Box::new(constraint.constraint_id),
+            constraint_trace: {
+                let mut trace = constraint.constraint_trace.clone();
+                trace.constraint_ids.push(new_constraint_id);
+                trace
             },
         }
     }

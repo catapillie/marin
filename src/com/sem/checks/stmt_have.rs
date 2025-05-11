@@ -93,7 +93,7 @@ impl Checker<'_, '_> {
             loc: e.class.span().wrap(self.file),
             class_args: (0..arity.0).map(|_| self.create_fresh_type(None)).collect(),
             associated_args: (0..arity.1).map(|_| self.create_fresh_type(None)).collect(),
-            constraint_id: ir::ConstraintID::Empty,
+            constraint_trace: ir::ConstraintTrace::default(),
         };
 
         for (wanted_scheme, found_scheme) in instantiated_items {

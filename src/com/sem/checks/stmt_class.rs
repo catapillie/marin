@@ -75,7 +75,7 @@ impl Checker<'_, '_> {
             loc: span.wrap(self.file),
             class_args: arg_ids.into(),
             associated_args: associated_arg_ids.into(),
-            constraint_id: ir::ConstraintID::Empty,
+            constraint_trace: ir::ConstraintTrace::default(),
         };
 
         use ast::ClassItem as K;

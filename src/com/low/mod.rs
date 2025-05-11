@@ -152,6 +152,8 @@ struct AbstractionInfo {
     unwrappings_by_binding: HashMap<ir::VariableID, Unwrapping>,
 }
 
+type SolutionMap = HashMap<usize, Vec<ir::Solution>>;
+
 struct Lowerer {
     entities: ir::Entities,
     work: Vec<Work>,
@@ -160,7 +162,7 @@ struct Lowerer {
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
 
-    solutions: Scope<usize, (), (ir::InstanceID, ir::ConstraintID)>,
+    solutions: SolutionMap,
     instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
 
     abstractions: Vec<AbstractionInfo>,
@@ -177,7 +179,7 @@ impl Lowerer {
             local_index: 0,
             local_by_var: HashMap::new(),
 
-            solutions: Scope::root(),
+            solutions: SolutionMap::default(),
             instances: HashMap::new(),
 
             abstractions: Vec::new(),
@@ -242,60 +244,60 @@ impl Lowerer {
         }
     }
 
-    fn register_solutions(&mut self, solutions: Vec<ir::Solution>) {
-        self.solutions.open(false);
-        for solution in solutions {
-            if let ir::ConstraintID::ID { id, dep } = solution.constraint_id {
-                self.solutions.insert(id, (solution.instance_id, *dep));
-            }
-        }
+    fn solve_class_item_variable_id(&self, item_id: usize, constraint_id: usize) -> ir::VariableID {
+        let solutions = self
+            .solutions
+            .get(&constraint_id)
+            .expect("unknown solution");
+        let solution = &solutions[0];
+        let item_bindings = self
+            .instances
+            .get(&solution.instance_id)
+            .expect("unregister instance");
+        item_bindings[item_id]
     }
 
-    fn unregister_solutions(&mut self) {
-        self.solutions.close();
+    fn register_solutions(&mut self, solutions: Vec<ir::Solution>) -> SolutionMap {
+        let orig = std::mem::take(&mut self.solutions);
+
+        // construct the map: (constraint_id -> [solutions...])
+        for mut solution in solutions {
+            if let Some(constraint_id) = solution.trace.constraint_ids.pop() {
+                self.solutions.entry(constraint_id).or_insert(vec![]);
+                self.solutions
+                    .get_mut(&constraint_id)
+                    .unwrap()
+                    .push(solution);
+            }
+        }
+
+        orig
+    }
+
+    fn restore_solutions(&mut self, orig: SolutionMap) {
+        self.solutions = orig;
     }
 
     fn rebuild_solutions(&self) -> Vec<ir::Solution> {
-        let solutions = self
-            .solutions
-            .iter_all()
-            .map(|(id, (instance_id, dep))| ir::Solution {
-                constraint_id: ir::ConstraintID::ID {
-                    id: *id,
-                    dep: Box::new(dep.clone()),
-                },
-                instance_id: *instance_id,
+        self.solutions
+            .iter()
+            .flat_map(|(id, solutions)| {
+                solutions.iter().cloned().map(|mut solution| {
+                    solution.trace.constraint_ids.push(*id);
+                    solution
+                })
             })
-            .collect();
-        solutions
+            .collect()
     }
 
     fn elaborate_solutions(&self, relevant_id: usize) -> Vec<ir::Solution> {
-        let solutions = self
-            .solutions
-            .iter_all()
-            .filter_map(|(id, (instance_id, dep))| {
-                if *id != relevant_id {
-                    return None;
-                }
-
-                if let ir::ConstraintID::Empty = dep {
-                    return None;
-                }
-
-                Some(ir::Solution {
-                    constraint_id: dep.clone(),
-                    instance_id: *instance_id,
-                })
-            })
-            .collect();
-        solutions
+        self.solutions[&relevant_id].clone()
     }
 
     fn lower_function_work(&mut self, work: Work) -> Function {
         self.local_by_var.clear();
         self.local_index = 0;
-        self.solutions = Scope::root();
+        self.solutions = Default::default();
 
         use ir::Signature as S;
         let S::Args { args, next } = work.signature else {
@@ -519,12 +521,12 @@ impl Lowerer {
             return Stmt::AbstractLet { abstraction_key };
         }
 
-        self.register_solutions(solutions);
+        let orig = self.register_solutions(solutions);
 
         let pat = self.lower_pattern(lhs);
         let expr = self.lower_expression(rhs);
 
-        self.unregister_solutions();
+        self.restore_solutions(orig);
 
         let mut bindings = Vec::new();
         Self::simplify_deconstruct(pat, expr, &mut bindings);
@@ -632,15 +634,7 @@ impl Lowerer {
                 item_id,
                 constraint_id,
             } => {
-                let (instance_id, _) = self
-                    .solutions
-                    .search(constraint_id)
-                    .expect("unknown solution");
-                let item_bindings = self
-                    .instances
-                    .get(instance_id)
-                    .expect("unregister instance");
-                let var_id = item_bindings[item_id];
+                let var_id = self.solve_class_item_variable_id(item_id, constraint_id);
                 self.lower_variable(var_id)
             }
         }
@@ -694,9 +688,9 @@ impl Lowerer {
         abstract_expr_solutions.append(&mut relevant_solutions);
 
         // register the solutions and instantiate the expression!
-        self.register_solutions(abstract_expr_solutions);
+        let orig = self.register_solutions(abstract_expr_solutions);
         let implementation = self.lower_expression(abstract_expr);
-        self.unregister_solutions();
+        self.restore_solutions(orig);
 
         // save the new expression
         let info = &mut self.abstractions[key];
@@ -947,15 +941,7 @@ impl Lowerer {
                 item_id,
                 constraint_id,
             } => {
-                let (instance_id, _) = self
-                    .solutions
-                    .search(*constraint_id)
-                    .expect("unknown solution");
-                let item_bindings = self
-                    .instances
-                    .get(instance_id)
-                    .expect("unregister instance");
-                let var_id = item_bindings[*item_id];
+                let var_id = self.solve_class_item_variable_id(*item_id, *constraint_id);
                 if self.local_by_var.contains_key(&var_id) {
                     set.insert(var_id);
                 }

@@ -62,10 +62,10 @@ impl Checker<'_, '_> {
             // which may generate additional constraints
             // so we need to decide whether to continue the loop or not
             for mut constraint in concrete {
-                let constraint_id = std::mem::take(&mut constraint.constraint_id);
+                let trace = std::mem::take(&mut constraint.constraint_trace);
                 if let Some((instance_id, mut additional)) = self.check_constraint(constraint) {
                     solutions.push(ir::Solution {
-                        constraint_id,
+                        trace,
                         instance_id,
                     });
                     current_constraints.append(&mut additional);

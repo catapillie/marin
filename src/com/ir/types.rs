@@ -48,23 +48,17 @@ pub struct Constraint {
     pub loc: Loc,
     pub class_args: Box<[TypeID]>,
     pub associated_args: Box<[TypeID]>,
-    pub constraint_id: ConstraintID,
+    pub constraint_trace: ConstraintTrace,
 }
 
 #[derive(Debug, Default, Clone)]
-pub enum ConstraintID {
-    #[default]
-    Empty,
-
-    ID {
-        id: usize,
-        dep: Box<ConstraintID>,
-    },
+pub struct ConstraintTrace {
+    pub constraint_ids: Vec<usize>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Solution {
-    pub constraint_id: ConstraintID,
+    pub trace: ConstraintTrace,
     pub instance_id: InstanceID,
 }
 
