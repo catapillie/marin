@@ -144,7 +144,7 @@ impl Checker<'_, '_> {
             None => ir::Expr::Variant { tag, items: None },
             Some(arity) => {
                 let arg_ids = (0..arity)
-                    .map(|_| ir::VariableID::dummy())
+                    .map(|_| self.entities.create_dummy_variable())
                     .collect::<Vec<_>>();
                 let arg_patterns = arg_ids.iter().map(|id| ir::Pattern::Binding(*id)).collect();
                 let arg_exprs = arg_ids.iter().map(|id| ir::Expr::Var { id: *id }).collect();

@@ -1,5 +1,5 @@
 use super::{Expr, InstanceScheme, PathQuery, Scheme, TypeID};
-use crate::com::loc::Loc;
+use crate::com::loc::{Loc, Span};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum AnyID {
@@ -21,12 +21,6 @@ define_id_type!(ClassID, Class);
 define_id_type!(InstanceID, Instance);
 define_id_type!(ImportID, Import);
 define_id_type!(AliasID, Alias);
-
-impl VariableID {
-    pub fn dummy() -> Self {
-        Self(usize::MAX)
-    }
-}
 
 #[derive(Default)]
 pub struct Entities {
@@ -81,6 +75,21 @@ impl Entities {
         (create_alias, next_alias_id, get_alias_info get_alias_info_mut),
         (AliasID => AliasInfo),
     );
+
+    pub fn create_dummy_variable(&mut self) -> VariableID {
+        let id = self.next_variable_id();
+        self.create_variable(VariableInfo {
+            name: format!("dummy{}", id.0),
+            scheme: Scheme {
+                forall: Default::default(),
+                uninstantiated: TypeID(usize::MAX),
+                constraints: Default::default(),
+            },
+            loc: Loc::new(Span::default(), usize::MAX),
+            depth: usize::MAX,
+            is_captured: false,
+        })
+    }
 
     pub fn get_record_field_info(
         &self,

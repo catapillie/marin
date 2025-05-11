@@ -55,6 +55,10 @@ pub enum Expr {
         callee: Box<Expr>,
         args: Box<[Expr]>,
     },
+    Unwrap {
+        value: Box<Expr>,
+        unwrapping: Unwrapping,
+    },
 }
 
 impl Expr {
@@ -76,6 +80,7 @@ pub enum Stmt {
         stmts: Box<[Stmt]>,
         needs_frame: bool,
     },
+    AbstractLet,
 }
 
 pub enum Pat {
@@ -116,6 +121,27 @@ struct Work {
     solutions: Vec<Solution>,
 }
 
+#[derive(Clone, Debug)]
+pub enum Unwrapping {
+    Done,
+    Bundle { index: usize, next: Box<Unwrapping> },
+}
+
+impl Unwrapping {
+    fn index(self, i: usize) -> Self {
+        Self::Bundle {
+            index: i,
+            next: Box::new(self),
+        }
+    }
+}
+
+struct AbstractionInfo {
+    implementations: Vec<()>,
+    abstract_variable_id: ir::VariableID,
+    unwrappings_by_binding: HashMap<ir::VariableID, Unwrapping>,
+}
+
 struct Lowerer {
     entities: ir::Entities,
     work: Vec<Work>,
@@ -126,6 +152,9 @@ struct Lowerer {
 
     solutions: Scope<usize, (), (ir::InstanceID, ir::ConstraintID)>,
     instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
+
+    abstractions: Vec<AbstractionInfo>,
+    abstraction_key_by_var: HashMap<ir::VariableID, usize>,
 }
 
 impl Lowerer {
@@ -140,6 +169,9 @@ impl Lowerer {
 
             solutions: Scope::root(),
             instances: HashMap::new(),
+
+            abstractions: Vec::new(),
+            abstraction_key_by_var: HashMap::new(),
         }
     }
 
@@ -385,6 +417,33 @@ impl Lowerer {
         }
     }
 
+    fn collect_unwrappings(
+        prev: Unwrapping,
+        pat: &ir::Pattern,
+        map: &mut HashMap<ir::VariableID, Unwrapping>,
+    ) {
+        use ir::Pattern as P;
+        match pat {
+            P::Missing => {}
+            P::Discard => {}
+            P::Binding(id) => {
+                map.insert(*id, prev);
+            }
+            P::Int(_) | P::Float(_) | P::String(_) | P::Bool(_) => {}
+            P::Record(_, items) | P::Tuple(items) => {
+                for (i, item) in items.iter().enumerate() {
+                    Self::collect_unwrappings(prev.clone().index(i), item, map);
+                }
+            }
+            P::Variant(_, _, None) => {}
+            P::Variant(_, _, Some(items)) => {
+                for (i, item) in items.iter().enumerate() {
+                    Self::collect_unwrappings(prev.clone().index(i).index(2), item, map);
+                }
+            }
+        }
+    }
+
     fn lower_let_statement(
         &mut self,
         lhs: ir::Pattern,
@@ -393,7 +452,25 @@ impl Lowerer {
         solutions: Vec<ir::Solution>,
     ) -> Stmt {
         if !is_concrete {
-            todo!("abstract let binding")
+            let abstract_variable_id = self.entities.create_dummy_variable();
+            self.register_local(abstract_variable_id);
+
+            let bindings = lhs.get_binding_ids();
+            let mut unwrappings = HashMap::new();
+            Self::collect_unwrappings(Unwrapping::Done, &lhs, &mut unwrappings);
+
+            let abstraction_key = self.abstractions.len();
+            self.abstractions.push(AbstractionInfo {
+                implementations: vec![],
+                abstract_variable_id,
+                unwrappings_by_binding: unwrappings,
+            });
+
+            for binding in bindings {
+                self.abstraction_key_by_var.insert(binding, abstraction_key);
+            }
+
+            return Stmt::AbstractLet;
         }
 
         self.register_solutions(solutions);
@@ -483,7 +560,7 @@ impl Lowerer {
             E::Float { val } => Self::lower_float(val),
             E::String { val } => Self::lower_string(val),
             E::Bool { val } => Self::lower_bool(val),
-            E::Var { id } => self.lower_local(id),
+            E::Var { id } => self.lower_variable(id),
             E::Tuple { items } => self.lower_small_bundle(items),
             E::Array { items } => self.lower_small_bundle(items),
             E::Block { stmts, label } => self.lower_block_expression(stmts),
@@ -517,7 +594,7 @@ impl Lowerer {
                     .get(instance_id)
                     .expect("unregister instance");
                 let var_id = item_bindings[item_id];
-                self.lower_local(var_id)
+                self.lower_variable(var_id)
             }
         }
     }
@@ -538,9 +615,41 @@ impl Lowerer {
         Expr::Bool { val }
     }
 
-    fn lower_local(&self, id: ir::VariableID) -> Expr {
+    fn lower_variable(&mut self, id: ir::VariableID) -> Expr {
+        // abstract binding needs to be lowered with applied constraint solutions
+        if self.abstraction_key_by_var.contains_key(&id) {
+            return self.lower_abstract_variable(id);
+        }
+
+        // regular local variable
         let local = self.get_local(id);
         Expr::Local { local }
+    }
+
+    fn lower_abstract_variable(&mut self, id: ir::VariableID) -> Expr {
+        let key = self
+            .abstraction_key_by_var
+            .get(&id)
+            .copied()
+            .expect("variable id is not abstract");
+        let info = self
+            .abstractions
+            .get_mut(key)
+            .expect("incorrect abstraction info key");
+
+        let implementation_index = info.implementations.len();
+        info.implementations.push(());
+
+        let unwrapping = info.unwrappings_by_binding[&id]
+            .clone()
+            .index(implementation_index);
+
+        let abstract_variable_id = info.abstract_variable_id;
+        let abstract_value = self.lower_variable(abstract_variable_id);
+        Expr::Unwrap {
+            value: Box::new(abstract_value),
+            unwrapping,
+        }
     }
 
     fn lower_expression_list(&mut self, items: impl IntoIterator<Item = ir::Expr>) -> Vec<Expr> {

@@ -13,7 +13,7 @@ impl Checker<'_, '_> {
         let result_type = self.create_fresh_type(Some(span));
 
         let (scrut, scrut_type) = self.check_expression(&b.scrutinee);
-        let scrut_var = ir::VariableID::dummy();
+        let scrut_var = self.entities.create_dummy_variable();
 
         let mut cases = Vec::new();
         for case in &b.cases {
@@ -273,7 +273,9 @@ impl Checker<'_, '_> {
     }
 
     fn create_binding_patterns(&mut self, n: usize) -> (Vec<ir::Pattern>, Vec<ir::VariableID>) {
-        let arg_ids = (0..n).map(|_| ir::VariableID::dummy()).collect::<Vec<_>>();
+        let arg_ids = (0..n)
+            .map(|_| self.entities.create_dummy_variable())
+            .collect::<Vec<_>>();
         let arg_patterns = arg_ids.iter().map(|id| ir::Pattern::Binding(*id)).collect();
         (arg_patterns, arg_ids)
     }

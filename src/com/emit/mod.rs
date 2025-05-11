@@ -160,6 +160,10 @@ impl BytecodeBuilder {
                     self.write_opcode(Opcode::end_frame);
                 }
             }
+            S::AbstractLet => {
+                // unit for now
+                self.write_opcode(Opcode::bundle(0));
+            }
         }
     }
 
@@ -192,6 +196,10 @@ impl BytecodeBuilder {
                 }
             }
         }
+    }
+
+    fn build_unwrapping(&mut self, unwrapping: low::Unwrapping) {
+        todo!("build_unwrapping")
     }
 
     fn build_expression(&mut self, expr: low::Expr) {
@@ -250,6 +258,10 @@ impl BytecodeBuilder {
                 }
                 self.build_expression(*callee);
                 self.write_opcode(Opcode::call(arg_count));
+            }
+            E::Unwrap { value, unwrapping } => {
+                self.build_expression(*value);
+                self.build_unwrapping(unwrapping);
             }
         }
     }

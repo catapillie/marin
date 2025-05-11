@@ -38,7 +38,7 @@ impl Checker<'_, '_> {
         let record_type = self.apply_type_substitution(uninstantiated_record, &sub);
         let field_type = self.apply_type_substitution(uninstantiated_field, &sub);
 
-        let arg_id = ir::VariableID::dummy();
+        let arg_id = self.entities.create_dummy_variable();
         let getter_expr = ir::Expr::Fun {
             name: getter_full_name,
             recursive_binding: None,
