@@ -113,7 +113,6 @@ pub struct Abstraction {
 
 pub struct Program {
     pub functions: Vec<Function>,
-    pub abstractions: Vec<Abstraction>,
 }
 
 struct Work {
@@ -144,8 +143,6 @@ impl Unwrapping {
 struct AbstractionInfo {
     abstract_expr: ir::Expr,
     expr_solutions: Vec<ir::Solution>,
-    implementations: Vec<Expr>,
-    abstract_variable_id: ir::VariableID,
     unwrappings_by_binding: HashMap<ir::VariableID, Unwrapping>,
 }
 
@@ -226,19 +223,7 @@ impl Lowerer {
             functions.push(fun);
         }
 
-        // clean up temporary information from abstractions
-        let abstractions = self
-            .abstractions
-            .into_iter()
-            .map(|info| Abstraction {
-                implementations: info.implementations,
-            })
-            .collect();
-
-        Program {
-            functions,
-            abstractions,
-        }
+        Program { functions }
     }
 
     fn solve_class_item_variable_id(&self, item_id: usize, constraint_id: usize) -> ir::VariableID {
@@ -494,9 +479,6 @@ impl Lowerer {
         solutions: Vec<ir::Solution>,
     ) -> Stmt {
         if !is_concrete {
-            let abstract_variable_id = self.entities.create_dummy_variable();
-            self.register_local(abstract_variable_id);
-
             let bindings = lhs.get_binding_ids();
             let mut unwrappings = HashMap::new();
             Self::collect_unwrappings(Unwrapping::Done, &lhs, &mut unwrappings);
@@ -505,8 +487,6 @@ impl Lowerer {
             self.abstractions.push(AbstractionInfo {
                 abstract_expr: rhs,
                 expr_solutions: solutions,
-                implementations: vec![],
-                abstract_variable_id,
                 unwrappings_by_binding: unwrappings,
             });
 
@@ -669,53 +649,37 @@ impl Lowerer {
             .expect("incorrect abstraction info key")
     }
 
-    fn get_variable_abstraction_info_mut(&mut self, id: VariableID) -> &mut AbstractionInfo {
-        let key = self
-            .abstraction_key_by_var
-            .get(&id)
-            .copied()
-            .expect("variable id is not abstract");
-        self.abstractions
-            .get_mut(key)
-            .expect("incorrect abstraction info key")
-    }
+    fn build_abstract_expression_solutions(
+        &self,
+        id: ir::VariableID,
+        constraint_id: usize,
+    ) -> Vec<ir::Solution> {
+        let info = self.get_variable_abstraction_info(id);
 
-    fn lower_abstract_variable(&mut self, id: ir::VariableID, constraint_id: usize) -> Expr {
-        let info = self.get_variable_abstraction_info_mut(id);
-
-        // here, we create a new implementation for the abstract variable
-        // the implementation is determined using the current known constraint solutions
-
-        // retrieve the expression we are going to instantiate
-        let implementation_index = info.implementations.len();
-        let abstract_expr = info.abstract_expr.clone();
-
-        // restore the solutions known at the point of the abstract expression
-        // some were already known
-        // others need to be elaborated because they were just solved
         let mut abstract_expr_solutions = info.expr_solutions.clone();
         let mut relevant_solutions = self.elaborate_solutions(constraint_id);
         abstract_expr_solutions.append(&mut relevant_solutions);
 
-        // register the solutions and instantiate the expression!
+        abstract_expr_solutions
+    }
+
+    fn lower_abstract_variable(&mut self, id: ir::VariableID, constraint_id: usize) -> Expr {
+        let info = self.get_variable_abstraction_info(id);
+        let abstract_expr = info.abstract_expr.clone();
+
+        let abstract_expr_solutions = self.build_abstract_expression_solutions(id, constraint_id);
+
         let orig = self.register_solutions(abstract_expr_solutions);
-        let implementation = self.lower_expression(abstract_expr);
+        let expr = self.lower_expression(abstract_expr);
         self.restore_solutions(orig);
 
-        // save the new expression
-        let info = self.get_variable_abstraction_info_mut(id);
-        info.implementations.push(implementation);
-
         // unwrap the correct binding from the abstract bundle
-        let unwrapping = info.unwrappings_by_binding[&id]
-            .clone()
-            .index(implementation_index);
+        let info = self.get_variable_abstraction_info(id);
+        let unwrapping = info.unwrappings_by_binding[&id].clone();
 
         // emit the abstract variable and return the unwrapping expression
-        let abstract_variable_id = info.abstract_variable_id;
-        let abstract_value = self.lower_variable(abstract_variable_id);
         Expr::Unwrap {
-            value: Box::new(abstract_value),
+            value: Box::new(expr),
             unwrapping,
         }
     }
@@ -814,6 +778,7 @@ impl Lowerer {
     ) -> Expr {
         let mut captured = HashSet::new();
         self.collect_expr_captured_variables(&expr, &mut captured);
+        println!("lower fun '{name}', captured: {captured:#?}");
 
         let capture_info = CaptureInfo {
             locals: captured
@@ -837,7 +802,11 @@ impl Lowerer {
         Expr::Fun { id }
     }
 
-    fn collect_stmt_captured_variables(&self, stmt: &ir::Stmt, set: &mut HashSet<ir::VariableID>) {
+    fn collect_stmt_captured_variables(
+        &mut self,
+        stmt: &ir::Stmt,
+        set: &mut HashSet<ir::VariableID>,
+    ) {
         use ir::Stmt as S;
         match stmt {
             S::Missing | S::Nothing => {}
@@ -860,7 +829,11 @@ impl Lowerer {
         }
     }
 
-    fn collect_expr_captured_variables(&self, expr: &ir::Expr, set: &mut HashSet<ir::VariableID>) {
+    fn collect_expr_captured_variables(
+        &mut self,
+        expr: &ir::Expr,
+        set: &mut HashSet<ir::VariableID>,
+    ) {
         use ir::Expr as E;
         match expr {
             E::Missing | E::Int { .. } | E::Float { .. } | E::String { .. } | E::Bool { .. } => {}
@@ -869,14 +842,16 @@ impl Lowerer {
                     set.insert(*id);
                 }
             }
-            E::AbstractVar {
-                id,
-                constraint_id: _,
-            } => {
+            E::AbstractVar { id, constraint_id } => {
                 let info = self.get_variable_abstraction_info(*id);
-                if self.local_by_var.contains_key(&info.abstract_variable_id) {
-                    set.insert(info.abstract_variable_id);
-                }
+                let abstract_expr = info.abstract_expr.clone();
+
+                let abstract_expr_solutions =
+                    self.build_abstract_expression_solutions(*id, *constraint_id);
+
+                let orig = self.register_solutions(abstract_expr_solutions);
+                self.collect_expr_captured_variables(&abstract_expr, set);
+                self.restore_solutions(orig);
             }
             E::Tuple { items } | E::Array { items } => {
                 for item in items {
@@ -968,7 +943,7 @@ impl Lowerer {
     }
 
     fn collect_decision_captured_variables(
-        &self,
+        &mut self,
         decision: &ir::Decision,
         set: &mut HashSet<ir::VariableID>,
     ) {
