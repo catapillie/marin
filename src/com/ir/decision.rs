@@ -4,7 +4,7 @@ use super::{Expr, Pattern, Stmt, VariableID};
 pub enum Decision {
     Failure,
     Success {
-        stmts: Box<[Stmt]>,
+        stmts: Vec<Stmt>,
         result: Box<Expr>,
     },
     Test {

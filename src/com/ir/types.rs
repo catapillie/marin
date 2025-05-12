@@ -3,12 +3,19 @@ use crate::com::{
     reporting::{Label, Report},
 };
 use colored::Colorize;
+use std::usize;
 use std::{collections::BTreeSet, fmt::Display};
 
 use super::{ClassID, InstanceID, RecordID, UnionID};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeID(pub usize);
+
+impl TypeID {
+    pub fn whatever() -> Self {
+        Self(usize::MAX)
+    }
+}
 
 pub struct TypeNode {
     pub parent: TypeID,

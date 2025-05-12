@@ -81,7 +81,7 @@ impl Checker<'_, '_> {
             let MatchRhs(expr, stmts) = cases.swap_remove(0).1;
             return (
                 ir::Decision::Success {
-                    stmts: stmts.into(),
+                    stmts,
                     result: Box::new(expr),
                 },
                 true,

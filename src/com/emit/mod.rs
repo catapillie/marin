@@ -26,6 +26,7 @@ enum JumpMode {
     Always,
     IfTrue,
     IfFalse,
+    Eq,
 }
 
 enum PseudoOp {
@@ -236,9 +237,7 @@ impl BytecodeBuilder {
                 self.build_small_bundle(items);
                 self.write_opcode(Opcode::bundle(2));
             }
-            E::Local { local } => {
-                self.write_opcode(Opcode::load_local(local));
-            }
+            E::Local { local } => self.build_local(local),
             E::If {
                 guard,
                 then_branch,
@@ -266,6 +265,11 @@ impl BytecodeBuilder {
                 self.build_expression(*value);
                 self.build_unwrapping(unwrapping);
             }
+            E::Match {
+                scrutinee,
+                decision,
+                fallback,
+            } => self.build_match(*scrutinee, *decision, *fallback),
         }
     }
 
@@ -281,6 +285,10 @@ impl BytecodeBuilder {
         .expect("program cannot have more than 65535 constants");
 
         self.write_opcode(Opcode::load_const(index));
+    }
+
+    fn build_local(&mut self, local: u8) {
+        self.write_opcode(Opcode::load_local(local))
     }
 
     fn build_small_bundle(&mut self, items: Box<[low::Expr]>) {
@@ -321,6 +329,106 @@ impl BytecodeBuilder {
 
         self.wire_jump(JumpMode::IfFalse, guard_end_marker, block_end_marker);
         self.wire_jump(JumpMode::Always, block_end_marker, guard_start_marker);
+    }
+
+    fn build_match(&mut self, scrutinee: low::Expr, decision: low::Decision, fallback: low::Expr) {
+        self.write_opcode(Opcode::do_frame);
+
+        self.build_expression(scrutinee);
+
+        let mut failure_markers = Vec::new();
+        let mut success_markers = Vec::new();
+        self.build_decision(decision, &mut success_markers, &mut failure_markers);
+
+        let failure_dest_marker = self.mark();
+        for marker in failure_markers {
+            self.wire_jump(JumpMode::Always, marker, failure_dest_marker);
+        }
+
+        self.build_expression(fallback);
+
+        let success_dest_marker = self.mark();
+        for marker in success_markers {
+            self.wire_jump(JumpMode::Always, marker, success_dest_marker);
+        }
+
+        self.write_opcode(Opcode::end_frame);
+    }
+
+    fn build_decision(
+        &mut self,
+        decision: low::Decision,
+        success_markers: &mut Vec<Marker>,
+        failure_markers: &mut Vec<Marker>,
+    ) {
+        use low::Decision as D;
+        use low::Pat as P;
+        match decision {
+            D::Failure => {
+                let marker = self.mark();
+                failure_markers.push(marker);
+            }
+            D::Success { expr } => {
+                self.build_expression(*expr);
+                let marker = self.mark();
+                success_markers.push(marker);
+            }
+            D::Test {
+                local,
+                pat,
+                success,
+                failure,
+            } => {
+                self.build_local(local);
+                let (test_jump_mode, deconstruct_pattern) = match *pat {
+                    P::Discard => {
+                        self.write_opcode(Opcode::pop);
+                        (JumpMode::Always, None)
+                    }
+                    P::Int(val) => {
+                        self.build_constant(Value::Int(val));
+                        (JumpMode::Eq, None)
+                    }
+                    P::Float(val) => {
+                        self.build_constant(Value::Float(val));
+                        (JumpMode::Eq, None)
+                    }
+                    P::String(val) => {
+                        self.build_constant(Value::String(val));
+                        (JumpMode::Eq, None)
+                    }
+                    P::Bool(val) => {
+                        self.build_constant(Value::Bool(val));
+                        (JumpMode::Eq, None)
+                    }
+                    P::Local(loc) => {
+                        self.write_opcode(Opcode::pop);
+                        (JumpMode::Always, Some(P::Local(loc)))
+                    }
+                    P::Bundle(pats) => {
+                        self.write_opcode(Opcode::pop);
+                        (JumpMode::Always, Some(P::Bundle(pats)))
+                    }
+                    P::Variant(tag, pats) => {
+                        self.write_opcode(Opcode::index(0));
+                        self.build_constant(Value::Int(tag as i64));
+                        (JumpMode::Eq, Some(P::Bundle(pats)))
+                    }
+                };
+
+                let failure_begin_marker = self.mark();
+                self.build_decision(*failure, success_markers, failure_markers);
+
+                let success_begin_marker = self.mark();
+                if let Some(pat) = deconstruct_pattern {
+                    self.build_local(local);
+                    self.build_deconstruct(pat, 0);
+                }
+                self.build_decision(*success, success_markers, failure_markers);
+
+                self.wire_jump(test_jump_mode, failure_begin_marker, success_begin_marker);
+            }
+        }
     }
 
     fn build_loop(&mut self, body: low::Stmt) {
@@ -380,6 +488,7 @@ impl BytecodeBuilder {
                         JumpMode::Always => self.cursor.write_u8(opcode::jump)?,
                         JumpMode::IfTrue => self.cursor.write_u8(opcode::jump_if)?,
                         JumpMode::IfFalse => self.cursor.write_u8(opcode::jump_if_not)?,
+                        JumpMode::Eq => self.cursor.write_u8(opcode::jump_eq)?,
                     }
 
                     match &mut placeholders[dest.0] {

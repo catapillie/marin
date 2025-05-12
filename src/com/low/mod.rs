@@ -56,6 +56,24 @@ pub enum Expr {
         value: Box<Expr>,
         unwrapping: Unwrapping,
     },
+    Match {
+        scrutinee: Box<Expr>,
+        decision: Box<Decision>,
+        fallback: Box<Expr>,
+    },
+}
+
+pub enum Decision {
+    Failure,
+    Success {
+        expr: Box<Expr>,
+    },
+    Test {
+        local: u8,
+        pat: Box<Pat>,
+        success: Box<Decision>,
+        failure: Box<Decision>,
+    },
 }
 
 impl Expr {
@@ -729,11 +747,51 @@ impl Lowerer {
                     scrutinee_var,
                     scrutinee,
                     decision,
-                } => todo!(),
+                } => {
+                    let scrutinee = self.lower_expression(*scrutinee);
+                    self.register_local(scrutinee_var);
+                    let decision = self.lower_decision(*decision, is_exhaustive);
+                    fallback = Expr::Match {
+                        scrutinee: Box::new(scrutinee),
+                        decision: Box::new(decision),
+                        fallback: Box::new(fallback),
+                    };
+                }
             }
         }
 
         fallback
+    }
+
+    fn lower_decision(&mut self, decision: ir::Decision, is_exhaustive: bool) -> Decision {
+        use ir::Decision as D;
+        match decision {
+            D::Failure => Decision::Failure,
+            D::Success { mut stmts, result } => {
+                stmts.push(ir::Stmt::Expr {
+                    expr: *result,
+                    ty: ir::TypeID::whatever(),
+                });
+
+                Decision::Success {
+                    expr: match is_exhaustive {
+                        true => Box::new(self.lower_block_expression(stmts)),
+                        false => Box::new(self.lower_statement_block(stmts)),
+                    },
+                }
+            }
+            D::Test {
+                tested_var,
+                pattern,
+                success,
+                failure,
+            } => Decision::Test {
+                local: self.get_local(tested_var),
+                pat: Box::new(self.lower_pattern(*pattern)),
+                success: Box::new(self.lower_decision(*success, is_exhaustive)),
+                failure: Box::new(self.lower_decision(*failure, is_exhaustive)),
+            },
+        }
     }
 
     fn lower_variant(&mut self, tag: usize, items: Option<Box<[ir::Expr]>>) -> Expr {
