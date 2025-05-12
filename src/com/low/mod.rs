@@ -1,7 +1,4 @@
-use super::{
-    ir::{self, Solution},
-    scope::Scope,
-};
+use super::ir::{self, Solution, VariableID};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy)]
@@ -245,10 +242,9 @@ impl Lowerer {
     }
 
     fn solve_class_item_variable_id(&self, item_id: usize, constraint_id: usize) -> ir::VariableID {
-        let solutions = self
-            .solutions
-            .get(&constraint_id)
-            .expect("unknown solution");
+        let Some(solutions) = self.solutions.get(&constraint_id) else {
+            panic!("unknown solution for constraint id '{constraint_id}'")
+        };
         let solution = &solutions[0];
         let item_bindings = self
             .instances
@@ -263,7 +259,7 @@ impl Lowerer {
         // construct the map: (constraint_id -> [solutions...])
         for mut solution in solutions {
             if let Some(constraint_id) = solution.trace.constraint_ids.pop() {
-                self.solutions.entry(constraint_id).or_insert(vec![]);
+                self.solutions.entry(constraint_id).or_default();
                 self.solutions
                     .get_mut(&constraint_id)
                     .unwrap()
@@ -662,16 +658,30 @@ impl Lowerer {
         Expr::Local { local }
     }
 
-    fn lower_abstract_variable(&mut self, id: ir::VariableID, constraint_id: usize) -> Expr {
+    fn get_variable_abstraction_info(&self, id: VariableID) -> &AbstractionInfo {
         let key = self
             .abstraction_key_by_var
             .get(&id)
             .copied()
             .expect("variable id is not abstract");
-        let info = self
-            .abstractions
+        self.abstractions
+            .get(key)
+            .expect("incorrect abstraction info key")
+    }
+
+    fn get_variable_abstraction_info_mut(&mut self, id: VariableID) -> &mut AbstractionInfo {
+        let key = self
+            .abstraction_key_by_var
+            .get(&id)
+            .copied()
+            .expect("variable id is not abstract");
+        self.abstractions
             .get_mut(key)
-            .expect("incorrect abstraction info key");
+            .expect("incorrect abstraction info key")
+    }
+
+    fn lower_abstract_variable(&mut self, id: ir::VariableID, constraint_id: usize) -> Expr {
+        let info = self.get_variable_abstraction_info_mut(id);
 
         // here, we create a new implementation for the abstract variable
         // the implementation is determined using the current known constraint solutions
@@ -693,7 +703,7 @@ impl Lowerer {
         self.restore_solutions(orig);
 
         // save the new expression
-        let info = &mut self.abstractions[key];
+        let info = self.get_variable_abstraction_info_mut(id);
         info.implementations.push(implementation);
 
         // unwrap the correct binding from the abstract bundle
@@ -859,7 +869,15 @@ impl Lowerer {
                     set.insert(*id);
                 }
             }
-            E::AbstractVar { id, constraint_id } => {}
+            E::AbstractVar {
+                id,
+                constraint_id: _,
+            } => {
+                let info = self.get_variable_abstraction_info(*id);
+                if self.local_by_var.contains_key(&info.abstract_variable_id) {
+                    set.insert(info.abstract_variable_id);
+                }
+            }
             E::Tuple { items } | E::Array { items } => {
                 for item in items {
                     self.collect_expr_captured_variables(item, set);
