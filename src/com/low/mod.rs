@@ -815,8 +815,12 @@ impl Lowerer {
                 lhs: _,
                 rhs,
                 is_concrete: _,
-                solutions: _,
-            } => self.collect_expr_captured_variables(rhs, set),
+                solutions,
+            } => {
+                let orig = self.register_solutions(solutions.clone());
+                self.collect_expr_captured_variables(rhs, set);
+                self.restore_solutions(orig);
+            }
             S::Have {
                 instance_id: _,
                 stmts,
