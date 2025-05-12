@@ -778,7 +778,6 @@ impl Lowerer {
     ) -> Expr {
         let mut captured = HashSet::new();
         self.collect_expr_captured_variables(&expr, &mut captured);
-        println!("lower fun '{name}', captured: {captured:#?}");
 
         let capture_info = CaptureInfo {
             locals: captured
