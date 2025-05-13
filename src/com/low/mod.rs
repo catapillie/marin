@@ -129,6 +129,7 @@ pub struct Program {
 struct Work {
     name: String,
     id: FunID,
+    recursive_fun_id: FunID,
     recursive_binding: Option<ir::VariableID>,
     signature: ir::Signature,
     expr: ir::Expr,
@@ -167,6 +168,9 @@ struct Lowerer {
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
 
+    current_recursive_fun_id: FunID,
+    current_recursive_id: Option<ir::VariableID>,
+
     solutions: SolutionMap,
     instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
 
@@ -183,6 +187,9 @@ impl Lowerer {
             function_index: 0,
             local_index: 0,
             local_by_var: HashMap::new(),
+
+            current_recursive_fun_id: FunID(usize::MAX),
+            current_recursive_id: None,
 
             solutions: SolutionMap::default(),
             instances: HashMap::new(),
@@ -217,6 +224,7 @@ impl Lowerer {
             name: "<main>".to_string(),
             id,
             recursive_binding: None,
+            recursive_fun_id: id,
             expr: ir::Expr::BlockUnlabelled {
                 stmts: stmts.into(),
             },
@@ -289,6 +297,8 @@ impl Lowerer {
     fn lower_function_work(&mut self, work: Work) -> Function {
         self.local_by_var.clear();
         self.local_index = 0;
+        self.current_recursive_fun_id = work.recursive_fun_id;
+        self.current_recursive_id = work.recursive_binding;
         self.solutions = Default::default();
 
         use ir::Signature as S;
@@ -348,7 +358,8 @@ impl Lowerer {
         self.work.push(Work {
             name: format!("{}'", work.name),
             id: next_id,
-            recursive_binding: None,
+            recursive_fun_id: work.recursive_fun_id,
+            recursive_binding: work.recursive_binding,
             signature: *next,
             expr: work.expr,
             capture_info: new_capture_info,
@@ -644,6 +655,13 @@ impl Lowerer {
     }
 
     fn lower_variable(&mut self, id: ir::VariableID) -> Expr {
+        // recursive function binding
+        if self.current_recursive_id == Some(id) {
+            return Expr::Fun {
+                id: self.current_recursive_fun_id,
+            };
+        }
+
         // regular local variable
         let local = self.get_local(id);
         Expr::Local { local }
@@ -843,6 +861,7 @@ impl Lowerer {
         self.work.push(Work {
             name,
             id,
+            recursive_fun_id: id,
             recursive_binding,
             signature,
             expr,
