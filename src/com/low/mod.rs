@@ -20,6 +20,10 @@ pub enum Expr {
     Bundle {
         items: Box<[Expr]>,
     },
+    Access {
+        accessed: Box<Expr>,
+        index: u8,
+    },
     Block {
         stmts: Box<[Stmt]>,
         result: Box<Expr>,
@@ -635,7 +639,7 @@ impl Lowerer {
             E::Call { callee, args } => self.lower_call(*callee, args),
             E::Variant { tag, items } => self.lower_variant(tag, items),
             E::Record { fields } => self.lower_small_bundle(fields),
-            E::Access { accessed, index } => todo!(),
+            E::Access { accessed, index } => self.lower_access(*accessed, index),
             E::ClassItem {
                 item_id,
                 constraint_id,
@@ -729,6 +733,13 @@ impl Lowerer {
     fn lower_small_bundle(&mut self, items: Box<[ir::Expr]>) -> Expr {
         Expr::Bundle {
             items: self.lower_expression_list(items).into(),
+        }
+    }
+
+    fn lower_access(&mut self, accessed: ir::Expr, index: usize) -> Expr {
+        Expr::Access {
+            accessed: Box::new(self.lower_expression(accessed)),
+            index: index.try_into().expect("cannot index beyond 255"),
         }
     }
 

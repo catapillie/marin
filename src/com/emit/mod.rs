@@ -234,6 +234,10 @@ impl BytecodeBuilder {
             E::String { val } => self.build_constant(Value::String(val)),
             E::Bool { val } => self.build_constant(Value::Bool(val)),
             E::Bundle { items } => self.build_small_bundle(items),
+            E::Access { accessed, index } => {
+                self.build_expression(*accessed);
+                self.write_opcode(Opcode::index(index));
+            }
             E::Block {
                 stmts,
                 result,
