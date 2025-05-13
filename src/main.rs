@@ -8,13 +8,19 @@ fn main() {
     let mut compiler = com::init();
 
     let mut has_std = true;
+    let mut show_disassembly = false;
     for arg in &args {
-        if arg == "--no-std" {
-            has_std = false;
-            continue;
-        }
+        match arg.as_str() {
+            // options
+            "--no-std" => has_std = false,
+            "--show-disassembly" => show_disassembly = true,
+            opt if opt.starts_with("--") => {
+                panic!("unknown option '{opt}'");
+            }
 
-        compiler.add_file(arg);
+            // path
+            arg => compiler.add_file(arg),
+        }
     }
 
     if has_std {
@@ -36,8 +42,11 @@ fn main() {
     let compiler = compiler.emit();
     let bytecode = compiler.into_content().bytecode;
 
-    let mut cursor = std::io::Cursor::new(&bytecode);
-    binary::dissasemble(&mut cursor).unwrap();
+    if show_disassembly {
+        let mut cursor = std::io::Cursor::new(&bytecode);
+        binary::dissasemble(&mut cursor).unwrap();
+    }
 
+    println!();
     exe::run_bytecode(&bytecode);
 }
