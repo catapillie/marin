@@ -268,17 +268,17 @@ class Addable(Left, Right) of Result
 end
 
 alias Addable.add as add
-"forall T b c, fun(a, b) => c, where [Addable(a, b) of c]"
+"forall a b c, fun(a, b) => c, where [Addable(a, b) of c]"
 "^^^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^"
 "   domain           type              constraints       "
 
 
-"forall T b c d e,
+"forall a b c d e,
     fun(d, e, c) => a,
 where [Addable(b, c) of a], [Addable(d, e) of b]"
 let sum3_left(a, b, c) = add(add(a, b), c)
 
-"forall T b c d e,
+"forall a b c d e,
     fun(b, d, e) => a,
 where [Addable(d, e) of c], [Addable(b, c) of a]"
 let sum3_right(a, b, c) = add(a, add(b, c))
