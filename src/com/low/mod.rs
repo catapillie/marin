@@ -112,6 +112,7 @@ pub enum Pat {
 #[derive(Default)]
 pub struct CaptureInfo {
     locals: Vec<(ir::VariableID, u8)>,
+    functions: HashMap<ir::VariableID, FunID>,
 }
 
 pub struct Function {
@@ -167,9 +168,7 @@ struct Lowerer {
     function_index: usize,
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
-
-    current_recursive_fun_id: FunID,
-    current_recursive_id: Option<ir::VariableID>,
+    recursive_functions: HashMap<ir::VariableID, FunID>,
 
     solutions: SolutionMap,
     instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
@@ -187,9 +186,7 @@ impl Lowerer {
             function_index: 0,
             local_index: 0,
             local_by_var: HashMap::new(),
-
-            current_recursive_fun_id: FunID(usize::MAX),
-            current_recursive_id: None,
+            recursive_functions: HashMap::new(),
 
             solutions: SolutionMap::default(),
             instances: HashMap::new(),
@@ -297,8 +294,6 @@ impl Lowerer {
     fn lower_function_work(&mut self, work: Work) -> Function {
         self.local_by_var.clear();
         self.local_index = 0;
-        self.current_recursive_fun_id = work.recursive_fun_id;
-        self.current_recursive_id = work.recursive_binding;
         self.solutions = Default::default();
 
         use ir::Signature as S;
@@ -327,7 +322,16 @@ impl Lowerer {
 
         // if this was the last argment signature, we are done
         if let S::Done = &*next {
-            self.register_solutions(work.solutions);
+            self.register_solutions(work.solutions); // solutions
+
+            // recursive function call
+            self.recursive_functions = work.capture_info.functions;
+            if let Some(rec_id) = work.recursive_binding {
+                self.recursive_functions
+                    .insert(rec_id, work.recursive_fun_id);
+            }
+
+            // lower the function body
             return Function {
                 name: work.name,
                 id: work.id,
@@ -345,6 +349,7 @@ impl Lowerer {
                 .iter()
                 .map(|(id, _)| (*id, self.local_by_var[id]))
                 .collect(),
+            functions: work.capture_info.functions,
         };
 
         // current args are immediately captured...
@@ -659,10 +664,8 @@ impl Lowerer {
 
     fn lower_variable(&mut self, id: ir::VariableID) -> Expr {
         // recursive function binding
-        if self.current_recursive_id == Some(id) {
-            return Expr::Fun {
-                id: self.current_recursive_fun_id,
-            };
+        if let Some(fun_id) = self.recursive_functions.get(&id) {
+            return Expr::Fun { id: *fun_id };
         }
 
         // regular local variable
@@ -849,13 +852,15 @@ impl Lowerer {
         expr: ir::Expr,
     ) -> Expr {
         let mut captured = HashSet::new();
-        self.collect_expr_captured_variables(&expr, &mut captured);
+        let mut functions = HashMap::new();
+        self.collect_expr_captured_variables(&expr, &mut captured, &mut functions);
 
         let capture_info = CaptureInfo {
             locals: captured
                 .into_iter()
                 .map(|id| (id, self.local_by_var[&id]))
                 .collect(),
+            functions,
         };
 
         let solutions = self.rebuild_solutions();
@@ -878,11 +883,12 @@ impl Lowerer {
         &mut self,
         stmt: &ir::Stmt,
         set: &mut HashSet<ir::VariableID>,
+        fun_map: &mut HashMap<ir::VariableID, FunID>,
     ) {
         use ir::Stmt as S;
         match stmt {
             S::Missing | S::Nothing => {}
-            S::Expr { expr, ty: _ } => self.collect_expr_captured_variables(expr, set),
+            S::Expr { expr, ty: _ } => self.collect_expr_captured_variables(expr, set, fun_map),
             S::Let {
                 lhs: _,
                 rhs,
@@ -890,7 +896,7 @@ impl Lowerer {
                 solutions,
             } => {
                 let orig = self.register_solutions(solutions.clone());
-                self.collect_expr_captured_variables(rhs, set);
+                self.collect_expr_captured_variables(rhs, set, fun_map);
                 self.restore_solutions(orig);
             }
             S::Have {
@@ -899,7 +905,7 @@ impl Lowerer {
                 item_bindings: _,
             } => {
                 for stmt in stmts {
-                    self.collect_stmt_captured_variables(stmt, set);
+                    self.collect_stmt_captured_variables(stmt, set, fun_map);
                 }
             }
         }
@@ -909,11 +915,15 @@ impl Lowerer {
         &mut self,
         expr: &ir::Expr,
         set: &mut HashSet<ir::VariableID>,
+        fun_map: &mut HashMap<ir::VariableID, FunID>,
     ) {
         use ir::Expr as E;
         match expr {
             E::Missing | E::Int { .. } | E::Float { .. } | E::String { .. } | E::Bool { .. } => {}
             E::Var { id } => {
+                if let Some(fun_id) = self.recursive_functions.get(id) {
+                    fun_map.insert(*id, *fun_id);
+                }
                 if self.local_by_var.contains_key(id) {
                     set.insert(*id);
                 }
@@ -926,17 +936,17 @@ impl Lowerer {
                     self.build_abstract_expression_solutions(*id, *constraint_id);
 
                 let orig = self.register_solutions(abstract_expr_solutions);
-                self.collect_expr_captured_variables(&abstract_expr, set);
+                self.collect_expr_captured_variables(&abstract_expr, set, fun_map);
                 self.restore_solutions(orig);
             }
             E::Tuple { items } | E::Array { items } => {
                 for item in items {
-                    self.collect_expr_captured_variables(item, set);
+                    self.collect_expr_captured_variables(item, set, fun_map);
                 }
             }
             E::Block { stmts, label: _ } | E::BlockUnlabelled { stmts } => {
                 for stmt in stmts {
-                    self.collect_stmt_captured_variables(stmt, set);
+                    self.collect_stmt_captured_variables(stmt, set, fun_map);
                 }
             }
             E::Conditional {
@@ -956,55 +966,55 @@ impl Lowerer {
                             body,
                             label: _,
                         } => {
-                            self.collect_expr_captured_variables(guard, set);
+                            self.collect_expr_captured_variables(guard, set, fun_map);
                             for stmt in body {
-                                self.collect_stmt_captured_variables(stmt, set);
+                                self.collect_stmt_captured_variables(stmt, set, fun_map);
                             }
                         }
                         B::Loop { body, label: _ } | B::Else { body, label: _ } => {
                             for stmt in body {
-                                self.collect_stmt_captured_variables(stmt, set);
+                                self.collect_stmt_captured_variables(stmt, set, fun_map);
                             }
                         }
                         B::Match {
                             scrutinee_var: _,
                             scrutinee: _,
                             decision,
-                        } => self.collect_decision_captured_variables(decision, set),
+                        } => self.collect_decision_captured_variables(decision, set, fun_map),
                     }
                 }
             }
             E::Break {
                 expr: Some(expr),
                 label: _,
-            } => self.collect_expr_captured_variables(expr, set),
+            } => self.collect_expr_captured_variables(expr, set, fun_map),
             E::Break { .. } | E::Skip { .. } => {}
             E::Fun {
                 name: _,
                 recursive_binding: _,
                 signature: _,
                 expr,
-            } => self.collect_expr_captured_variables(expr, set),
+            } => self.collect_expr_captured_variables(expr, set, fun_map),
             E::Call { callee, args } => {
-                self.collect_expr_captured_variables(callee, set);
+                self.collect_expr_captured_variables(callee, set, fun_map);
                 for arg in args {
-                    self.collect_expr_captured_variables(arg, set);
+                    self.collect_expr_captured_variables(arg, set, fun_map);
                 }
             }
             E::Variant { tag: _, items } => {
                 if let Some(items) = items {
                     for item in items {
-                        self.collect_expr_captured_variables(item, set);
+                        self.collect_expr_captured_variables(item, set, fun_map);
                     }
                 }
             }
             E::Record { fields } => {
                 for field in fields {
-                    self.collect_expr_captured_variables(field, set);
+                    self.collect_expr_captured_variables(field, set, fun_map);
                 }
             }
             E::Access { accessed, index: _ } => {
-                self.collect_expr_captured_variables(accessed, set);
+                self.collect_expr_captured_variables(accessed, set, fun_map);
             }
             E::ClassItem {
                 item_id,
@@ -1022,15 +1032,16 @@ impl Lowerer {
         &mut self,
         decision: &ir::Decision,
         set: &mut HashSet<ir::VariableID>,
+        fun_map: &mut HashMap<ir::VariableID, FunID>,
     ) {
         use ir::Decision as D;
         match decision {
             D::Failure => {}
             D::Success { stmts, result } => {
                 for stmt in stmts {
-                    self.collect_stmt_captured_variables(stmt, set);
+                    self.collect_stmt_captured_variables(stmt, set, fun_map);
                 }
-                self.collect_expr_captured_variables(result, set);
+                self.collect_expr_captured_variables(result, set, fun_map);
             }
             D::Test {
                 tested_var: _,
@@ -1038,8 +1049,8 @@ impl Lowerer {
                 success,
                 failure,
             } => {
-                self.collect_decision_captured_variables(success, set);
-                self.collect_decision_captured_variables(failure, set);
+                self.collect_decision_captured_variables(success, set, fun_map);
+                self.collect_decision_captured_variables(failure, set, fun_map);
             }
         }
     }
