@@ -7,7 +7,7 @@ use crate::{
 };
 use std::{collections::HashMap, io::Cursor};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct Marker(usize);
 
 #[derive(Default)]
@@ -22,6 +22,7 @@ enum Placeholder {
     Patched(u32),
 }
 
+#[derive(Debug)]
 enum JumpMode {
     Always,
     IfTrue,
@@ -30,6 +31,7 @@ enum JumpMode {
 }
 
 enum PseudoOp {
+    Noop,
     Op(Opcode),
     LoadFun(low::FunID),
 }
@@ -73,9 +75,21 @@ impl BytecodeBuilder {
         self.opcodes.push((PseudoOp::LoadFun(id), None))
     }
 
+    // multiple cases for marking the current opcode
+    // 1. there is already a marker on the latest opcode
+    //     => push a no-op and place a new marker there
+    // 2. the latest opcode isn't marked
+    //     => place a new marker on it
+    // 3. there are no opcodes yet
+    //     => return the 'top' marker (0)
     fn mark(&mut self) -> Marker {
         match self.opcodes.last_mut() {
-            Some((_, Some(marker))) => *marker,
+            Some((_, Some(_))) => {
+                let m = Marker(self.markers.len());
+                self.markers.push(MarkerInfo::default());
+                self.opcodes.push((PseudoOp::Noop, Some(m)));
+                m
+            }
             Some((_, marker @ None)) => {
                 let m = Marker(self.markers.len());
                 self.markers.push(MarkerInfo::default());
@@ -87,6 +101,13 @@ impl BytecodeBuilder {
     }
 
     fn wire_jump(&mut self, mode: JumpMode, from: Marker, to: Marker) {
+        if let Some((old_to, _)) = self.markers[from.0].outgoing {
+            panic!(
+                "wiring {}->{} overrides {}->{}",
+                from.0, to.0, from.0, old_to.0
+            )
+        }
+
         self.markers[from.0].outgoing = Some((to, mode));
         self.markers[to.0].incoming.push(from);
     }
@@ -412,7 +433,7 @@ impl BytecodeBuilder {
                     P::Variant(tag, pats) => {
                         self.write_opcode(Opcode::index(0));
                         self.build_constant(Value::Int(tag as i64));
-                        (JumpMode::Eq, Some(P::Bundle(pats)))
+                        (JumpMode::Eq, Some(P::Variant(tag, pats)))
                     }
                 };
 
@@ -464,6 +485,9 @@ impl BytecodeBuilder {
 
         for (opcode, marker) in &self.opcodes {
             match opcode {
+                // no operation
+                PseudoOp::Noop => {}
+
                 // simple opcode
                 PseudoOp::Op(op) => binary::write_opcode(&mut self.cursor, op)?,
 
