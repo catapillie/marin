@@ -253,7 +253,7 @@ impl Lowerer {
         let item_bindings = self
             .instances
             .get(&solution.instance_id)
-            .expect("unregister instance");
+            .expect("unregistered instance");
         item_bindings[item_id]
     }
 
@@ -561,7 +561,10 @@ impl Lowerer {
     fn get_local(&self, id: ir::VariableID) -> u8 {
         match self.local_by_var.get(&id) {
             Some(local) => *local,
-            None => panic!("unregistered variable '{}'", id.0),
+            None => {
+                let info = self.entities.get_variable_info(id);
+                panic!("unregistered variable '{}' (#{})", info.name, id.0)
+            }
         }
     }
 
