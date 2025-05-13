@@ -31,7 +31,7 @@ Resources which I rely on for this project:
 ## Installation
 
 ### Requirements
-* Rust (2021 edition)
+* Rust (2024 edition)
 * Cargo
 
 Clone the repository and build the application :
