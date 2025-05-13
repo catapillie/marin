@@ -25,6 +25,17 @@ pub enum Token {
     #[token(">")]
     RightChev,
 
+    #[token("+")]
+    Add,
+    #[token("-")]
+    Sub,
+    #[token("*")]
+    Mul,
+    #[token("/")]
+    Div,
+    #[token("%")]
+    Mod,
+
     #[token("=>")]
     Maps,
     #[token("=")]
@@ -117,6 +128,12 @@ impl Display for Token {
             Token::RightBrace => write!(f, "'}}'"),
             Token::LeftChev => write!(f, "'<'"),
             Token::RightChev => write!(f, "'>'"),
+
+            Token::Add => write!(f, "'+'"),
+            Token::Sub => write!(f, "'-'"),
+            Token::Mul => write!(f, "'*'"),
+            Token::Div => write!(f, "'/'"),
+            Token::Mod => write!(f, "'%'"),
 
             Token::Maps => write!(f, "'=>'"),
             Token::Assign => write!(f, "'='"),

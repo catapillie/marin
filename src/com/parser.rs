@@ -154,7 +154,7 @@ impl<'src, 'e> Parser<'src, 'e> {
     }
 
     pub fn try_parse_expression(&mut self) -> Option<ast::Expr> {
-        self.try_parse_primary_expression()
+        self.try_parse_operation_expression()
     }
 
     pub fn expect_primary_expression(&mut self) -> ast::Expr {
@@ -170,6 +170,63 @@ impl<'src, 'e> Parser<'src, 'e> {
                 })
             }
         }
+    }
+
+    fn try_peek_binary_operator(&mut self) -> Option<ast::BinOp> {
+        match self.peek() {
+            Token::Add => Some(ast::BinOp::Add),
+            Token::Sub => Some(ast::BinOp::Sub),
+            Token::Div => Some(ast::BinOp::Div),
+            Token::Mul => Some(ast::BinOp::Mul),
+            Token::Mod => Some(ast::BinOp::Mod),
+            _ => None,
+        }
+    }
+
+    fn try_parse_operation_expression(&mut self) -> Option<ast::Expr> {
+        self.try_parse_precedence_operation(0)
+    }
+
+    fn expect_precedence_operation(&mut self, current_prec: usize) -> ast::Expr {
+        match self.try_parse_precedence_operation(current_prec) {
+            Some(expr) => expr,
+            None => {
+                self.reports.push(
+                    Report::error(Header::ExpectedExpression())
+                        .with_primary_label(Label::Empty, self.loc_here()),
+                );
+                ast::Expr::Missing(ast::Lexeme {
+                    span: self.span_here(),
+                })
+            }
+        }
+    }
+
+    fn try_parse_precedence_operation(&mut self, current_prec: usize) -> Option<ast::Expr> {
+        let mut lhs = self.try_parse_primary_expression()?;
+
+        loop {
+            let Some(op) = self.try_peek_binary_operator() else {
+                break;
+            };
+
+            let op_prec = op.precedence();
+            if op_prec < current_prec {
+                break;
+            }
+
+            let op_tok = self.consume_token();
+            let rhs = self.expect_precedence_operation(op_prec);
+
+            lhs = ast::Expr::Binary(ast::Binary {
+                op,
+                op_tok,
+                left: Box::new(lhs),
+                right: Box::new(rhs),
+            });
+        }
+
+        Some(lhs)
     }
 
     pub fn try_parse_primary_expression(&mut self) -> Option<ast::Expr> {

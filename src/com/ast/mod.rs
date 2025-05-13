@@ -1,9 +1,11 @@
+mod bin_op;
 mod expr;
 mod label;
 mod pattern;
 mod signature;
 mod traversal;
 
+pub use bin_op::*;
 pub use expr::*;
 pub use label::*;
 pub use pattern::*;
