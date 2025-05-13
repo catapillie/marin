@@ -25,7 +25,6 @@ enum Placeholder {
 #[derive(Debug)]
 enum JumpMode {
     Always,
-    IfTrue,
     IfFalse,
     Eq,
 }
@@ -162,6 +161,7 @@ impl BytecodeBuilder {
     fn build_statement(&mut self, stmt: low::Stmt) {
         use low::Stmt as S;
         match stmt {
+            S::Nothing => {},
             S::Expr { expr } => {
                 self.build_expression(*expr);
                 self.write_opcode(Opcode::pop);
@@ -183,7 +183,6 @@ impl BytecodeBuilder {
                     self.write_opcode(Opcode::end_frame);
                 }
             }
-            S::AbstractLet { abstraction_key } => {}
         }
     }
 
@@ -510,7 +509,6 @@ impl BytecodeBuilder {
                 if let Some((dest, mode)) = &self.markers[marker.0].outgoing {
                     match mode {
                         JumpMode::Always => self.cursor.write_u8(opcode::jump)?,
-                        JumpMode::IfTrue => self.cursor.write_u8(opcode::jump_if)?,
                         JumpMode::IfFalse => self.cursor.write_u8(opcode::jump_if_not)?,
                         JumpMode::Eq => self.cursor.write_u8(opcode::jump_eq)?,
                     }

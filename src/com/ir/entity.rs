@@ -86,8 +86,6 @@ impl Entities {
                 constraints: Default::default(),
             },
             loc: Loc::new(Span::default(), usize::MAX),
-            depth: usize::MAX,
-            is_captured: false,
         })
     }
 
@@ -115,8 +113,6 @@ pub struct VariableInfo {
     pub name: String,
     pub scheme: Scheme,
     pub loc: Loc,
-    pub depth: usize,
-    pub is_captured: bool,
 }
 
 pub struct UserTypeInfo {

@@ -11,8 +11,6 @@ impl<'src> Checker<'src, '_> {
             name: name.to_string(),
             scheme,
             loc: span.wrap(self.file),
-            depth: self.scope.depth(),
-            is_captured: false,
         });
         self.scope.insert(name, id.wrap());
         id

@@ -86,13 +86,6 @@ where
         self.bindings.iter()
     }
 
-    pub fn iter_all(&self) -> ScopeIterator<K, I, T> {
-        ScopeIterator {
-            iter: self.bindings.iter(),
-            next_scope: self.parent.as_deref(),
-        }
-    }
-
     pub fn infos_mut(&mut self) -> &mut I {
         &mut self.info
     }

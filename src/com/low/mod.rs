@@ -85,6 +85,7 @@ impl Expr {
 }
 
 pub enum Stmt {
+    Nothing,
     Expr {
         expr: Box<Expr>,
     },
@@ -94,9 +95,6 @@ pub enum Stmt {
     Block {
         stmts: Box<[Stmt]>,
         needs_frame: bool,
-    },
-    AbstractLet {
-        abstraction_key: usize,
     },
 }
 
@@ -122,11 +120,6 @@ pub struct Function {
     pub args: Box<[Pat]>,
     pub expr: Expr,
     pub captured_locals: Vec<u8>,
-}
-
-#[derive(Default)]
-pub struct Abstraction {
-    pub implementations: Vec<Expr>,
 }
 
 pub struct Program {
@@ -512,7 +505,7 @@ impl Lowerer {
                 self.abstraction_key_by_var.insert(binding, abstraction_key);
             }
 
-            return Stmt::AbstractLet { abstraction_key };
+            return Stmt::Nothing;
         }
 
         let orig = self.register_solutions(solutions);
