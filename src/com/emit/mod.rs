@@ -161,7 +161,7 @@ impl BytecodeBuilder {
     fn build_statement(&mut self, stmt: low::Stmt) {
         use low::Stmt as S;
         match stmt {
-            S::Nothing => {},
+            S::Nothing => {}
             S::Expr { expr } => {
                 self.build_expression(*expr);
                 self.write_opcode(Opcode::pop);
