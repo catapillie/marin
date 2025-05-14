@@ -7,6 +7,11 @@ opcodes! {
     0x14 index(u8)
     0x16 index_big(u64)
     0x17 spill(u16)
+    0x20 add
+    0x21 sub
+    0x22 mul
+    0x23 div
+    0x24 modulo
     0xa0 load_const(u16)
     0xa2 load_local(u8)
     0xa3 set_local(u8)

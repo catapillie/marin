@@ -39,6 +39,11 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::index => Ok(Opcode::index(r.read_u8()?)),
         opcode::index_big => Ok(Opcode::index_big(r.read_u64::<LE>()?)),
         opcode::spill => Ok(Opcode::spill(r.read_u16::<LE>()?)),
+        opcode::add => Ok(Opcode::add),
+        opcode::sub => Ok(Opcode::sub),
+        opcode::mul => Ok(Opcode::mul),
+        opcode::div => Ok(Opcode::div),
+        opcode::modulo => Ok(Opcode::modulo),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -99,6 +104,26 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         Opcode::spill(offset) => {
             w.write_u8(opcode::spill)?;
             w.write_u16::<LE>(*offset)?;
+            Ok(())
+        }
+        Opcode::add => {
+            w.write_u8(opcode::add)?;
+            Ok(())
+        }
+        Opcode::sub => {
+            w.write_u8(opcode::sub)?;
+            Ok(())
+        }
+        Opcode::mul => {
+            w.write_u8(opcode::mul)?;
+            Ok(())
+        }
+        Opcode::div => {
+            w.write_u8(opcode::div)?;
+            Ok(())
+        }
+        Opcode::modulo => {
+            w.write_u8(opcode::modulo)?;
             Ok(())
         }
         Opcode::load_const(x) => {

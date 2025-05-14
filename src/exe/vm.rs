@@ -147,6 +147,63 @@ impl<'a> VM<'a> {
                     self.stack.extend_from_slice(values);
                     self.stack[index..].rotate_right(values.len());
                 }
+                opcode::add => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a + b),
+                        (Val::Float(a), Val::Float(b)) => Val::Float(a + b),
+                        (Val::String(u_a), Val::String(u_b)) => {
+                            let mut ab = String::new();
+                            ab.push_str(self.heap.deref_string(u_a));
+                            ab.push_str(self.heap.deref_string(u_b));
+                            let u_ab = self.heap.alloc_string(ab);
+                            Val::String(u_ab)
+                        }
+                        _ => panic!("invalid 'add' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::sub => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a - b),
+                        (Val::Float(a), Val::Float(b)) => Val::Float(a - b),
+                        _ => panic!("invalid 'sub' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::mul => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a * b),
+                        (Val::Float(a), Val::Float(b)) => Val::Float(a * b),
+                        _ => panic!("invalid 'mul' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::div => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a / b),
+                        (Val::Float(a), Val::Float(b)) => Val::Float(a / b),
+                        _ => panic!("invalid 'mul' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::modulo => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a % b),
+                        (Val::Float(a), Val::Float(b)) => Val::Float(a % b),
+                        _ => panic!("invalid 'modulo' operation"),
+                    };
+                    self.push(result);
+                }
                 opcode::load_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());

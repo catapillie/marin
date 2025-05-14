@@ -74,4 +74,10 @@ pub enum Expr {
         constraint_id: usize,
     },
     Builtin(Builtin),
+
+    Add(Box<Expr>, Box<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
+    Div(Box<Expr>, Box<Expr>),
+    Mod(Box<Expr>, Box<Expr>),
 }

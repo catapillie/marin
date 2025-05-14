@@ -294,6 +294,12 @@ impl BytecodeBuilder {
                 decision,
                 fallback,
             } => self.build_match(*scrutinee, *decision, *fallback),
+
+            E::Add(left, right) => self.build_binary_op(*left, *right, Opcode::add),
+            E::Sub(left, right) => self.build_binary_op(*left, *right, Opcode::sub),
+            E::Mul(left, right) => self.build_binary_op(*left, *right, Opcode::mul),
+            E::Div(left, right) => self.build_binary_op(*left, *right, Opcode::div),
+            E::Mod(left, right) => self.build_binary_op(*left, *right, Opcode::modulo),
         }
     }
 
@@ -539,6 +545,12 @@ impl BytecodeBuilder {
             }
         }
         Ok(())
+    }
+
+    fn build_binary_op(&mut self, left: low::Expr, right: low::Expr, op: Opcode) {
+        self.build_expression(left);
+        self.build_expression(right);
+        self.write_opcode(op);
     }
 }
 

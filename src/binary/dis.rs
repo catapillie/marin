@@ -77,6 +77,11 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::spill(offset) => {
                 print!("{:>14} {}", "spill", offset.to_string().bold())
             }
+            Op::add => print!("{:>14}", "add"),
+            Op::sub => print!("{:>14}", "sub"),
+            Op::mul => print!("{:>14}", "mul"),
+            Op::div => print!("{:>14}", "div"),
+            Op::modulo => print!("{:>14}", "modulo"),
             Op::load_const(x) => print!(
                 "{:>14} #{} = {}",
                 "load_const",

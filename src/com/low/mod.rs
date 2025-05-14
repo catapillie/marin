@@ -65,6 +65,12 @@ pub enum Expr {
         decision: Box<Decision>,
         fallback: Box<Expr>,
     },
+
+    Add(Box<Expr>, Box<Expr>),
+    Sub(Box<Expr>, Box<Expr>),
+    Mul(Box<Expr>, Box<Expr>),
+    Div(Box<Expr>, Box<Expr>),
+    Mod(Box<Expr>, Box<Expr>),
 }
 
 pub enum Decision {
@@ -179,6 +185,8 @@ struct Lowerer {
 
     abstractions: Vec<AbstractionInfo>,
     abstraction_key_by_var: HashMap<ir::VariableID, usize>,
+
+    builtins: HashMap<ir::Builtin, FunID>,
 }
 
 impl Lowerer {
@@ -197,6 +205,8 @@ impl Lowerer {
 
             abstractions: Vec::new(),
             abstraction_key_by_var: HashMap::new(),
+
+            builtins: HashMap::new(),
         }
     }
 
@@ -648,6 +658,27 @@ impl Lowerer {
                 self.lower_variable(var_id)
             }
             E::Builtin(builtin) => self.lower_builtin(builtin),
+
+            E::Add(left, right) => Expr::Add(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Sub(left, right) => Expr::Sub(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Mul(left, right) => Expr::Mul(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Div(left, right) => Expr::Div(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Mod(left, right) => Expr::Mod(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
         }
     }
 
@@ -1038,6 +1069,15 @@ impl Lowerer {
                 }
             }
             E::Builtin(..) => {}
+
+            E::Add(left, right)
+            | E::Sub(left, right)
+            | E::Mul(left, right)
+            | E::Div(left, right)
+            | E::Mod(left, right) => {
+                self.collect_expr_captured_variables(left, set, fun_map);
+                self.collect_expr_captured_variables(right, set, fun_map);
+            }
         }
     }
 
@@ -1076,7 +1116,47 @@ impl Lowerer {
     }
 
     fn lower_builtin(&mut self, builtin: ir::Builtin) -> Expr {
-        todo!()
+        let id = match self.builtins.get(&builtin) {
+            Some(id) => *id,
+            None => {
+                let id = self.create_builtin_function_work(builtin);
+                self.builtins.insert(builtin, id);
+                id
+            }
+        };
+
+        Expr::Fun { id }
+    }
+
+    fn create_builtin_function_work(&mut self, builtin: ir::Builtin) -> FunID {
+        use ir::Builtin as Bi;
+        let (signature, expr) = match builtin {
+            Bi::int_add => builtin_bin_op!(self, Add),
+            Bi::int_sub => builtin_bin_op!(self, Sub),
+            Bi::int_mul => builtin_bin_op!(self, Mul),
+            Bi::int_div => builtin_bin_op!(self, Div),
+            Bi::int_mod => builtin_bin_op!(self, Mod),
+            Bi::float_add => builtin_bin_op!(self, Add),
+            Bi::float_sub => builtin_bin_op!(self, Sub),
+            Bi::float_mul => builtin_bin_op!(self, Mul),
+            Bi::float_div => builtin_bin_op!(self, Div),
+            Bi::float_mod => builtin_bin_op!(self, Mod),
+            Bi::string_concat => builtin_bin_op!(self, Add),
+        };
+
+        let id = self.next_function_id();
+        self.work.push(Work {
+            name: builtin.to_string(),
+            id,
+            recursive_fun_id: id,
+            recursive_binding: None,
+            signature,
+            expr,
+            capture_info: CaptureInfo::default(),
+            solutions: Vec::new(),
+        });
+
+        id
     }
 }
 
@@ -1087,3 +1167,23 @@ pub fn lower(
 ) -> Program {
     Lowerer::new(entities).lower_program(modules, dependency_order)
 }
+
+macro_rules! builtin_bin_op {
+    ($self:ident, $ctor:ident) => {{
+        let left = $self.entities.create_dummy_variable();
+        let right = $self.entities.create_dummy_variable();
+
+        (
+            ir::Signature::Args {
+                args: Box::new([ir::Pattern::Binding(left), ir::Pattern::Binding(right)]),
+                next: Box::new(ir::Signature::Done),
+            },
+            ir::Expr::$ctor(
+                Box::new(ir::Expr::Var { id: left }),
+                Box::new(ir::Expr::Var { id: right }),
+            ),
+        )
+    }};
+}
+
+use builtin_bin_op;
