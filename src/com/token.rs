@@ -2,10 +2,10 @@ use logos::Logos;
 use std::fmt::Display;
 
 #[derive(Debug, Copy, Clone, Logos, PartialEq, Eq)]
-#[logos(skip r"[^\S\n\r]+")]
+#[logos(skip r"[^\S\n\r]+|--[^\n\r]*")]
 pub enum Token {
     Eof,
-    #[regex(r"[\n\r]\s*")]
+    #[regex(r"[\n\r](\s|--[^\n\r]*)*")]
     Newline,
 
     #[token("(")]
