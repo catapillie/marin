@@ -1,7 +1,10 @@
 use super::ir::{self, Solution, VariableID};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    f32::consts::E,
+};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FunID(pub usize);
 
 pub enum Expr {
@@ -51,6 +54,7 @@ pub enum Expr {
     },
     Fun {
         id: FunID,
+        captured: Box<[u8]>,
     },
     Call {
         callee: Box<Expr>,
@@ -119,9 +123,9 @@ pub enum Pat {
     Variant(usize, Box<[Pat]>),
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct CaptureInfo {
-    locals: Vec<(ir::VariableID, u8)>,
+    variables: Vec<ir::VariableID>,
     functions: HashMap<ir::VariableID, FunID>,
 }
 
@@ -130,7 +134,6 @@ pub struct Function {
     pub id: FunID,
     pub args: Box<[Pat]>,
     pub expr: Expr,
-    pub captured_locals: Vec<u8>,
 }
 
 pub struct Program {
@@ -144,7 +147,6 @@ struct Work {
     recursive_binding: Option<ir::VariableID>,
     signature: ir::Signature,
     expr: ir::Expr,
-    capture_info: CaptureInfo,
     solutions: Vec<Solution>,
 }
 
@@ -175,10 +177,12 @@ struct Lowerer {
     entities: ir::Entities,
     work: Vec<Work>,
 
-    function_index: usize,
     local_index: usize,
     local_by_var: HashMap<ir::VariableID, u8>,
-    recursive_functions: HashMap<ir::VariableID, FunID>,
+
+    function_index: usize,
+    current_fun_id: FunID,
+    capture_info_by_fun_id: HashMap<FunID, CaptureInfo>,
 
     solutions: SolutionMap,
     instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
@@ -195,10 +199,12 @@ impl Lowerer {
             entities,
             work: Vec::new(),
 
-            function_index: 0,
             local_index: 0,
             local_by_var: HashMap::new(),
-            recursive_functions: HashMap::new(),
+
+            function_index: 0,
+            current_fun_id: FunID(0),
+            capture_info_by_fun_id: HashMap::new(),
 
             solutions: SolutionMap::default(),
             instances: HashMap::new(),
@@ -230,22 +236,20 @@ impl Lowerer {
 
         // build main function task
         use ir::Signature as Sig;
-        let id = self.next_function_id();
-        self.work.push(Work {
-            name: "<main>".to_string(),
-            id,
-            recursive_binding: None,
-            recursive_fun_id: id,
-            expr: ir::Expr::BlockUnlabelled {
+        self.add_work(
+            "<main>".to_string(),
+            None,
+            None,
+            ir::Expr::BlockUnlabelled {
                 stmts: stmts.into(),
             },
-            signature: Sig::Args {
+            Sig::Args {
                 args: Box::new([]),
                 next: Box::new(Sig::Done),
             },
-            capture_info: CaptureInfo::default(),
+            CaptureInfo::default(),
             solutions,
-        });
+        );
 
         let mut functions = Vec::new();
         while let Some(work) = self.work.pop() {
@@ -254,6 +258,30 @@ impl Lowerer {
         }
 
         Program { functions }
+    }
+
+    fn add_work(
+        &mut self,
+        name: String,
+        recursive_binding: Option<ir::VariableID>,
+        recursive_fun_id: Option<FunID>,
+        expr: ir::Expr,
+        signature: ir::Signature,
+        capture_info: CaptureInfo,
+        solutions: Vec<ir::Solution>,
+    ) -> FunID {
+        let id = self.next_function_id();
+        self.capture_info_by_fun_id.insert(id, capture_info);
+        self.work.push(Work {
+            name,
+            id,
+            recursive_binding,
+            recursive_fun_id: recursive_fun_id.unwrap_or(id),
+            expr,
+            signature,
+            solutions,
+        });
+        id
     }
 
     fn solve_class_item_variable_id(&self, item_id: usize, constraint_id: usize) -> ir::VariableID {
@@ -328,20 +356,21 @@ impl Lowerer {
             .collect();
 
         // register captured variables as new locals
-        for (captured, _) in &work.capture_info.locals {
-            self.register_local(*captured);
+        for captured_id in self.capture_info_by_fun_id[&work.id].variables.clone() {
+            self.register_local(captured_id);
         }
-
-        let captured_locals = Self::get_captured_locals_from_info(&work.capture_info);
 
         // if this was the last argment signature, we are done
         if let S::Done = &*next {
             self.register_solutions(work.solutions); // solutions
 
             // recursive function call
-            self.recursive_functions = work.capture_info.functions;
+            self.current_fun_id = work.id;
             if let Some(rec_id) = work.recursive_binding {
-                self.recursive_functions
+                self.capture_info_by_fun_id
+                    .get_mut(&work.id)
+                    .unwrap()
+                    .functions
                     .insert(rec_id, work.recursive_fun_id);
             }
 
@@ -351,51 +380,44 @@ impl Lowerer {
                 id: work.id,
                 args,
                 expr: self.lower_expression(work.expr),
-                captured_locals,
             };
         }
 
-        // generate a new capture info with updated locals
-        let mut new_capture_info = CaptureInfo {
-            locals: work
-                .capture_info
-                .locals
-                .iter()
-                .map(|(id, _)| (*id, self.local_by_var[id]))
-                .collect(),
-            functions: work.capture_info.functions,
-        };
-
-        // current args are immediately captured...
+        // otherwise, current args are immediately captured...
+        let mut capture_info = self.capture_info_by_fun_id[&work.id].clone();
         for arg_binding in arg_bindings {
-            new_capture_info
-                .locals
-                .push((arg_binding, self.local_by_var[&arg_binding]));
+            capture_info.variables.push(arg_binding);
         }
 
-        let next_id = self.next_function_id();
-        self.work.push(Work {
-            name: format!("{}'", work.name),
-            id: next_id,
-            recursive_fun_id: work.recursive_fun_id,
-            recursive_binding: work.recursive_binding,
-            signature: *next,
-            expr: work.expr,
-            capture_info: new_capture_info,
-            solutions: work.solutions,
-        });
+        // get the captured locals in this auxiliary function
+        let captured_locals = self.get_captured_locals_from_info(&capture_info);
+
+        let next_id = self.add_work(
+            format!("{}'", work.name),
+            work.recursive_binding,
+            Some(work.id), // recursive function id points to first function
+            work.expr,
+            *next,
+            capture_info,
+            work.solutions,
+        );
 
         Function {
             name: work.name,
             id: work.id,
             args,
-            expr: Expr::Fun { id: next_id },
-            captured_locals,
+            expr: Expr::Fun {
+                id: next_id,
+                captured: captured_locals,
+            },
         }
     }
 
-    fn get_captured_locals_from_info(info: &CaptureInfo) -> Vec<u8> {
-        info.locals.iter().map(|(_, local)| *local).collect()
+    fn get_captured_locals_from_info(&self, info: &CaptureInfo) -> Box<[u8]> {
+        info.variables
+            .iter()
+            .map(|id| self.local_by_var[id])
+            .collect()
     }
 
     fn lower_statement(&mut self, stmt: ir::Stmt) -> Stmt {
@@ -700,8 +722,12 @@ impl Lowerer {
 
     fn lower_variable(&mut self, id: ir::VariableID) -> Expr {
         // recursive function binding
-        if let Some(fun_id) = self.recursive_functions.get(&id) {
-            return Expr::Fun { id: *fun_id };
+        let capture_info = self.get_capture_info();
+        if let Some(fun_id) = capture_info.functions.get(&id).copied() {
+            return Expr::Fun {
+                id: fun_id,
+                captured: self.get_captured_locals_from_info(capture_info),
+            };
         }
 
         // regular local variable
@@ -899,27 +925,30 @@ impl Lowerer {
         self.collect_expr_captured_variables(&expr, &mut captured, &mut functions);
 
         let capture_info = CaptureInfo {
-            locals: captured
-                .into_iter()
-                .map(|id| (id, self.local_by_var[&id]))
-                .collect(),
+            variables: captured.into_iter().collect(),
             functions,
         };
+        let captured_locals = self.get_captured_locals_from_info(&capture_info);
 
         let solutions = self.rebuild_solutions();
 
-        let id = self.next_function_id();
-        self.work.push(Work {
+        let id = self.add_work(
             name,
-            id,
-            recursive_fun_id: id,
             recursive_binding,
-            signature,
+            None,
             expr,
+            signature,
             capture_info,
             solutions,
-        });
-        Expr::Fun { id }
+        );
+        Expr::Fun {
+            id,
+            captured: captured_locals,
+        }
+    }
+
+    fn get_capture_info(&self) -> &CaptureInfo {
+        &self.capture_info_by_fun_id[&self.current_fun_id]
     }
 
     fn collect_stmt_captured_variables(
@@ -964,7 +993,7 @@ impl Lowerer {
         match expr {
             E::Missing | E::Int { .. } | E::Float { .. } | E::String { .. } | E::Bool { .. } => {}
             E::Var { id } => {
-                if let Some(fun_id) = self.recursive_functions.get(id) {
+                if let Some(fun_id) = self.get_capture_info().functions.get(id) {
                     fun_map.insert(*id, *fun_id);
                 }
                 if self.local_by_var.contains_key(id) {
@@ -1125,7 +1154,10 @@ impl Lowerer {
             }
         };
 
-        Expr::Fun { id }
+        Expr::Fun {
+            id,
+            captured: Box::new([]),
+        }
     }
 
     fn create_builtin_function_work(&mut self, builtin: ir::Builtin) -> FunID {
@@ -1144,19 +1176,15 @@ impl Lowerer {
             Bi::string_concat => builtin_bin_op!(self, Add),
         };
 
-        let id = self.next_function_id();
-        self.work.push(Work {
-            name: builtin.to_string(),
-            id,
-            recursive_fun_id: id,
-            recursive_binding: None,
-            signature,
+        self.add_work(
+            builtin.to_string(),
+            None,
+            None,
             expr,
-            capture_info: CaptureInfo::default(),
-            solutions: Vec::new(),
-        });
-
-        id
+            signature,
+            CaptureInfo::default(),
+            Vec::new(),
+        )
     }
 }
 

@@ -40,7 +40,6 @@ struct BytecodeBuilder {
 
     function_table: HashMap<u32, String>,
     function_positions: Vec<Placeholder>,
-    function_captures: Vec<Vec<u8>>,
 
     opcodes: Vec<(PseudoOp, Option<Marker>)>,
     cursor: Cursor<Vec<u8>>,
@@ -54,7 +53,6 @@ impl BytecodeBuilder {
 
             function_table: HashMap::new(),
             function_positions: Vec::new(),
-            function_captures: Vec::new(),
 
             opcodes: Vec::new(),
             cursor: Cursor::new(Vec::new()),
@@ -111,13 +109,8 @@ impl BytecodeBuilder {
         self.markers[to.0].incoming.push(from);
     }
 
-    fn build_program(&mut self, mut program: low::Program) -> binary::Result<()> {
+    fn build_program(&mut self, program: low::Program) -> binary::Result<()> {
         self.function_positions = vec![Placeholder::Unpatched(vec![]); program.functions.len()];
-        self.function_captures = vec![vec![]; program.functions.len()];
-
-        for function in &mut program.functions {
-            self.function_captures[function.id.0] = std::mem::take(&mut function.captured_locals);
-        }
 
         for fun in program.functions {
             self.build_function(fun)?;
@@ -273,7 +266,7 @@ impl BytecodeBuilder {
                 else_branch,
             } => self.build_while(*guard, *do_branch, *else_branch),
             E::Loop { body } => self.build_loop(*body),
-            E::Fun { id } => self.build_fun(id),
+            E::Fun { id, captured } => self.build_fun(id, captured),
             E::Call { callee, args } => {
                 let arg_count: u8 = args
                     .len()
@@ -469,16 +462,15 @@ impl BytecodeBuilder {
         self.wire_jump(JumpMode::Always, loop_end_marker, loop_start_marker);
     }
 
-    fn build_fun(&mut self, id: low::FunID) {
+    fn build_fun(&mut self, id: low::FunID, captured: Box<[u8]>) {
         self.write_load_fun(id);
 
         // captured item bundle
-        let captured_locals = self.function_captures[id.0].clone();
-        let captured_local_count: u8 = captured_locals
+        let captured_local_count: u8 = captured
             .len()
             .try_into()
             .expect("function cannot capture more than 255 items");
-        for local in captured_locals {
+        for local in captured {
             self.write_opcode(Opcode::load_local(local));
         }
         self.write_opcode(Opcode::bundle(captured_local_count));
