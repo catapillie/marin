@@ -1,4 +1,5 @@
 mod branch;
+mod builtin;
 mod decision;
 mod entity;
 mod expr;
@@ -11,6 +12,7 @@ mod stmt;
 mod types;
 
 pub use branch::*;
+pub use builtin::*;
 pub use decision::*;
 pub use entity::*;
 pub use expr::*;

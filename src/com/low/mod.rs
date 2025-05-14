@@ -647,6 +647,7 @@ impl Lowerer {
                 let var_id = self.solve_class_item_variable_id(item_id, constraint_id);
                 self.lower_variable(var_id)
             }
+            E::Builtin(builtin) => self.lower_builtin(builtin),
         }
     }
 
@@ -1036,6 +1037,7 @@ impl Lowerer {
                     set.insert(var_id);
                 }
             }
+            E::Builtin(..) => {}
         }
     }
 
@@ -1071,6 +1073,10 @@ impl Lowerer {
             callee: Box::new(self.lower_expression(callee)),
             args: self.lower_expression_list(args).into(),
         }
+    }
+
+    fn lower_builtin(&mut self, builtin: ir::Builtin) -> Expr {
+        todo!()
     }
 }
 

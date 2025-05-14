@@ -18,6 +18,7 @@ impl Checker<'_, '_> {
             E::Int(e) => self.check_int(e),
             E::Float(e) => self.check_float(e),
             E::String(e) => self.check_string(e),
+            E::Builtin(e) => self.check_builtin(e),
             E::True(e) => self.check_bool(e, true),
             E::False(e) => self.check_bool(e, false),
             E::Var(e) => self.check_var(e),

@@ -234,6 +234,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Int => self.try_parse_int_expression(),
             Token::Float => self.try_parse_float_expression(),
             Token::String => self.try_parse_string_expression(),
+            Token::Builtin => self.try_parse_builtin_expression(),
             Token::True => self.try_parse_true_expression(),
             Token::False => self.try_parse_false_expression(),
             Token::Underscores => self.try_parse_underscores_expression(),
@@ -329,6 +330,11 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_string_expression(&mut self) -> Option<ast::Expr> {
         self.try_expect_token(Token::String)
             .map(|token| ast::Expr::String(ast::Lexeme { span: token }))
+    }
+
+    fn try_parse_builtin_expression(&mut self) -> Option<ast::Expr> {
+        self.try_expect_token(Token::Builtin)
+            .map(|token| ast::Expr::Builtin(ast::Lexeme { span: token }))
     }
 
     fn try_parse_true_expression(&mut self) -> Option<ast::Expr> {

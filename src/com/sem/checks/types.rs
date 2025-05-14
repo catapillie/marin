@@ -24,9 +24,10 @@ impl<'src> Checker<'src, '_> {
         self.create_type(ir::Type::Var, span)
     }
 
-    pub fn create_native_type(&mut self, name: &'src str, ty: ir::Type) {
+    pub fn create_native_type(&mut self, name: &'src str, ty: ir::Type) -> ir::TypeID {
         let id = self.create_type(ty, None);
         self.create_user_type(name, id);
+        id
     }
 
     pub fn create_user_type(&mut self, name: &'src str, id: ir::TypeID) -> ir::UserTypeID {

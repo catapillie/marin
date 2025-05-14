@@ -21,6 +21,24 @@ pub struct ScopeInfo {
     pub instances: Instances,
 }
 
+pub struct NativeTypes {
+    pub int: ir::TypeID,
+    pub float: ir::TypeID,
+    pub string: ir::TypeID,
+    pub bool: ir::TypeID,
+}
+
+impl NativeTypes {
+    pub fn blank() -> Self {
+        Self {
+            int: ir::TypeID::whatever(),
+            float: ir::TypeID::whatever(),
+            string: ir::TypeID::whatever(),
+            bool: ir::TypeID::whatever(),
+        }
+    }
+}
+
 pub struct Checker<'src, 'e> {
     pub options: CheckModuleOptions,
 
@@ -37,6 +55,7 @@ pub struct Checker<'src, 'e> {
     pub entities: ir::Entities,
     pub labels: Vec<ir::Label>,
     pub types: Vec<ir::TypeNode>,
+    pub native_types: NativeTypes,
     pub publics: HashSet<ir::AnyID>,
     pub current_constraints: Vec<ir::Constraint>,
 
@@ -64,6 +83,7 @@ impl<'e> Checker<'_, 'e> {
             entities: Entities::default(),
             labels: Vec::new(),
             types: Vec::new(),
+            native_types: NativeTypes::blank(),
             publics: HashSet::new(),
             current_constraints: Vec::new(),
 
@@ -71,10 +91,10 @@ impl<'e> Checker<'_, 'e> {
         };
 
         // native type bindings
-        checker.create_native_type("int", ir::Type::Int);
-        checker.create_native_type("float", ir::Type::Float);
-        checker.create_native_type("string", ir::Type::String);
-        checker.create_native_type("bool", ir::Type::Bool);
+        checker.native_types.int = checker.create_native_type("int", ir::Type::Int);
+        checker.native_types.float = checker.create_native_type("float", ir::Type::Float);
+        checker.native_types.string = checker.create_native_type("string", ir::Type::String);
+        checker.native_types.bool = checker.create_native_type("bool", ir::Type::Bool);
 
         checker
     }

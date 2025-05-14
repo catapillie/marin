@@ -15,6 +15,7 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         E::Int(..) => {}
         E::Float(..) => {}
         E::String(..) => {}
+        E::Builtin(..) => {}
         E::True(..) => {}
         E::False(..) => {}
         E::Underscores(..) => {}

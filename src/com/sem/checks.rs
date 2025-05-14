@@ -19,6 +19,7 @@ mod expr_access;
 mod expr_array;
 mod expr_block;
 mod expr_break;
+mod expr_builtin;
 mod expr_call;
 mod expr_conditional;
 mod expr_fun;

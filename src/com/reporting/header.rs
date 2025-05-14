@@ -43,6 +43,7 @@ pub enum Header {
     InvalidClass(),
     InvalidBreak(Option<String>),
     InvalidSkip(Option<String>),
+    InvalidBuiltin(String),
     UnallowedSignatureName(),
     UnknownBinding(String),
     UnknownVariant(String, String),
@@ -112,6 +113,7 @@ impl Header {
             H::InvalidClass(..) => "invalid_class",
             H::InvalidBreak(..) => "invalid_break",
             H::InvalidSkip(..) => "invalid_skip",
+            H::InvalidBuiltin(..) => "invalid_builtin",
             H::UnallowedSignatureName(..) => "unallowed_signature_name",
             H::UnknownBinding(..) => "unknown_binding",
             H::UnknownVariant(..) => "unknown_variant",
@@ -220,11 +222,13 @@ impl Header {
             H::InvalidBreak(Some(name))
                 => format!("invalid break to label '{name}'"),
             H::InvalidSkip(None)
-                => "invalid Skip".to_string(),
-            H::UnallowedSignatureName()
-                => "unallowed signature name".to_string(),
+                => "invalid skip".to_string(),
             H::InvalidSkip(Some(name))
                 => format!("invalid skip in label '{name}'"),
+            H::InvalidBuiltin(name)
+                => format!("invalid compiler builtin '{name}'"),
+            H::UnallowedSignatureName()
+                => "unallowed signature name".to_string(),
             H::UnknownBinding(name)
                 => format!("unknown binding '{name}' in the current scope"),
             H::UnknownVariant(name, union_name)

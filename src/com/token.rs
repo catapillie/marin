@@ -112,6 +112,8 @@ pub enum Token {
     Float,
     #[regex(r#""[^"]*""#)]
     String,
+    #[regex(r"@[^\W]+")]
+    Builtin,
 }
 
 impl Display for Token {
@@ -174,6 +176,7 @@ impl Display for Token {
             Token::Int => write!(f, "integer literal"),
             Token::Float => write!(f, "floating-point literal"),
             Token::String => write!(f, "string literal"),
+            Token::Builtin => write!(f, "built-in literal"),
         }
     }
 }
