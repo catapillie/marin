@@ -17,3 +17,22 @@ end
 pub class Mod(T)
     op(T, T) => T
 end
+
+
+-- implementations
+-- int
+pub have Add let op = @int_add end
+pub have Sub let op = @int_sub end
+pub have Mul let op = @int_mul end
+pub have Div let op = @int_div end
+pub have Mod let op = @int_mod end
+
+-- float
+pub have Add let op = @float_add end
+pub have Sub let op = @float_sub end
+pub have Mul let op = @float_mul end
+pub have Div let op = @float_div end
+pub have Mod let op = @float_mod end
+
+-- string
+pub have Add let op = @string_concat end
