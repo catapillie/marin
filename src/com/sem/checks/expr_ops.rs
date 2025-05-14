@@ -1,0 +1,57 @@
+use crate::com::{Checker, ast, ir};
+
+impl Checker<'_, '_> {
+    pub fn check_binary(&mut self, e: &ast::Binary) -> ir::CheckedExpr {
+        let (left, left_ty) = self.check_expression(&e.left);
+        let (right, right_ty) = self.check_expression(&e.right);
+
+        let Some(prelude_file) = self.deps.info.prelude_file else {
+            panic!("cannot use binary operation without std")
+        };
+
+        use ast::BinOp as Op;
+        let (op_class_name, op_class_item) = match e.op {
+            Op::Add => ("Add", 0),
+            Op::Sub => ("Sub", 0),
+            Op::Mul => ("Mul", 0),
+            Op::Div => ("Div", 0),
+            Op::Mod => ("Mod", 0),
+        };
+
+        let prelude_exports = &self.exports[prelude_file].exports;
+        let Some(ir::AnyID::Import(ops_import_id)) = prelude_exports.get("ops").copied() else {
+            panic!("couldn't find 'ops' import in 'std.prelude'")
+        };
+        let ops_import_info = self.entities.get_import_info(ops_import_id);
+        let ops_file = ops_import_info.file;
+
+        let ops_exports = &self.exports[ops_file].exports;
+        let Some(ir::AnyID::Class(op_class_id)) = ops_exports.get(op_class_name).copied() else {
+            panic!(
+                "couldn't find op.{op_class_name} class for binary operator {:?}",
+                e.op
+            );
+        };
+
+        let (op, op_ty) = self.check_class_item_into_expr(op_class_id, op_class_item, e.op_tok);
+
+        let ret_ty = self.create_fresh_type(Some(e.span()));
+        let expected_op_ty = self.create_type(
+            ir::Type::Lambda(Box::new([left_ty, right_ty]), ret_ty),
+            Some(e.op_tok),
+        );
+
+        self.unify(op_ty, expected_op_ty, &[]);
+
+        let result_ty = self.clone_type_repr(ret_ty);
+        self.set_type_span(result_ty, e.span());
+
+        (
+            ir::Expr::Call {
+                callee: Box::new(op),
+                args: Box::new([left, right]),
+            },
+            result_ty,
+        )
+    }
+}

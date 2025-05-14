@@ -90,7 +90,7 @@ impl Checker<'_, '_> {
         (expr, ty)
     }
 
-    fn check_class_item_into_expr(
+    pub fn check_class_item_into_expr(
         &mut self,
         id: ir::ClassID,
         index: usize,

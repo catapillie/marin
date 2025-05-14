@@ -1,0 +1,19 @@
+pub class Add(T)
+    op(T, T) => T
+end
+
+pub class Sub(T)
+    op(T, T) => T
+end
+
+pub class Mul(T)
+    op(T, T) => T
+end
+
+pub class Div(T)
+    op(T, T) => T
+end
+
+pub class Mod(T)
+    op(T, T) => T
+end

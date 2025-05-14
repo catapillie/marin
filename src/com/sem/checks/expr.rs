@@ -31,6 +31,7 @@ impl Checker<'_, '_> {
             E::Access(e) => self.check_access(e),
             E::Fun(e) => self.check_fun(e),
             E::RecordValue(e) => self.check_record_value(e),
+            E::Binary(e) => self.check_binary(e),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidExpression())

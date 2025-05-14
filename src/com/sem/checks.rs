@@ -23,6 +23,7 @@ mod expr_call;
 mod expr_conditional;
 mod expr_fun;
 mod expr_literal;
+mod expr_ops;
 mod expr_record;
 mod expr_skip;
 mod expr_tuple;
