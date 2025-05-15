@@ -217,7 +217,15 @@ impl<'a> VM<'a> {
                     let val = self.pop();
                     let result = match val {
                         Val::Float(a) => Val::Float(a.exp()),
-                        _ => panic!("invalid 'pow' operation"),
+                        _ => panic!("invalid 'exp' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::ln => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(a) => Val::Float(a.ln()),
+                        _ => panic!("invalid 'ln' operation"),
                     };
                     self.push(result);
                 }
