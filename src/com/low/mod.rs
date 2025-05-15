@@ -722,11 +722,12 @@ impl Lowerer {
 
     fn lower_variable(&mut self, id: ir::VariableID) -> Expr {
         // recursive function binding
-        let capture_info = self.get_capture_info();
+        let capture_info = self.get_current_capture_info();
         if let Some(fun_id) = capture_info.functions.get(&id).copied() {
+            let rec_capture_info = &self.capture_info_by_fun_id[&fun_id];
             return Expr::Fun {
                 id: fun_id,
-                captured: self.get_captured_locals_from_info(capture_info),
+                captured: self.get_captured_locals_from_info(rec_capture_info),
             };
         }
 
@@ -947,7 +948,7 @@ impl Lowerer {
         }
     }
 
-    fn get_capture_info(&self) -> &CaptureInfo {
+    fn get_current_capture_info(&self) -> &CaptureInfo {
         &self.capture_info_by_fun_id[&self.current_fun_id]
     }
 
@@ -993,7 +994,7 @@ impl Lowerer {
         match expr {
             E::Missing | E::Int { .. } | E::Float { .. } | E::String { .. } | E::Bool { .. } => {}
             E::Var { id } => {
-                if let Some(fun_id) = self.get_capture_info().functions.get(id) {
+                if let Some(fun_id) = self.get_current_capture_info().functions.get(id) {
                     fun_map.insert(*id, *fun_id);
                 }
                 if self.local_by_var.contains_key(id) {
