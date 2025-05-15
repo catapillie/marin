@@ -44,6 +44,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::mul => Ok(Opcode::mul),
         opcode::div => Ok(Opcode::div),
         opcode::modulo => Ok(Opcode::modulo),
+        opcode::pow => Ok(Opcode::pow),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -124,6 +125,18 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::modulo => {
             w.write_u8(opcode::modulo)?;
+            Ok(())
+        }
+        Opcode::pow => {
+            w.write_u8(opcode::pow)?;
+            Ok(())
+        }
+        Opcode::exp => {
+            w.write_u8(opcode::exp)?;
+            Ok(())
+        }
+        Opcode::ln => {
+            w.write_u8(opcode::ln)?;
             Ok(())
         }
         Opcode::load_const(x) => {

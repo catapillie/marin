@@ -204,6 +204,23 @@ impl<'a> VM<'a> {
                     };
                     self.push(result);
                 }
+                opcode::pow => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Float(a), Val::Float(b)) => Val::Float(a.powf(b)),
+                        _ => panic!("invalid 'pow' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::exp => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(a) => Val::Float(a.exp()),
+                        _ => panic!("invalid 'pow' operation"),
+                    };
+                    self.push(result);
+                }
                 opcode::load_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());

@@ -347,6 +347,9 @@ impl BytecodeBuilder {
             E::Mul(left, right) => self.build_binary_op(*left, *right, Opcode::mul),
             E::Div(left, right) => self.build_binary_op(*left, *right, Opcode::div),
             E::Mod(left, right) => self.build_binary_op(*left, *right, Opcode::modulo),
+            E::Pow(left, right) => self.build_binary_op(*left, *right, Opcode::pow),
+            E::Exp(arg) => self.build_unary_op(*arg, Opcode::exp),
+            E::Ln(arg) => self.build_unary_op(*arg, Opcode::ln),
         }
     }
 
@@ -648,6 +651,11 @@ impl BytecodeBuilder {
     fn build_binary_op(&mut self, left: low::Expr, right: low::Expr, op: Opcode) {
         self.build_expression(left);
         self.build_expression(right);
+        self.write_opcode(op);
+    }
+
+    fn build_unary_op(&mut self, arg: low::Expr, op: Opcode) {
+        self.build_expression(arg);
         self.write_opcode(op);
     }
 

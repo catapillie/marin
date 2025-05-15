@@ -12,6 +12,9 @@ opcodes! {
     0x22 mul
     0x23 div
     0x24 modulo
+    0x25 pow
+    0x30 exp
+    0x31 ln
     0xa0 load_const(u16)
     0xa2 load_local(u8)
     0xa3 set_local(u8)

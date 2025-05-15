@@ -82,6 +82,9 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::mul => print!("{:>14}", "mul"),
             Op::div => print!("{:>14}", "div"),
             Op::modulo => print!("{:>14}", "modulo"),
+            Op::pow => print!("{:>14}", "pow"),
+            Op::exp => print!("{:>14}", "exp"),
+            Op::ln => print!("{:>14}", "ln"),
             Op::load_const(x) => print!(
                 "{:>14} #{} = {}",
                 "load_const",

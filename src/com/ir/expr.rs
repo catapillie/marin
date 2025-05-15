@@ -80,4 +80,7 @@ pub enum Expr {
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Mod(Box<Expr>, Box<Expr>),
+    Pow(Box<Expr>, Box<Expr>),
+    Exp(Box<Expr>),
+    Ln(Box<Expr>),
 }

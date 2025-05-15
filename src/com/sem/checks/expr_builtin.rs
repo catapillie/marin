@@ -12,17 +12,23 @@ impl Checker<'_, '_> {
         let name = &e.span.lexeme(self.source)[1..];
         match name {
             // operations
-            "int_add" => builtin_bin_op!(self, span, int_add :: int, int -> int),
-            "int_sub" => builtin_bin_op!(self, span, int_sub :: int, int -> int),
-            "int_mul" => builtin_bin_op!(self, span, int_mul :: int, int -> int),
-            "int_div" => builtin_bin_op!(self, span, int_div :: int, int -> int),
-            "int_mod" => builtin_bin_op!(self, span, int_mod :: int, int -> int),
-            "float_add" => builtin_bin_op!(self, span, float_add :: float, float -> float),
-            "float_sub" => builtin_bin_op!(self, span, float_sub :: float, float -> float),
-            "float_mul" => builtin_bin_op!(self, span, float_mul :: float, float -> float),
-            "float_div" => builtin_bin_op!(self, span, float_div :: float, float -> float),
-            "float_mod" => builtin_bin_op!(self, span, float_mod :: float, float -> float),
-            "string_concat" => builtin_bin_op!(self, span, string_concat :: string, string -> string),
+            "int_add" => builtin_func!(self, span, int_add :: int, int -> int),
+            "int_sub" => builtin_func!(self, span, int_sub :: int, int -> int),
+            "int_mul" => builtin_func!(self, span, int_mul :: int, int -> int),
+            "int_div" => builtin_func!(self, span, int_div :: int, int -> int),
+            "int_mod" => builtin_func!(self, span, int_mod :: int, int -> int),
+
+            "float_add" => builtin_func!(self, span, float_add :: float, float -> float),
+            "float_sub" => builtin_func!(self, span, float_sub :: float, float -> float),
+            "float_mul" => builtin_func!(self, span, float_mul :: float, float -> float),
+            "float_div" => builtin_func!(self, span, float_div :: float, float -> float),
+            "float_mod" => builtin_func!(self, span, float_mod :: float, float -> float),
+
+            "pow" => builtin_func!(self, span, pow :: float, float -> float),
+            "exp" => builtin_func!(self, span, exp :: float -> float),
+            "ln" => builtin_func!(self, span, ln :: float -> float),
+
+            "string_concat" => builtin_func!(self, span, string_concat :: string, string -> string),
 
             _ => {
                 self.reports.push(
@@ -35,7 +41,7 @@ impl Checker<'_, '_> {
     }
 }
 
-macro_rules! builtin_bin_op {
+macro_rules! builtin_func {
     (
         $self:ident, $span:ident,
         $builtin:ident
@@ -59,4 +65,4 @@ macro_rules! builtin_bin_op {
     };
 }
 
-use builtin_bin_op;
+use builtin_func;

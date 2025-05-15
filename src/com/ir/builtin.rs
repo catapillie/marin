@@ -15,6 +15,10 @@ pub enum Builtin {
     float_div,
     float_mod,
 
+    pow,
+    exp,
+    ln,
+
     string_concat,
 }
 
@@ -32,6 +36,10 @@ impl Display for Builtin {
             Self::float_mul => write!(f, "float_mul"),
             Self::float_div => write!(f, "float_div"),
             Self::float_mod => write!(f, "float_mod"),
+
+            Self::pow => write!(f, "pow"),
+            Self::exp => write!(f, "exp"),
+            Self::ln => write!(f, "ln"),
 
             Self::string_concat => write!(f, "string_concat"),
         }
