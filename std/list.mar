@@ -19,6 +19,11 @@ pub let tail(l) match l with
     cons(_, xs) => Option.some(xs)
 end
 
+pub let length(l) match l with
+    empty       => 0
+    cons(_, xs) => @int_add(1, length(xs))
+end
+
 pub let map(f)(l) match l with
     empty       => empty
     cons(x, xs) => cons(f(x), map(f)(xs))
