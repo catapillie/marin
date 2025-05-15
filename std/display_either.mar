@@ -1,0 +1,10 @@
+import display as Display
+import either as Either
+
+
+pub have Display.Display
+    let str(e) match e with
+        Either.left(x)  => @string_concat("left(", @string_concat(Display.str(x), ")"))
+        Either.right(x) => @string_concat("right(", @string_concat(Display.str(x), ")"))
+    end
+end

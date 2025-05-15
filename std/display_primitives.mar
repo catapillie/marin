@@ -1,0 +1,7 @@
+import display
+
+
+-- Display(string)
+pub have display.Display
+    let str(s) = s
+end

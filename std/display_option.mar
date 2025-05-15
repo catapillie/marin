@@ -1,0 +1,10 @@
+import display as Display
+import option as Option
+
+
+pub have Display.Display
+    let str(opt) match opt with
+        Option.none    => "none"
+        Option.some(x) => @string_concat("some(", @string_concat(Display.str(x), ")"))
+    end
+end

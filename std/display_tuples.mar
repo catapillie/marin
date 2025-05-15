@@ -1,0 +1,43 @@
+import display
+alias display.Display.str as s
+
+
+-- ()
+pub have display.Display
+    let str(()) = "()"
+end
+
+-- (_, _)
+pub have display.Display
+    let str((a, b)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), ")"))))
+end
+
+-- (_, _, _)
+pub have display.Display
+    let str((a, b, c)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), @string_concat(", ", @string_concat(s(c), ")"))))))
+end
+
+-- (_, _, _, _)
+pub have display.Display
+    let str((a, b, c, d)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), @string_concat(", ", @string_concat(s(c), @string_concat(", ", @string_concat(s(d), ")"))))))))
+end
+
+-- (_, _, _, _, _)
+pub have display.Display
+    let str((a, b, c, d, e)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), @string_concat(", ", @string_concat(s(c), @string_concat(", ", @string_concat(s(d), @string_concat(", ", @string_concat(s(e), ")"))))))))))
+end
+
+-- (_, _, _, _, _, _)
+pub have display.Display
+    let str((a, b, c, d, e, f)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), @string_concat(", ", @string_concat(s(c), @string_concat(", ", @string_concat(s(d), @string_concat(", ", @string_concat(s(e), @string_concat(", ", @string_concat(s(f), ")"))))))))))))
+end
+
+-- (_, _, _, _, _, _, _)
+pub have display.Display
+    let str((a, b, c, d, e, f, g)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), @string_concat(", ", @string_concat(s(c), @string_concat(", ", @string_concat(s(d), @string_concat(", ", @string_concat(s(e), @string_concat(", ", @string_concat(s(f), @string_concat(", ", @string_concat(s(g), ")"))))))))))))))
+end
+
+-- (_, _, _, _, _, _, _, _)
+pub have display.Display
+    let str((a, b, c, d, e, f, g, h)) = @string_concat("(", @string_concat(s(a), @string_concat(", ", @string_concat(s(b), @string_concat(", ", @string_concat(s(c), @string_concat(", ", @string_concat(s(d), @string_concat(", ", @string_concat(s(e), @string_concat(", ", @string_concat(s(f), @string_concat(", ", @string_concat(s(g), @string_concat(", ", @string_concat(s(h), ")"))))))))))))))))
+end

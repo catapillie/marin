@@ -1,0 +1,5 @@
+pub class Display(T)
+    str(T) => string
+end
+
+pub alias Display.str as str

@@ -10,6 +10,13 @@ import default_list
 pub import monoid as Monoid
 import monoid_list
 
+pub import display as Display
+pub import str from display
+import display_primitives
+import display_tuples
+import display_option
+import display_either
+
 pub import option as Option
 pub import option from option
 pub import some, none from option
