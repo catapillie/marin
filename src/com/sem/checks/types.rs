@@ -487,7 +487,7 @@ impl<'src> Checker<'src, '_> {
 
         for constraint in scheme.constraints {
             let mut subbed =
-                self.apply_constraint_substitution(constraint, &sub, new_constraint_id);
+                self.apply_constraint_substitution(constraint, &sub, Some(new_constraint_id));
             subbed.loc = constraint_loc.unwrap_or(subbed.loc);
             self.require_class_constraint(subbed);
         }
@@ -496,6 +496,22 @@ impl<'src> Checker<'src, '_> {
             new_constraint_id,
             self.apply_type_substitution(scheme.uninstantiated, &sub),
         )
+    }
+
+    pub fn instantiate_scheme_same_constraint_trace(
+        &mut self,
+        scheme: ir::Scheme,
+        constraint_loc: Option<Loc>,
+    ) -> ir::TypeID {
+        let sub = self.build_type_substitution(scheme.forall);
+
+        for constraint in scheme.constraints {
+            let mut subbed = self.apply_constraint_substitution(constraint, &sub, None);
+            subbed.loc = constraint_loc.unwrap_or(subbed.loc);
+            self.require_class_constraint(subbed);
+        }
+
+        self.apply_type_substitution(scheme.uninstantiated, &sub)
     }
 
     pub fn instantiate_scheme_keep_constraints(
@@ -507,7 +523,8 @@ impl<'src> Checker<'src, '_> {
 
         let mut subbed_constraints = Vec::new();
         for constraint in scheme.constraints {
-            let subbed = self.apply_constraint_substitution(constraint, &sub, new_constraint_id);
+            let subbed =
+                self.apply_constraint_substitution(constraint, &sub, Some(new_constraint_id));
             subbed_constraints.push(subbed);
         }
 
@@ -520,18 +537,20 @@ impl<'src> Checker<'src, '_> {
     pub fn instantiate_instance_scheme(
         &mut self,
         scheme: ir::InstanceScheme,
-    ) -> (ir::Constraint, Vec<ir::Constraint>) {
+    ) -> (usize, ir::Constraint, Vec<ir::Constraint>) {
         let sub = self.build_type_substitution(scheme.forall);
         let new_constraint_id = self.get_generic_unique_id();
 
         let mut subbed_constraints = Vec::new();
         for constraint in scheme.required_constraints {
-            let subbed = self.apply_constraint_substitution(constraint, &sub, new_constraint_id);
+            let subbed =
+                self.apply_constraint_substitution(constraint, &sub, Some(new_constraint_id));
             subbed_constraints.push(subbed);
         }
 
-        let subbed = self.apply_constraint_substitution(scheme.constraint, &sub, new_constraint_id);
-        (subbed, subbed_constraints)
+        let subbed =
+            self.apply_constraint_substitution(scheme.constraint, &sub, Some(new_constraint_id));
+        (new_constraint_id, subbed, subbed_constraints)
     }
 
     pub fn build_type_substitution(
@@ -603,7 +622,7 @@ impl<'src> Checker<'src, '_> {
         &mut self,
         constraint: ir::Constraint,
         sub: &BTreeMap<ir::TypeID, ir::TypeID>,
-        new_constraint_id: usize,
+        new_constraint_id: Option<usize>,
     ) -> ir::Constraint {
         ir::Constraint {
             id: constraint.id,
@@ -620,7 +639,9 @@ impl<'src> Checker<'src, '_> {
                 .collect(),
             constraint_trace: {
                 let mut trace = constraint.constraint_trace.clone();
-                trace.constraint_ids.push(new_constraint_id);
+                if let Some(new_constraint_id) = new_constraint_id {
+                    trace.constraint_ids.push(new_constraint_id);
+                }
                 trace
             },
         }

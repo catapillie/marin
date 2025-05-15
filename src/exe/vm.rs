@@ -41,6 +41,10 @@ impl<'a> VM<'a> {
         }
     }
 
+    fn fatal(&self, msg: &str) -> ! {
+        panic!("FATAL {msg} AT {:0>8}", self.cursor)
+    }
+
     fn store_as_val(&mut self, value: &Value) -> Val {
         match value {
             Value::Nil => Val::Nil,
@@ -107,7 +111,7 @@ impl<'a> VM<'a> {
                 opcode::index_dup => {
                     let index = self.read_u8() as usize;
                     let &Val::Bundle(u) = self.peek() else {
-                        panic!("invalid index on a non-bundle value");
+                        self.fatal("invalid index on a non-bundle value");
                     };
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
@@ -115,7 +119,7 @@ impl<'a> VM<'a> {
                 opcode::index_big_dup => {
                     let index = self.read_u64() as usize;
                     let &Val::Bundle(u) = self.peek() else {
-                        panic!("invalid index on a non-bundle value");
+                        self.fatal("invalid index on a non-bundle value");
                     };
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
@@ -123,7 +127,7 @@ impl<'a> VM<'a> {
                 opcode::index => {
                     let index = self.read_u8() as usize;
                     let Val::Bundle(u) = self.pop() else {
-                        panic!("invalid index on a non-bundle value");
+                        self.fatal("invalid index on a non-bundle value");
                     };
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
@@ -131,7 +135,7 @@ impl<'a> VM<'a> {
                 opcode::index_big => {
                     let index = self.read_u64() as usize;
                     let Val::Bundle(u) = self.pop() else {
-                        panic!("invalid index on a non-bundle value");
+                        self.fatal("invalid index on a non-bundle value");
                     };
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
@@ -140,7 +144,7 @@ impl<'a> VM<'a> {
                     let offset = self.read_u16() as usize;
                     let index = self.stack.len() - offset - 1;
                     let Val::Bundle(u) = self.stack.remove(index) else {
-                        panic!("invalid spill on a non-bundle value");
+                        self.fatal("invalid spill on a non-bundle value");
                     };
 
                     let values = self.heap.deref_val_array(u);
@@ -160,7 +164,7 @@ impl<'a> VM<'a> {
                             let u_ab = self.heap.alloc_string(ab);
                             Val::String(u_ab)
                         }
-                        _ => panic!("invalid 'add' operation"),
+                        _ => self.fatal("invalid 'add' operation"),
                     };
                     self.push(result);
                 }
@@ -170,7 +174,7 @@ impl<'a> VM<'a> {
                     let result = match (left, right) {
                         (Val::Int(a), Val::Int(b)) => Val::Int(a - b),
                         (Val::Float(a), Val::Float(b)) => Val::Float(a - b),
-                        _ => panic!("invalid 'sub' operation"),
+                        _ => self.fatal("invalid 'sub' operation"),
                     };
                     self.push(result);
                 }
@@ -180,7 +184,7 @@ impl<'a> VM<'a> {
                     let result = match (left, right) {
                         (Val::Int(a), Val::Int(b)) => Val::Int(a * b),
                         (Val::Float(a), Val::Float(b)) => Val::Float(a * b),
-                        _ => panic!("invalid 'mul' operation"),
+                        _ => self.fatal("invalid 'mul' operation"),
                     };
                     self.push(result);
                 }
@@ -190,7 +194,7 @@ impl<'a> VM<'a> {
                     let result = match (left, right) {
                         (Val::Int(a), Val::Int(b)) => Val::Int(a / b),
                         (Val::Float(a), Val::Float(b)) => Val::Float(a / b),
-                        _ => panic!("invalid 'mul' operation"),
+                        _ => self.fatal("invalid 'mul' operation"),
                     };
                     self.push(result);
                 }
@@ -200,7 +204,7 @@ impl<'a> VM<'a> {
                     let result = match (left, right) {
                         (Val::Int(a), Val::Int(b)) => Val::Int(a % b),
                         (Val::Float(a), Val::Float(b)) => Val::Float(a % b),
-                        _ => panic!("invalid 'modulo' operation"),
+                        _ => self.fatal("invalid 'modulo' operation"),
                     };
                     self.push(result);
                 }
@@ -209,7 +213,7 @@ impl<'a> VM<'a> {
                     let left = self.pop();
                     let result = match (left, right) {
                         (Val::Float(a), Val::Float(b)) => Val::Float(a.powf(b)),
-                        _ => panic!("invalid 'pow' operation"),
+                        _ => self.fatal("invalid 'pow' operation"),
                     };
                     self.push(result);
                 }
@@ -217,7 +221,7 @@ impl<'a> VM<'a> {
                     let val = self.pop();
                     let result = match val {
                         Val::Float(a) => Val::Float(a.exp()),
-                        _ => panic!("invalid 'exp' operation"),
+                        _ => self.fatal("invalid 'exp' operation"),
                     };
                     self.push(result);
                 }
@@ -225,7 +229,7 @@ impl<'a> VM<'a> {
                     let val = self.pop();
                     let result = match val {
                         Val::Float(a) => Val::Float(a.ln()),
-                        _ => panic!("invalid 'ln' operation"),
+                        _ => self.fatal("invalid 'ln' operation"),
                     };
                     self.push(result);
                 }
@@ -255,7 +259,7 @@ impl<'a> VM<'a> {
                 opcode::jump_if => {
                     let pos = self.read_u32() as usize;
                     let Val::Bool(b) = self.pop() else {
-                        panic!("found non-boolean value as jump_if condition");
+                        self.fatal("found non-boolean value as jump_if condition");
                     };
                     if b {
                         self.cursor = pos;
@@ -264,7 +268,7 @@ impl<'a> VM<'a> {
                 opcode::jump_if_not => {
                     let pos = self.read_u32() as usize;
                     let Val::Bool(b) = self.pop() else {
-                        panic!("found non-boolean value as jump_if_not condition");
+                        self.fatal("found non-boolean value as jump_if_not condition");
                     };
                     if !b {
                         self.cursor = pos;
@@ -299,12 +303,12 @@ impl<'a> VM<'a> {
 
                     let fun_bundle = self.pop();
                     let Val::Bundle(u) = fun_bundle else {
-                        panic!("invalid function object");
+                        self.fatal("invalid function object");
                     };
 
                     let &[Val::Func(addr), Val::Bundle(u_capture)] = self.heap.deref_val_array(u)
                     else {
-                        panic!("invalid function bundle");
+                        self.fatal("invalid function bundle");
                     };
 
                     let captured = self.heap.deref_val_array(u_capture);
@@ -333,7 +337,7 @@ impl<'a> VM<'a> {
                     let value = self.peek().clone();
                     self.push(value);
                 }
-                _ => panic!("invalid opcode 0x{op:x}"),
+                _ => self.fatal("invalid opcode 0x{op:x}"),
             }
         }
 

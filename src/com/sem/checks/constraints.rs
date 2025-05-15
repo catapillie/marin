@@ -63,8 +63,14 @@ impl Checker<'_, '_> {
             // so we need to decide whether to continue the loop or not
             for mut constraint in concrete {
                 let trace = std::mem::take(&mut constraint.constraint_trace);
-                if let Some((instance_id, mut additional)) = self.check_constraint(constraint) {
-                    solutions.push(ir::Solution { trace, instance_id });
+                if let Some((instance_id, mut additional, additional_constraint_id)) =
+                    self.check_constraint(constraint)
+                {
+                    solutions.push(ir::Solution {
+                        trace,
+                        instance_id,
+                        additional_constraint_id,
+                    });
                     current_constraints.append(&mut additional);
                 }
             }
@@ -77,7 +83,7 @@ impl Checker<'_, '_> {
     fn check_constraint(
         &mut self,
         constraint: ir::Constraint,
-    ) -> Option<(ir::InstanceID, Vec<ir::Constraint>)> {
+    ) -> Option<(ir::InstanceID, Vec<ir::Constraint>, usize)> {
         // get available instances
         let mut matching_instances = Vec::new();
         for (instance_id, instance) in self.get_known_instances() {
@@ -88,12 +94,17 @@ impl Checker<'_, '_> {
             }
 
             // instantiate the instance (in case it's polymorphic or uses other constraints)
-            let (instance_constraint, additional) =
+            let (additional_constraint_id, instance_constraint, additional) =
                 self.instantiate_instance_scheme(scheme.clone());
 
             // attempt to unify, if yes then we have a matching instance!!!!!!!!!!!!!!!
             if self.try_unify_constraint_args(&constraint, &instance_constraint) {
-                matching_instances.push((instance_id, instance_constraint, additional));
+                matching_instances.push((
+                    instance_id,
+                    instance_constraint,
+                    additional,
+                    additional_constraint_id,
+                ));
             }
         }
 
@@ -128,11 +139,15 @@ impl Checker<'_, '_> {
         // retrieve the matching instance
         // unify the associated type arguments
 
-        let (instance_id, matching_constraint, additional_constraints) =
+        let (instance_id, matching_constraint, additional_constraints, additional_constraint_id) =
             matching_instances.pop().unwrap();
         self.unify_constraint(&constraint, &matching_constraint);
 
-        Some((instance_id, additional_constraints))
+        Some((
+            instance_id,
+            additional_constraints,
+            additional_constraint_id,
+        ))
     }
 
     fn get_known_instances(&self) -> Vec<(ir::InstanceID, ir::InstanceInfo)> {

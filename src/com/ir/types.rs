@@ -66,6 +66,7 @@ pub struct ConstraintTrace {
 pub struct Solution {
     pub trace: ConstraintTrace,
     pub instance_id: InstanceID,
+    pub additional_constraint_id: usize,
 }
 
 #[derive(Clone, Debug)]

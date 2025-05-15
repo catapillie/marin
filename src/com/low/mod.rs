@@ -196,7 +196,6 @@ struct Lowerer {
     capture_info_by_fun_id: HashMap<FunID, CaptureInfo>,
 
     solutions: SolutionMap,
-    instances: HashMap<ir::InstanceID, Box<[ir::VariableID]>>,
 
     abstractions: Vec<AbstractionInfo>,
     abstraction_key_by_var: HashMap<ir::VariableID, usize>,
@@ -218,7 +217,6 @@ impl Lowerer {
             capture_info_by_fun_id: HashMap::new(),
 
             solutions: SolutionMap::default(),
-            instances: HashMap::new(),
 
             abstractions: Vec::new(),
             abstraction_key_by_var: HashMap::new(),
@@ -296,16 +294,23 @@ impl Lowerer {
         id
     }
 
-    fn solve_class_item_variable_id(&self, item_id: usize, constraint_id: usize) -> ir::VariableID {
+    // either Var or AbstractVar
+    fn solve_class_item_expr(&self, item_id: usize, constraint_id: usize) -> ir::Expr {
         let Some(solutions) = self.solutions.get(&constraint_id) else {
             panic!("unknown solution for constraint id '{constraint_id}'")
         };
         let solution = &solutions[0];
-        let item_bindings = self
-            .instances
-            .get(&solution.instance_id)
-            .expect("unregistered instance");
-        item_bindings[item_id]
+        let instance_info = self.entities.get_instance_info(solution.instance_id);
+        let item_info = &instance_info.items[item_id];
+
+        let var_id = item_info.binding;
+        match item_info.is_concrete {
+            true => ir::Expr::Var { id: var_id },
+            false => ir::Expr::AbstractVar {
+                id: var_id,
+                constraint_id: solution.additional_constraint_id,
+            },
+        }
     }
 
     fn register_solutions(&mut self, solutions: Vec<ir::Solution>) -> SolutionMap {
@@ -444,11 +449,7 @@ impl Lowerer {
                 is_concrete,
                 solutions,
             } => self.lower_let_statement(lhs, rhs, is_concrete, solutions),
-            S::Have {
-                instance_id,
-                stmts,
-                item_bindings,
-            } => self.lower_have_statement(instance_id, stmts, item_bindings),
+            S::Have { stmts } => self.lower_have_statement(stmts),
         }
     }
 
@@ -592,14 +593,8 @@ impl Lowerer {
         }
     }
 
-    fn lower_have_statement(
-        &mut self,
-        instance_id: ir::InstanceID,
-        stmts: Box<[ir::Stmt]>,
-        item_bindings: Box<[ir::VariableID]>,
-    ) -> Stmt {
+    fn lower_have_statement(&mut self, stmts: Box<[ir::Stmt]>) -> Stmt {
         let stmts = self.lower_statement_list(stmts);
-        self.instances.insert(instance_id, item_bindings);
         Stmt::Block {
             stmts: stmts.into(),
             needs_frame: false,
@@ -693,8 +688,8 @@ impl Lowerer {
                 item_id,
                 constraint_id,
             } => {
-                let var_id = self.solve_class_item_variable_id(item_id, constraint_id);
-                self.lower_variable(var_id)
+                let item_expr = self.solve_class_item_expr(item_id, constraint_id);
+                self.lower_expression(item_expr)
             }
             E::Builtin(builtin) => self.lower_builtin(builtin),
             E::Add(left, right) => Expr::Add(
@@ -1018,11 +1013,7 @@ impl Lowerer {
                 self.collect_expr_captured_variables(rhs, set, fun_map);
                 self.restore_solutions(orig);
             }
-            S::Have {
-                instance_id: _,
-                stmts,
-                item_bindings: _,
-            } => {
+            S::Have { stmts } => {
                 for stmt in stmts {
                     self.collect_stmt_captured_variables(stmt, set, fun_map);
                 }
@@ -1139,10 +1130,8 @@ impl Lowerer {
                 item_id,
                 constraint_id,
             } => {
-                let var_id = self.solve_class_item_variable_id(*item_id, *constraint_id);
-                if self.local_by_var.contains_key(&var_id) {
-                    set.insert(var_id);
-                }
+                let item_expr = self.solve_class_item_expr(*item_id, *constraint_id);
+                self.collect_expr_captured_variables(&item_expr, set, fun_map);
             }
             E::Builtin(..) => {}
             E::Add(left, right)

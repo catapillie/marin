@@ -190,6 +190,13 @@ pub struct InstanceInfo {
     pub loc: Loc,
     pub scheme: InstanceScheme,
     pub original: InstanceID,
+    pub items: Box<[InstanceItemInfo]>,
+}
+
+#[derive(Clone)]
+pub struct InstanceItemInfo {
+    pub binding: VariableID,
+    pub is_concrete: bool,
 }
 
 pub struct ImportInfo {

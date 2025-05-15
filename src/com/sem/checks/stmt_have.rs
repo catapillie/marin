@@ -55,7 +55,7 @@ impl Checker<'_, '_> {
         let arity = info.arity;
         let mut instantiated_items = Vec::new();
         let mut missing_items = Vec::new();
-        let mut item_bindigs = Vec::new();
+        let mut item_infos = Vec::new();
         for (i, item) in info.items.iter().enumerate() {
             let Some(binding) = registered.get(&item.name).copied() else {
                 missing_items.push(i);
@@ -63,10 +63,14 @@ impl Checker<'_, '_> {
             };
 
             let binding_info = self.entities.get_variable_info(binding);
+            let is_concrete = binding_info.scheme.constraints.is_empty();
             let scheme = binding_info.scheme.clone();
             let expected_scheme = item.scheme.clone();
             instantiated_items.push((expected_scheme, scheme));
-            item_bindigs.push(binding);
+            item_infos.push(ir::InstanceItemInfo {
+                binding,
+                is_concrete,
+            });
         }
 
         let is_complete = missing_items.is_empty();
@@ -97,8 +101,10 @@ impl Checker<'_, '_> {
         };
 
         for (wanted_scheme, found_scheme) in instantiated_items {
-            let (_, found_type) =
-                self.instantiate_scheme(found_scheme, Some(e.span().wrap(self.file)));
+            let found_type = self.instantiate_scheme_same_constraint_trace(
+                found_scheme,
+                Some(e.span().wrap(self.file)),
+            );
             let (expected_type, current_constraints) =
                 self.instantiate_scheme_keep_constraints(wanted_scheme);
             debug_assert_eq!(current_constraints.len(), 1);
@@ -134,14 +140,13 @@ impl Checker<'_, '_> {
                 loc: span.wrap(self.file),
                 scheme,
                 original: instance_id,
+                items: item_infos.into(),
             });
             self.scope.infos_mut().instances.insert(instance_id);
             self.set_entity_public(instance_id.wrap(), public);
 
             return ir::Stmt::Have {
-                instance_id,
                 stmts: stmts.into(),
-                item_bindings: item_bindigs.into(),
             };
         }
 

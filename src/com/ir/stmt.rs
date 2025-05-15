@@ -1,4 +1,4 @@
-use super::{Expr, InstanceID, Pattern, Solution, TypeID, VariableID};
+use super::{Expr, Pattern, Solution, TypeID};
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -15,8 +15,6 @@ pub enum Stmt {
         solutions: Vec<Solution>,
     },
     Have {
-        instance_id: InstanceID,
         stmts: Box<[Stmt]>,
-        item_bindings: Box<[VariableID]>,
     },
 }
