@@ -148,10 +148,10 @@ impl BytecodeBuilder {
         }
         self.function_positions[function.id.0] = Placeholder::Patched(fun_pos);
 
-        // deconstruct arguments
+        // deconstruct arguments, make sure to skip over captured locals
         let size = function.args.len() as u16;
         for (i, item) in function.args.into_iter().enumerate() {
-            let offset = size - 1 - i as u16;
+            let offset = size - 1 - i as u16 + function.captured_count as u16;
             self.build_deconstruct(item, offset);
         }
 

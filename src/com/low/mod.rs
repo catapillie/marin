@@ -145,6 +145,7 @@ pub struct Function {
     pub id: FunID,
     pub args: Box<[Pat]>,
     pub expr: Expr,
+    pub captured_count: usize,
 }
 
 pub struct Program {
@@ -373,6 +374,7 @@ impl Lowerer {
             .collect();
 
         // register captured variables as new locals
+        let captured_count = self.capture_info_by_fun_id[&work.id].variables.len();
         for captured_id in self.capture_info_by_fun_id[&work.id].variables.clone() {
             self.register_local(captured_id);
         }
@@ -397,6 +399,7 @@ impl Lowerer {
                 id: work.id,
                 args,
                 expr: self.lower_expression(work.expr),
+                captured_count,
             };
         }
 
@@ -408,6 +411,7 @@ impl Lowerer {
 
         // get the captured locals in this auxiliary function
         let captured_locals = self.get_captured_locals_from_info(&capture_info);
+        let captured_count = captured_locals.len();
 
         let next_id = self.add_work(
             format!("{}'", work.name),
@@ -427,6 +431,7 @@ impl Lowerer {
                 id: next_id,
                 captured: captured_locals,
             },
+            captured_count,
         }
     }
 
