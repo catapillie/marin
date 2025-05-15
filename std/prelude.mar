@@ -20,6 +20,8 @@ pub import either from either
 pub import list as List
 pub import list from list
 
+pub import math as Math
+
 
 pub let id(x) = x
 pub let compose(g, f)(x) = f(g(x))

@@ -1,0 +1,10 @@
+pub let pi = 3.14159265358979323846264338327950288
+pub let tau = @float_mul(2.0, pi)
+
+pub let pow = @pow
+
+pub let exp = @exp
+pub let ln = @ln
+pub let log(b)(x) = @float_div(@ln(x), @ln(b))
+
+pub let sqrt(x) = @pow(x, 0.5)
