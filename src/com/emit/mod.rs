@@ -1,6 +1,9 @@
 use byteorder::{LE, WriteBytesExt};
 
-use super::low::{self, FunID};
+use super::{
+    ir,
+    low::{self, FunID},
+};
 use crate::{
     binary::{self, Opcode, opcode},
     exe::Value,
@@ -22,6 +25,12 @@ enum Placeholder {
     Patched(u32),
 }
 
+struct Label {
+    depth: usize,
+    breaks: Vec<Marker>,
+    skips: Vec<Marker>,
+}
+
 #[derive(Debug)]
 enum JumpMode {
     Always,
@@ -40,6 +49,8 @@ struct BytecodeBuilder {
 
     function_table: HashMap<u32, String>,
     function_positions: Vec<Placeholder>,
+    labels: HashMap<ir::LabelID, Label>,
+    frame_depth: usize,
 
     opcodes: Vec<(PseudoOp, Option<Marker>)>,
     cursor: Cursor<Vec<u8>>,
@@ -53,6 +64,8 @@ impl BytecodeBuilder {
 
             function_table: HashMap::new(),
             function_positions: Vec::new(),
+            labels: HashMap::new(),
+            frame_depth: 0,
 
             opcodes: Vec::new(),
             cursor: Cursor::new(Vec::new()),
@@ -151,6 +164,55 @@ impl BytecodeBuilder {
         Ok(())
     }
 
+    fn build_do_frame(&mut self) {
+        self.write_opcode(Opcode::do_frame);
+        self.frame_depth += 1;
+    }
+
+    fn build_end_frame(&mut self) {
+        self.write_opcode(Opcode::end_frame);
+        self.frame_depth -= 1;
+    }
+
+    fn register_label(&mut self, label: ir::LabelID) {
+        self.labels.insert(
+            label,
+            Label {
+                depth: self.frame_depth,
+                breaks: Vec::new(),
+                skips: Vec::new(),
+            },
+        );
+    }
+
+    fn get_label(&self, label_id: ir::LabelID) -> &Label {
+        let Some(label) = self.labels.get(&label_id) else {
+            panic!("unregistered label '{:?}'", label_id)
+        };
+        label
+    }
+
+    fn get_label_mut(&mut self, label_id: ir::LabelID) -> &mut Label {
+        let Some(label) = self.labels.get_mut(&label_id) else {
+            panic!("unregistered label '{:?}'", label_id)
+        };
+        label
+    }
+
+    fn wire_label_breaks(&mut self, label_id: ir::LabelID, dest: Marker) {
+        let breaks = std::mem::take(&mut self.get_label_mut(label_id).breaks);
+        for marker in breaks {
+            self.wire_jump(JumpMode::Always, marker, dest);
+        }
+    }
+
+    fn wire_label_skips(&mut self, label_id: ir::LabelID, dest: Marker) {
+        let skips = std::mem::take(&mut self.get_label_mut(label_id).skips);
+        for marker in skips {
+            self.wire_jump(JumpMode::Always, marker, dest);
+        }
+    }
+
     fn build_statement(&mut self, stmt: low::Stmt) {
         use low::Stmt as S;
         match stmt {
@@ -232,23 +294,11 @@ impl BytecodeBuilder {
                 self.write_opcode(Opcode::index(index));
             }
             E::Block {
+                label,
                 stmts,
                 result,
                 needs_frame,
-            } => {
-                if needs_frame {
-                    self.write_opcode(Opcode::do_frame);
-                }
-
-                for stmt in stmts {
-                    self.build_statement(stmt);
-                }
-                self.build_expression(*result);
-
-                if needs_frame {
-                    self.write_opcode(Opcode::end_frame);
-                }
-            }
+            } => self.build_block_expression(label, stmts, *result, needs_frame),
             E::Variant { tag, items } => {
                 self.build_constant(Value::Int(tag));
                 self.build_small_bundle(items);
@@ -256,16 +306,18 @@ impl BytecodeBuilder {
             }
             E::Local { local } => self.build_local(local),
             E::If {
+                label,
                 guard,
                 then_branch,
                 else_branch,
-            } => self.build_if(*guard, *then_branch, *else_branch),
+            } => self.build_if(*guard, *then_branch, *else_branch, label),
             E::While {
+                label,
                 guard,
                 do_branch,
                 else_branch,
-            } => self.build_while(*guard, *do_branch, *else_branch),
-            E::Loop { body } => self.build_loop(*body),
+            } => self.build_while(*guard, *do_branch, *else_branch, label),
+            E::Loop { label, body } => self.build_loop(*body, label),
             E::Fun { id, captured } => self.build_fun(id, captured),
             E::Call { callee, args } => {
                 let arg_count: u8 = args
@@ -287,6 +339,8 @@ impl BytecodeBuilder {
                 decision,
                 fallback,
             } => self.build_match(*scrutinee, *decision, *fallback),
+            E::Break { value, label } => self.build_break(*value, label),
+            E::Skip { label } => self.build_skip(label),
 
             E::Add(left, right) => self.build_binary_op(*left, *right, Opcode::add),
             E::Sub(left, right) => self.build_binary_op(*left, *right, Opcode::sub),
@@ -326,7 +380,43 @@ impl BytecodeBuilder {
         self.write_opcode(Opcode::bundle(size));
     }
 
-    fn build_if(&mut self, guard: low::Expr, then_branch: low::Expr, else_branch: low::Expr) {
+    fn build_block_expression(
+        &mut self,
+        label: Option<ir::LabelID>,
+        stmts: Box<[low::Stmt]>,
+        result: low::Expr,
+        needs_frame: bool,
+    ) {
+        if let Some(label) = label {
+            self.register_label(label);
+        }
+        if needs_frame {
+            self.build_do_frame();
+        }
+
+        for stmt in stmts {
+            self.build_statement(stmt);
+        }
+        self.build_expression(result);
+
+        if needs_frame {
+            self.build_end_frame();
+        }
+        let block_end = self.mark();
+        if let Some(label) = label {
+            self.wire_label_breaks(label, block_end);
+        }
+    }
+
+    fn build_if(
+        &mut self,
+        guard: low::Expr,
+        then_branch: low::Expr,
+        else_branch: low::Expr,
+        label: ir::LabelID,
+    ) {
+        self.register_label(label);
+
         self.build_expression(guard);
         let guard_end_marker = self.mark();
 
@@ -338,9 +428,18 @@ impl BytecodeBuilder {
 
         self.wire_jump(JumpMode::IfFalse, guard_end_marker, then_end_marker);
         self.wire_jump(JumpMode::Always, then_end_marker, else_end_marker);
+        self.wire_label_breaks(label, else_end_marker);
     }
 
-    fn build_while(&mut self, guard: low::Expr, do_branch: low::Stmt, else_branch: low::Expr) {
+    fn build_while(
+        &mut self,
+        guard: low::Expr,
+        do_branch: low::Stmt,
+        else_branch: low::Expr,
+        label: ir::LabelID,
+    ) {
+        self.register_label(label);
+
         let guard_start_marker = self.mark();
         self.build_expression(guard);
         let guard_end_marker = self.mark();
@@ -349,9 +448,24 @@ impl BytecodeBuilder {
         let block_end_marker = self.mark();
 
         self.build_expression(else_branch);
+        let else_end_marker = self.mark();
 
         self.wire_jump(JumpMode::IfFalse, guard_end_marker, block_end_marker);
         self.wire_jump(JumpMode::Always, block_end_marker, guard_start_marker);
+        self.wire_label_breaks(label, else_end_marker);
+        self.wire_label_skips(label, guard_start_marker);
+    }
+
+    fn build_loop(&mut self, body: low::Stmt, label: ir::LabelID) {
+        self.register_label(label);
+
+        let loop_start_marker = self.mark();
+        self.build_statement(body);
+        let loop_end_marker = self.mark();
+
+        self.wire_jump(JumpMode::Always, loop_end_marker, loop_start_marker);
+        self.wire_label_breaks(label, loop_end_marker);
+        self.wire_label_skips(label, loop_start_marker);
     }
 
     fn build_match(&mut self, scrutinee: low::Expr, decision: low::Decision, fallback: low::Expr) {
@@ -454,14 +568,6 @@ impl BytecodeBuilder {
         }
     }
 
-    fn build_loop(&mut self, body: low::Stmt) {
-        let loop_start_marker = self.mark();
-        self.build_statement(body);
-        let loop_end_marker = self.mark();
-
-        self.wire_jump(JumpMode::Always, loop_end_marker, loop_start_marker);
-    }
-
     fn build_fun(&mut self, id: low::FunID, captured: Box<[u8]>) {
         self.write_load_fun(id);
 
@@ -543,6 +649,34 @@ impl BytecodeBuilder {
         self.build_expression(left);
         self.build_expression(right);
         self.write_opcode(op);
+    }
+
+    fn build_break(&mut self, value: low::Expr, label: ir::LabelID) {
+        self.build_expression(value);
+
+        let current_depth = self.frame_depth;
+        let label_depth = self.get_label(label).depth;
+        debug_assert!(current_depth >= label_depth);
+
+        let frame_distance = current_depth - label_depth;
+        for _ in 0..frame_distance {
+            self.write_opcode(Opcode::end_frame);
+        }
+        let break_marker = self.mark();
+        self.get_label_mut(label).breaks.push(break_marker);
+    }
+
+    fn build_skip(&mut self, label: ir::LabelID) {
+        let current_depth = self.frame_depth;
+        let label_depth = self.get_label(label).depth;
+        debug_assert!(current_depth >= label_depth);
+
+        let frame_distance = current_depth - label_depth;
+        for _ in 0..frame_distance {
+            self.write_opcode(Opcode::end_frame);
+        }
+        let skip_marker = self.mark();
+        self.get_label_mut(label).skips.push(skip_marker);
     }
 }
 
