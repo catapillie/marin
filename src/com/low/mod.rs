@@ -336,8 +336,11 @@ impl Lowerer {
     }
 
     fn rebuild_solutions(&self) -> Vec<ir::Solution> {
-        self.solutions
-            .iter()
+        Self::rebuild_solutions_from_map(&self.solutions)
+    }
+
+    fn rebuild_solutions_from_map(map: &SolutionMap) -> Vec<ir::Solution> {
+        map.iter()
             .flat_map(|(id, solutions)| {
                 solutions.iter().cloned().map(|mut solution| {
                     solution.trace.constraint_ids.push(*id);
@@ -345,10 +348,6 @@ impl Lowerer {
                 })
             })
             .collect()
-    }
-
-    fn elaborate_solutions(&self, relevant_id: usize) -> Vec<ir::Solution> {
-        self.solutions[&relevant_id].clone()
     }
 
     fn lower_function_work(&mut self, work: Work) -> Function {
@@ -774,13 +773,21 @@ impl Lowerer {
         id: ir::VariableID,
         constraint_id: usize,
     ) -> Vec<ir::Solution> {
+        let mut orig = self.solutions.clone();
         let info = self.get_variable_abstraction_info(id);
 
         let mut abstract_expr_solutions = info.expr_solutions.clone();
-        let mut relevant_solutions = self.elaborate_solutions(constraint_id);
-        abstract_expr_solutions.append(&mut relevant_solutions);
+        let mut elaborated_solutions = orig
+            .remove(&constraint_id)
+            .expect("failed to elaborate solution")
+            .clone();
+        let mut irrelevant_solutions = Self::rebuild_solutions_from_map(&orig);
 
-        abstract_expr_solutions
+        let mut new_solutions = Vec::new();
+        new_solutions.append(&mut abstract_expr_solutions);
+        new_solutions.append(&mut elaborated_solutions);
+        new_solutions.append(&mut irrelevant_solutions);
+        new_solutions
     }
 
     fn lower_abstract_variable(&mut self, id: ir::VariableID, constraint_id: usize) -> Expr {
