@@ -45,6 +45,8 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::div => Ok(Opcode::div),
         opcode::modulo => Ok(Opcode::modulo),
         opcode::pow => Ok(Opcode::pow),
+        opcode::exp => Ok(Opcode::exp),
+        opcode::ln => Ok(Opcode::ln),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
