@@ -1,3 +1,4 @@
+-- binary operators
 -- +
 pub class Add(T)
     op(T, T) => T
@@ -38,6 +39,25 @@ pub class BitXor(T)
     op(T, T) => T
 end
 
+
+-- unary operators
+-- +
+pub class Pos(T)
+    op(T) => T
+end
+
+-- -
+pub class Neg(T)
+    op(T) => T
+end
+
+-- ~
+pub class BitNeg(T)
+    op(T) => T
+end
+
+
+-- comparison operators
 -- == !=
 pub class Eq(T)
     eq(T, T) => bool
@@ -63,6 +83,9 @@ pub have Mod let op = @int_mod end
 pub have BitAnd let op = @int_and end
 pub have BitOr let op = @int_or end
 pub have BitXor let op = @int_xor end
+pub have Pos let op = @int_pos end
+pub have Neg let op = @int_neg end
+pub have BitNeg let op = @int_not end
 pub have Eq
     let eq = @int_eq
     let ne = @int_ne
@@ -80,6 +103,8 @@ pub have Sub let op = @float_sub end
 pub have Mul let op = @float_mul end
 pub have Div let op = @float_div end
 pub have Mod let op = @float_mod end
+pub have Pos let op = @float_pos end
+pub have Neg let op = @float_neg end
 pub have Eq
     let eq = @float_eq
     let ne = @float_ne
@@ -108,6 +133,7 @@ end
 pub have BitAnd let op = @bool_and end
 pub have BitOr let op = @bool_or end
 pub have BitXor let op = @bool_xor end
+pub have BitNeg let op = @bool_not end
 pub have Eq
     let eq = @bool_eq
     let ne = @bool_ne

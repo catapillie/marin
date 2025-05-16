@@ -195,6 +195,16 @@ impl<'src, 'e> Parser<'src, 'e> {
         }
     }
 
+    fn try_peek_unary_operator(&mut self) -> Option<ast::UnOp> {
+        match self.peek() {
+            Token::Add => Some(ast::UnOp::Pos),
+            Token::Sub => Some(ast::UnOp::Neg),
+            Token::BitNeg => Some(ast::UnOp::BitNeg),
+            Token::Not => Some(ast::UnOp::Not),
+            _ => None,
+        }
+    }
+
     fn try_parse_operation_expression(&mut self) -> Option<ast::Expr> {
         self.try_parse_precedence_operation(0)
     }
@@ -242,6 +252,16 @@ impl<'src, 'e> Parser<'src, 'e> {
     }
 
     pub fn try_parse_primary_expression(&mut self) -> Option<ast::Expr> {
+        if let Some(op) = self.try_peek_unary_operator() {
+            let op_tok = self.consume_token();
+            let arg = self.expect_primary_expression();
+            return Some(ast::Expr::Unary(ast::Unary {
+                op,
+                op_tok,
+                arg: Box::new(arg),
+            }));
+        };
+
         let mut expr = match self.peek() {
             Token::Int => self.try_parse_int_expression(),
             Token::Float => self.try_parse_float_expression(),

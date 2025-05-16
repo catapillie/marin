@@ -26,6 +26,9 @@ impl Checker<'_, '_> {
             "int_le" => builtin_func!(self, span, int_le :: int, int -> bool),
             "int_gt" => builtin_func!(self, span, int_gt :: int, int -> bool),
             "int_ge" => builtin_func!(self, span, int_ge :: int, int -> bool),
+            "int_pos" => builtin_func!(self, span, int_pos :: int -> int),
+            "int_neg" => builtin_func!(self, span, int_neg :: int -> int),
+            "int_not" => builtin_func!(self, span, int_not :: int -> int),
 
             "float_add" => builtin_func!(self, span, float_add :: float, float -> float),
             "float_sub" => builtin_func!(self, span, float_sub :: float, float -> float),
@@ -38,6 +41,8 @@ impl Checker<'_, '_> {
             "float_le" => builtin_func!(self, span, float_le :: float, float -> bool),
             "float_gt" => builtin_func!(self, span, float_gt :: float, float -> bool),
             "float_ge" => builtin_func!(self, span, float_ge :: float, float -> bool),
+            "float_pos" => builtin_func!(self, span, float_pos :: float -> float),
+            "float_neg" => builtin_func!(self, span, float_neg :: float -> float),
 
             "string_concat" => builtin_func!(self, span, string_concat :: string, string -> string),
             "string_eq" => builtin_func!(self, span, string_eq :: string, string -> bool),
@@ -52,6 +57,7 @@ impl Checker<'_, '_> {
             "bool_xor" => builtin_func!(self, span, bool_xor :: bool, bool -> bool),
             "bool_eq" => builtin_func!(self, span, bool_eq :: bool, bool -> bool),
             "bool_ne" => builtin_func!(self, span, bool_ne :: bool, bool -> bool),
+            "bool_not" => builtin_func!(self, span, bool_not :: bool -> bool),
 
             "pow" => builtin_func!(self, span, pow :: float, float -> float),
             "exp" => builtin_func!(self, span, exp :: float -> float),

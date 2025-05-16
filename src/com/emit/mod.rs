@@ -351,6 +351,10 @@ impl BytecodeBuilder {
             E::BitOr(left, right) => self.build_binary_op(*left, *right, Opcode::or),
             E::BitXor(left, right) => self.build_binary_op(*left, *right, Opcode::xor),
 
+            E::Pos(arg) => self.build_unary_op(*arg, Opcode::pos),
+            E::Neg(arg) => self.build_unary_op(*arg, Opcode::neg),
+            E::BitNeg(arg) => self.build_unary_op(*arg, Opcode::not),
+
             E::Pow(left, right) => self.build_binary_op(*left, *right, Opcode::pow),
             E::Exp(arg) => self.build_unary_op(*arg, Opcode::exp),
             E::Ln(arg) => self.build_unary_op(*arg, Opcode::ln),

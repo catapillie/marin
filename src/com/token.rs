@@ -49,6 +49,8 @@ pub enum Token {
     BitOr,
     #[token("^")]
     BitXor,
+    #[token("~")]
+    BitNeg,
 
     #[token("=>")]
     Maps,
@@ -121,6 +123,8 @@ pub enum Token {
     Or,
     #[token("xor")]
     Xor,
+    #[token("not")]
+    Not,
 
     #[regex(r"_+")]
     Underscores,
@@ -163,6 +167,7 @@ impl Display for Token {
             Token::BitAnd => write!(f, "'&'"),
             Token::BitOr => write!(f, "'|'"),
             Token::BitXor => write!(f, "'^'"),
+            Token::BitNeg => write!(f, "'~'"),
 
             Token::Maps => write!(f, "'=>'"),
             Token::Assign => write!(f, "'='"),
@@ -200,6 +205,7 @@ impl Display for Token {
             Token::And => write!(f, "'and' keyword"),
             Token::Or => write!(f, "'or' keyword"),
             Token::Xor => write!(f, "'xor' keyword"),
+            Token::Not => write!(f, "'not' keyword"),
 
             Token::Underscores => write!(f, "underscores"),
             Token::Ident => write!(f, "identifier"),

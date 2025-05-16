@@ -87,6 +87,10 @@ pub enum Expr {
     BitOr(Box<Expr>, Box<Expr>),
     BitXor(Box<Expr>, Box<Expr>),
 
+    Pos(Box<Expr>),
+    Neg(Box<Expr>),
+    BitNeg(Box<Expr>),
+
     Pow(Box<Expr>, Box<Expr>),
     Exp(Box<Expr>),
     Ln(Box<Expr>),
@@ -747,6 +751,10 @@ impl Lowerer {
                 Box::new(self.lower_expression(*right)),
             ),
 
+            E::Pos(arg) => Expr::Pos(Box::new(self.lower_expression(*arg))),
+            E::Neg(arg) => Expr::Neg(Box::new(self.lower_expression(*arg))),
+            E::BitNeg(arg) => Expr::BitNeg(Box::new(self.lower_expression(*arg))),
+
             E::Pow(left, right) => Expr::Pow(
                 Box::new(self.lower_expression(*left)),
                 Box::new(self.lower_expression(*right)),
@@ -1241,7 +1249,10 @@ impl Lowerer {
                 self.collect_expr_captured_variables(right, set, fun_map);
             }
 
-            E::Exp(arg)
+            E::Pos(arg)
+            | E::Neg(arg)
+            | E::BitNeg(arg)
+            | E::Exp(arg)
             | E::Ln(arg)
             | E::Sin(arg)
             | E::Cos(arg)
@@ -1321,6 +1332,9 @@ impl Lowerer {
             Bi::int_le => builtin_binary!(self, Le),
             Bi::int_gt => builtin_binary!(self, Gt),
             Bi::int_ge => builtin_binary!(self, Ge),
+            Bi::int_pos => builtin_unary!(self, Pos),
+            Bi::int_neg => builtin_unary!(self, Neg),
+            Bi::int_not => builtin_unary!(self, BitNeg),
 
             Bi::float_add => builtin_binary!(self, Add),
             Bi::float_sub => builtin_binary!(self, Sub),
@@ -1333,6 +1347,8 @@ impl Lowerer {
             Bi::float_le => builtin_binary!(self, Le),
             Bi::float_gt => builtin_binary!(self, Gt),
             Bi::float_ge => builtin_binary!(self, Ge),
+            Bi::float_pos => builtin_unary!(self, Pos),
+            Bi::float_neg => builtin_unary!(self, Neg),
 
             Bi::string_concat => builtin_binary!(self, Add),
             Bi::string_eq => builtin_binary!(self, Eq),
@@ -1347,6 +1363,7 @@ impl Lowerer {
             Bi::bool_xor => builtin_binary!(self, BitXor),
             Bi::bool_eq => builtin_binary!(self, Eq),
             Bi::bool_ne => builtin_binary!(self, Ne),
+            Bi::bool_not => builtin_unary!(self, BitNeg),
 
             Bi::pow => builtin_binary!(self, Pow),
             Bi::exp => builtin_unary!(self, Exp),

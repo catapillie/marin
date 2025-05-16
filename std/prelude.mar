@@ -38,4 +38,3 @@ pub let swap((a, b)) = (b, a)
 
 pub let rot_left((x, y, z)) = (y, z, x)
 pub let rot_right((x, y, z)) = (z, x, y)
-

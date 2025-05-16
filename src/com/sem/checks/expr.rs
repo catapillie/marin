@@ -33,6 +33,7 @@ impl Checker<'_, '_> {
             E::Fun(e) => self.check_fun(e),
             E::RecordValue(e) => self.check_record_value(e),
             E::Binary(e) => self.check_binary(e),
+            E::Unary(e) => self.check_unary(e),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidExpression())

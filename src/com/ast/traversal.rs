@@ -90,6 +90,9 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
             walk_expr(&e.left, nodes);
             walk_expr(&e.right, nodes);
         }
+        E::Unary(e) => {
+            walk_expr(&e.arg, nodes);
+        }
     }
 }
 

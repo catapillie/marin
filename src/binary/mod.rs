@@ -50,6 +50,9 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::pow => Ok(Opcode::pow),
         opcode::exp => Ok(Opcode::exp),
         opcode::ln => Ok(Opcode::ln),
+        opcode::pos => Ok(Opcode::pos),
+        opcode::neg => Ok(Opcode::neg),
+        opcode::not => Ok(Opcode::not),
         opcode::eq => Ok(Opcode::eq),
         opcode::ne => Ok(Opcode::ne),
         opcode::lt => Ok(Opcode::lt),
@@ -166,6 +169,18 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::ln => {
             w.write_u8(opcode::ln)?;
+            Ok(())
+        }
+        Opcode::pos => {
+            w.write_u8(opcode::pos)?;
+            Ok(())
+        }
+        Opcode::neg => {
+            w.write_u8(opcode::neg)?;
+            Ok(())
+        }
+        Opcode::not => {
+            w.write_u8(opcode::not)?;
             Ok(())
         }
         Opcode::eq => {

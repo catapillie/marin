@@ -17,6 +17,9 @@ pub enum Builtin {
     int_le,
     int_gt,
     int_ge,
+    int_pos,
+    int_neg,
+    int_not,
 
     float_add,
     float_sub,
@@ -29,6 +32,8 @@ pub enum Builtin {
     float_le,
     float_gt,
     float_ge,
+    float_pos,
+    float_neg,
 
     string_concat,
     string_eq,
@@ -43,6 +48,7 @@ pub enum Builtin {
     bool_xor,
     bool_eq,
     bool_ne,
+    bool_not,
 
     pow,
     exp,
@@ -72,6 +78,9 @@ impl Display for Builtin {
             Self::int_le => write!(f, "int_le"),
             Self::int_gt => write!(f, "int_gt"),
             Self::int_ge => write!(f, "int_ge"),
+            Self::int_pos => write!(f, "int_pos"),
+            Self::int_neg => write!(f, "int_neg"),
+            Self::int_not => write!(f, "int_not"),
 
             Self::float_add => write!(f, "float_add"),
             Self::float_sub => write!(f, "float_sub"),
@@ -84,6 +93,8 @@ impl Display for Builtin {
             Self::float_le => write!(f, "float_le"),
             Self::float_gt => write!(f, "float_gt"),
             Self::float_ge => write!(f, "float_ge"),
+            Self::float_pos => write!(f, "float_pos"),
+            Self::float_neg => write!(f, "float_neg"),
 
             Self::string_concat => write!(f, "string_concat"),
             Self::string_eq => write!(f, "string_eq"),
@@ -98,6 +109,7 @@ impl Display for Builtin {
             Self::bool_xor => write!(f, "bool_xor"),
             Self::bool_eq => write!(f, "bool_eq"),
             Self::bool_ne => write!(f, "bool_ne"),
+            Self::bool_not => write!(f, "bool_not"),
 
             Self::pow => write!(f, "pow"),
             Self::exp => write!(f, "exp"),

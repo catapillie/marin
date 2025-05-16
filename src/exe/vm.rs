@@ -263,6 +263,34 @@ impl<'a> VM<'a> {
                     };
                     self.push(result);
                 }
+                opcode::pos => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Int(a) => Val::Int(a),
+                        Val::Float(a) => Val::Float(a),
+                        Val::Bool(a) => Val::Bool(a),
+                        _ => self.fatal("invalid 'pos' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::neg => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Int(a) => Val::Int(-a),
+                        Val::Float(a) => Val::Float(-a),
+                        _ => self.fatal("invalid 'neg' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::not => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Int(a) => Val::Int(!a),
+                        Val::Bool(a) => Val::Bool(!a),
+                        _ => self.fatal("invalid 'not' operation"),
+                    };
+                    self.push(result);
+                }
                 opcode::eq => {
                     let right = self.pop();
                     let left = self.pop();

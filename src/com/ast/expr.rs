@@ -1,4 +1,4 @@
-use super::{BinOp, Label, mix_spans};
+use super::{mix_spans, BinOp, Label, UnOp};
 use crate::com::loc::Span;
 
 #[derive(Debug, Clone)]
@@ -34,6 +34,7 @@ pub enum Expr {
     Class(Class),
     Have(Have),
     Binary(Binary),
+    Unary(Unary),
 }
 
 #[derive(Debug, Clone)]
@@ -266,6 +267,13 @@ pub struct Binary {
     pub right: Box<Expr>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Unary {
+    pub op: UnOp,
+    pub op_tok: Span,
+    pub arg: Box<Expr>,
+}
+
 impl Tuple {
     pub fn span(&self) -> Span {
         mix_spans([self.left_paren, item_spans(&self.items), self.right_paren])
@@ -474,6 +482,12 @@ impl Binary {
     }
 }
 
+impl Unary {
+    pub fn span(&self) -> Span {
+        mix_spans([self.op_tok, self.arg.span()])
+    }
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -508,6 +522,7 @@ impl Expr {
             Self::Class(e) => e.span(),
             Self::Have(e) => e.span(),
             Self::Binary(e) => e.span(),
+            Self::Unary(e) => e.span(),
         }
     }
 }
