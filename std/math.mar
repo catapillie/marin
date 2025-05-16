@@ -37,7 +37,7 @@ end
 pub let atan2(y, x) if @float_ge(x, 0.0) then
     atan(@float_div(y, x))
 else if @float_ge(y, 0.0) then
-    @float_sub(pi, atan(@float_sub(0.0, @float_div(y, x))))
+    @float_sub(pi, atan(@float_neg(@float_div(y, x))))
 else
     @float_sub(atan(@float_div(y, x)), pi)
 end
