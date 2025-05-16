@@ -49,6 +49,7 @@ opcodes! {
     0xe0 pop
     0xe1 pop_offset(u16)
     0xe2 dup
+    0xfe panic
 }
 
 macro_rules! opcodes {

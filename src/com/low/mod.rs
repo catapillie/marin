@@ -110,6 +110,8 @@ pub enum Expr {
     Le(Box<Expr>, Box<Expr>),
     Gt(Box<Expr>, Box<Expr>),
     Ge(Box<Expr>, Box<Expr>),
+    
+    Panic(Box<Expr>),
 }
 
 pub enum Decision {
@@ -804,6 +806,8 @@ impl Lowerer {
                 Box::new(self.lower_expression(*left)),
                 Box::new(self.lower_expression(*right)),
             ),
+
+            E::Panic(arg) => Expr::Panic(Box::new(self.lower_expression(*arg))),
         }
     }
 
@@ -1276,6 +1280,10 @@ impl Lowerer {
             | E::Atan(arg) => {
                 self.collect_expr_captured_variables(arg, set, fun_map);
             }
+
+            E::Panic(arg) => {
+                self.collect_expr_captured_variables(arg, set, fun_map);
+            }
         }
     }
 
@@ -1388,6 +1396,8 @@ impl Lowerer {
             Bi::asin => builtin_unary!(self, Asin),
             Bi::acos => builtin_unary!(self, Acos),
             Bi::atan => builtin_unary!(self, Atan),
+
+            Bi::panic => builtin_unary!(self, Panic),
         };
 
         self.add_work(

@@ -69,6 +69,18 @@ impl Checker<'_, '_> {
             "acos" => builtin_func!(self, span, acos :: float -> float),
             "atan" => builtin_func!(self, span, atan :: float -> float),
 
+            "panic" => {
+                let arg_ty = self.create_fresh_type(None);
+                let ret_ty = self.create_fresh_type(None);
+                (
+                    ir::Expr::Builtin(ir::Builtin::panic),
+                    self.create_type(
+                        Ty::Lambda(Box::new([arg_ty]), ret_ty),
+                        Some(span),
+                    )
+                )
+            },
+
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidBuiltin(name.to_string()))

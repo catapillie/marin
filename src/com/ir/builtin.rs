@@ -59,6 +59,8 @@ pub enum Builtin {
     asin,
     acos,
     atan,
+
+    panic,
 }
 
 impl Display for Builtin {
@@ -120,6 +122,8 @@ impl Display for Builtin {
             Self::asin => write!(f, "asin"),
             Self::acos => write!(f, "acos"),
             Self::atan => write!(f, "atan"),
+
+            Self::panic => write!(f, "panic"),
         }
     }
 }

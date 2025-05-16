@@ -523,7 +523,12 @@ impl<'a> VM<'a> {
                     let value = self.peek().clone();
                     self.push(value);
                 }
-                _ => self.fatal("invalid opcode 0x{op:x}"),
+                opcode::panic => {
+                    let val = self.pop();
+                    let msg = self.to_user_val(&val).to_string();
+                    self.fatal(format!("PANIC: {msg}").as_str());
+                }
+                _ => self.fatal(format!("invalid opcode 0x{op:x}").as_str()),
             }
         }
 

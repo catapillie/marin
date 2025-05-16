@@ -132,6 +132,7 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::pop => print!("{:>14}", "pop"),
             Op::pop_offset(offset) => print!("{:>14} {}", "pop_offset", offset.to_string().bold()),
             Op::dup => print!("{:>14}", "dup"),
+            Op::panic => print!("{:>14}", "panic"),
         }
         println!();
     }

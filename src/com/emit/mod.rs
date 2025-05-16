@@ -375,6 +375,8 @@ impl BytecodeBuilder {
             E::Le(left, right) => self.build_binary_op(*left, *right, Opcode::le),
             E::Gt(left, right) => self.build_binary_op(*left, *right, Opcode::gt),
             E::Ge(left, right) => self.build_binary_op(*left, *right, Opcode::ge),
+
+            E::Panic(arg) => self.build_unary_op(*arg, Opcode::panic),
         }
     }
 

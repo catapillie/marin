@@ -81,6 +81,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::pop => Ok(Opcode::pop),
         opcode::pop_offset => Ok(Opcode::pop_offset(r.read_u16::<LE>()?)),
         opcode::dup => Ok(Opcode::dup),
+        opcode::panic => Ok(Opcode::panic),
         byte => Err(Error::IllegalOpcode(byte)),
     }
 }
@@ -303,6 +304,10 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::dup => {
             w.write_u8(opcode::dup)?;
+            Ok(())
+        }
+        Opcode::panic => {
+            w.write_u8(opcode::panic)?;
             Ok(())
         }
     }
