@@ -1,0 +1,18 @@
+import Eq from ops
+import Display from display
+
+
+pub let condition(guard) if guard then
+else
+    @panic("Assert.condition failure")
+end
+
+pub let eq(a, b) if Eq.eq(a, b) then
+else
+    @panic(@string_concat("Assert.eq failure: ", @string_concat(Display.str(a), @string_concat(" == ", Display.str(b)))))
+end
+
+pub let ne(a, b) if Eq.ne(a, b) then
+else
+    @panic(@string_concat("Assert.eq failure: ", @string_concat(Display.str(a), @string_concat(" != ", Display.str(b)))))
+end

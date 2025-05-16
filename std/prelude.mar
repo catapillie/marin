@@ -28,6 +28,7 @@ pub import list as List
 pub import list from list
 
 pub import math as Math
+pub import assert as Assert
 
 
 pub let id(x) = x

@@ -110,7 +110,7 @@ pub enum Expr {
     Le(Box<Expr>, Box<Expr>),
     Gt(Box<Expr>, Box<Expr>),
     Ge(Box<Expr>, Box<Expr>),
-    
+
     Panic(Box<Expr>),
 }
 
