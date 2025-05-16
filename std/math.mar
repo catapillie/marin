@@ -1,12 +1,39 @@
+-- constants
+pub let pi_over_two = 1.57079632679489661923132169163975144
 pub let pi = 3.14159265358979323846264338327950288
 pub let tau = 6.28318530717958647692528676655900576
 pub let e = 2.71828182845904523536028747135266250
 pub let phi = 1.618033988749894848204586834365638118
 
+-- exponential functions
 pub let pow = @pow
-
 pub let exp = @exp
 pub let ln = @ln
 pub let log(b)(x) = @float_div(@ln(x), @ln(b))
-
 pub let sqrt(x) = @pow(x, 0.5)
+
+-- trigonometric functions
+pub let sin = @sin
+pub let asin = @asin
+pub let csc(x) = @float_div(1.0, @sin(x))
+pub let acsc(x) = asin(@float_div(1.0, x))
+
+pub let cos = @cos
+pub let acos = @acos
+pub let sec(x) = @float_div(1.0, @cos(x))
+pub let asec(x) = acos(@float_div(1.0, x))
+
+pub let tan = @tan
+pub let atan = @atan
+pub let cot(x) = @float_div(1.0, @tan(x))
+pub let acot(x) = if @float_eq(x, 0.0) then
+    pi_over_two
+else if @float_gt(x, 0.0) then
+    atan(@float_div(1.0, x))
+else
+    @float_add(atan(@float_div(1.0, x)), pi)
+end
+
+-- degree-radian helpers
+pub let to_deg(rad) = @float_mul(180.0, @float_div(rad, pi))
+pub let to_rad(deg) = @float_mul(pi, @float_div(deg, 180.0))
