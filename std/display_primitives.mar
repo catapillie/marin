@@ -5,3 +5,12 @@ import display
 pub have display.Display
     let str(s) = s
 end
+
+-- Display(bool)
+pub have display.Display
+    let str(b) if b then
+        "true"
+    else
+        "false"
+    end
+end
