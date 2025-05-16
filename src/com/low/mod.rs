@@ -906,12 +906,26 @@ impl Lowerer {
                 pattern,
                 success,
                 failure,
-            } => Decision::Test {
-                local: self.get_local(tested_var),
-                pat: Box::new(self.lower_pattern(*pattern)),
-                success: Box::new(self.lower_decision(*success, is_exhaustive)),
-                failure: Box::new(self.lower_decision(*failure, is_exhaustive)),
-            },
+            } => {
+                let local = self.get_local(tested_var);
+
+                // if the test is successful, the tested value is deconstructed
+                // but if not, then no new locals must be declared
+                // that's why the local index is restored after this branch is lowered
+                // (basically, they are 'in parallel')
+                let local_index_orig = self.local_index;
+                let pat = self.lower_pattern(*pattern);
+                let success = self.lower_decision(*success, is_exhaustive);
+                self.local_index = local_index_orig;
+
+                let failure = self.lower_decision(*failure, is_exhaustive);
+                Decision::Test {
+                    local,
+                    pat: Box::new(pat),
+                    success: Box::new(success),
+                    failure: Box::new(failure),
+                }
+            }
         }
     }
 
