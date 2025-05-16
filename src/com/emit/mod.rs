@@ -34,6 +34,7 @@ struct Label {
 #[derive(Debug)]
 enum JumpMode {
     Always,
+    IfTrue,
     IfFalse,
     Eq,
 }
@@ -351,6 +352,9 @@ impl BytecodeBuilder {
             E::BitOr(left, right) => self.build_binary_op(*left, *right, Opcode::or),
             E::BitXor(left, right) => self.build_binary_op(*left, *right, Opcode::xor),
 
+            E::ShortAnd(left, right) => self.build_short_circuit_and(*left, *right),
+            E::ShortOr(left, right) => self.build_short_circuit_or(*left, *right),
+
             E::Pos(arg) => self.build_unary_op(*arg, Opcode::pos),
             E::Neg(arg) => self.build_unary_op(*arg, Opcode::neg),
             E::BitNeg(arg) => self.build_unary_op(*arg, Opcode::not),
@@ -641,6 +645,7 @@ impl BytecodeBuilder {
                 if let Some((dest, mode)) = &self.markers[marker.0].outgoing {
                     match mode {
                         JumpMode::Always => self.cursor.write_u8(opcode::jump)?,
+                        JumpMode::IfTrue => self.cursor.write_u8(opcode::jump_if)?,
                         JumpMode::IfFalse => self.cursor.write_u8(opcode::jump_if_not)?,
                         JumpMode::Eq => self.cursor.write_u8(opcode::jump_eq)?,
                     }
@@ -678,6 +683,30 @@ impl BytecodeBuilder {
     fn build_unary_op(&mut self, arg: low::Expr, op: Opcode) {
         self.build_expression(arg);
         self.write_opcode(op);
+    }
+
+    fn build_short_circuit_and(&mut self, left: low::Expr, right: low::Expr) {
+        self.build_expression(left);
+        self.write_opcode(Opcode::dup);
+
+        let right_start_marker = self.mark();
+        self.write_opcode(Opcode::pop);
+        self.build_expression(right);
+        let right_end_marker = self.mark();
+
+        self.wire_jump(JumpMode::IfFalse, right_start_marker, right_end_marker);
+    }
+
+    fn build_short_circuit_or(&mut self, left: low::Expr, right: low::Expr) {
+        self.build_expression(left);
+        self.write_opcode(Opcode::dup);
+
+        let right_start_marker = self.mark();
+        self.write_opcode(Opcode::pop);
+        self.build_expression(right);
+        let right_end_marker = self.mark();
+
+        self.wire_jump(JumpMode::IfTrue, right_start_marker, right_end_marker);
     }
 
     fn build_break(&mut self, value: low::Expr, label: ir::LabelID) {

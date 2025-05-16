@@ -84,6 +84,9 @@ pub enum Expr {
     BitOr(Box<Expr>, Box<Expr>),
     BitXor(Box<Expr>, Box<Expr>),
 
+    ShortAnd(Box<Expr>, Box<Expr>),
+    ShortOr(Box<Expr>, Box<Expr>),
+
     Pos(Box<Expr>),
     Neg(Box<Expr>),
     BitNeg(Box<Expr>),

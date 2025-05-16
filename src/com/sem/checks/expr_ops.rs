@@ -3,6 +3,11 @@ use std::collections::HashMap;
 
 impl Checker<'_, '_> {
     pub fn check_binary(&mut self, e: &ast::Binary) -> ir::CheckedExpr {
+        use ast::BinOp as Op;
+        if matches!(e.op, Op::And | Op::Or | Op::Xor) {
+            return self.check_boolean_binary(e);
+        }
+
         let (left, left_ty) = self.check_expression(&e.left);
         let (right, right_ty) = self.check_expression(&e.right);
 
@@ -10,7 +15,6 @@ impl Checker<'_, '_> {
             panic!("cannot use binary operation without std")
         };
 
-        use ast::BinOp as Op;
         let (op_class_name, op_class_item) = match e.op {
             Op::Add => ("Add", 0),
             Op::Sub => ("Sub", 0),
@@ -60,13 +64,16 @@ impl Checker<'_, '_> {
     }
 
     pub fn check_unary(&mut self, e: &ast::Unary) -> ir::CheckedExpr {
+        use ast::UnOp as Op;
+        if matches!(e.op, Op::Not) {
+            return self.check_boolean_unary(e);
+        }
+
         let (arg, arg_ty) = self.check_expression(&e.arg);
 
         let Some(prelude_file) = self.deps.info.prelude_file else {
             panic!("cannot use binary operation without std")
         };
-
-        use ast::UnOp as Op;
         let (op_class_name, op_class_item) = match e.op {
             Op::Pos => ("Pos", 0),
             Op::Neg => ("Neg", 0),
@@ -110,5 +117,38 @@ impl Checker<'_, '_> {
         let ops_import_info = self.entities.get_import_info(ops_import_id);
         let ops_file = ops_import_info.file;
         &self.exports[ops_file].exports
+    }
+
+    fn check_boolean_binary(&mut self, e: &ast::Binary) -> ir::CheckedExpr {
+        let bool_ty = self.native_types.bool;
+
+        let (left, left_ty) = self.check_expression(&e.left);
+        let (right, right_ty) = self.check_expression(&e.right);
+
+        self.unify(left_ty, bool_ty, &[]);
+        self.unify(right_ty, bool_ty, &[]);
+
+        let expr = match e.op {
+            ast::BinOp::And => ir::Expr::ShortAnd(Box::new(left), Box::new(right)),
+            ast::BinOp::Or => ir::Expr::ShortOr(Box::new(left), Box::new(right)),
+            ast::BinOp::Xor => ir::Expr::BitXor(Box::new(left), Box::new(right)),
+            _ => unreachable!("unreachable boolean binary operation"),
+        };
+
+        (expr, bool_ty)
+    }
+
+    fn check_boolean_unary(&mut self, e: &ast::Unary) -> ir::CheckedExpr {
+        let bool_ty = self.native_types.bool;
+
+        let (arg, arg_ty) = self.check_expression(&e.arg);
+        self.unify(arg_ty, bool_ty, &[]);
+
+        let expr = match e.op {
+            ast::UnOp::Not => ir::Expr::BitNeg(Box::new(arg)),
+            _ => unreachable!("unreachable boolean unary operation"),
+        };
+
+        (expr, bool_ty)
     }
 }

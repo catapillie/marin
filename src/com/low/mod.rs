@@ -87,6 +87,9 @@ pub enum Expr {
     BitOr(Box<Expr>, Box<Expr>),
     BitXor(Box<Expr>, Box<Expr>),
 
+    ShortAnd(Box<Expr>, Box<Expr>),
+    ShortOr(Box<Expr>, Box<Expr>),
+
     Pos(Box<Expr>),
     Neg(Box<Expr>),
     BitNeg(Box<Expr>),
@@ -751,6 +754,15 @@ impl Lowerer {
                 Box::new(self.lower_expression(*right)),
             ),
 
+            E::ShortAnd(left, right) => Expr::ShortAnd(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::ShortOr(left, right) => Expr::ShortOr(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+
             E::Pos(arg) => Expr::Pos(Box::new(self.lower_expression(*arg))),
             E::Neg(arg) => Expr::Neg(Box::new(self.lower_expression(*arg))),
             E::BitNeg(arg) => Expr::BitNeg(Box::new(self.lower_expression(*arg))),
@@ -1235,6 +1247,8 @@ impl Lowerer {
             | E::Mul(left, right)
             | E::Div(left, right)
             | E::Mod(left, right)
+            | E::ShortAnd(left, right)
+            | E::ShortOr(left, right)
             | E::BitAnd(left, right)
             | E::BitOr(left, right)
             | E::BitXor(left, right)
