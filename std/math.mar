@@ -34,6 +34,14 @@ else
     @float_add(atan(@float_div(1.0, x)), pi)
 end
 
+pub let atan2(y, x) if @float_ge(x, 0.0) then
+    atan(@float_div(y, x))
+else if @float_ge(y, 0.0) then
+    @float_sub(pi, atan(@float_sub(0.0, @float_div(y, x))))
+else
+    @float_sub(atan(@float_div(y, x)), pi)
+end
+
 -- degree-radian helpers
 pub let to_deg(rad) = @float_mul(180.0, @float_div(rad, pi))
 pub let to_rad(deg) = @float_mul(pi, @float_div(deg, 180.0))
