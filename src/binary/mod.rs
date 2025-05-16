@@ -44,9 +44,18 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::mul => Ok(Opcode::mul),
         opcode::div => Ok(Opcode::div),
         opcode::modulo => Ok(Opcode::modulo),
+        opcode::and => Ok(Opcode::and),
+        opcode::or => Ok(Opcode::or),
+        opcode::xor => Ok(Opcode::xor),
         opcode::pow => Ok(Opcode::pow),
         opcode::exp => Ok(Opcode::exp),
         opcode::ln => Ok(Opcode::ln),
+        opcode::eq => Ok(Opcode::eq),
+        opcode::ne => Ok(Opcode::ne),
+        opcode::lt => Ok(Opcode::lt),
+        opcode::le => Ok(Opcode::le),
+        opcode::gt => Ok(Opcode::gt),
+        opcode::ge => Ok(Opcode::ge),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -133,12 +142,48 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
             w.write_u8(opcode::pow)?;
             Ok(())
         }
+        Opcode::and => {
+            w.write_u8(opcode::and)?;
+            Ok(())
+        }
+        Opcode::or => {
+            w.write_u8(opcode::or)?;
+            Ok(())
+        }
+        Opcode::xor => {
+            w.write_u8(opcode::xor)?;
+            Ok(())
+        }
         Opcode::exp => {
             w.write_u8(opcode::exp)?;
             Ok(())
         }
         Opcode::ln => {
             w.write_u8(opcode::ln)?;
+            Ok(())
+        }
+        Opcode::eq => {
+            w.write_u8(opcode::eq)?;
+            Ok(())
+        }
+        Opcode::ne => {
+            w.write_u8(opcode::ne)?;
+            Ok(())
+        }
+        Opcode::lt => {
+            w.write_u8(opcode::lt)?;
+            Ok(())
+        }
+        Opcode::le => {
+            w.write_u8(opcode::le)?;
+            Ok(())
+        }
+        Opcode::gt => {
+            w.write_u8(opcode::gt)?;
+            Ok(())
+        }
+        Opcode::ge => {
+            w.write_u8(opcode::ge)?;
             Ok(())
         }
         Opcode::load_const(x) => {

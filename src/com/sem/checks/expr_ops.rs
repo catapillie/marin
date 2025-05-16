@@ -16,7 +16,16 @@ impl Checker<'_, '_> {
             Op::Mul => ("Mul", 0),
             Op::Div => ("Div", 0),
             Op::Mod => ("Mod", 0),
-            op => todo!("unimplemented operator '{op:?}'"),
+            Op::Eq => ("Eq", 0),
+            Op::Ne => ("Eq", 1),
+            Op::Lt => ("Ord", 0),
+            Op::Le => ("Ord", 1),
+            Op::Gt => ("Ord", 2),
+            Op::Ge => ("Ord", 3),
+            Op::BitXor => ("BitXor", 0),
+            Op::BitOr => ("BitOr", 0),
+            Op::BitAnd => ("BitAnd", 0),
+            op => unimplemented!("operator {op:?}"),
         };
 
         let prelude_exports = &self.exports[prelude_file].exports;

@@ -1,21 +1,55 @@
+-- +
 pub class Add(T)
     op(T, T) => T
 end
 
+-- -
 pub class Sub(T)
     op(T, T) => T
 end
 
+-- *
 pub class Mul(T)
     op(T, T) => T
 end
 
+-- /
 pub class Div(T)
     op(T, T) => T
 end
 
+-- %
 pub class Mod(T)
     op(T, T) => T
+end
+
+-- &
+pub class BitAnd(T)
+    op(T, T) => T
+end
+
+-- |
+pub class BitOr(T)
+    op(T, T) => T
+end
+
+-- ^
+pub class BitXor(T)
+    op(T, T) => T
+end
+
+-- == !=
+pub class Eq(T)
+    eq(T, T) => bool
+    ne(T, T) => bool
+end
+
+-- < <= > >=
+pub class Ord(T)
+    lt(T, T) => bool
+    le(T, T) => bool
+    gt(T, T) => bool
+    ge(T, T) => bool
 end
 
 
@@ -26,6 +60,19 @@ pub have Sub let op = @int_sub end
 pub have Mul let op = @int_mul end
 pub have Div let op = @int_div end
 pub have Mod let op = @int_mod end
+pub have BitAnd let op = @int_and end
+pub have BitOr let op = @int_or end
+pub have BitXor let op = @int_xor end
+pub have Eq
+    let eq = @int_eq
+    let ne = @int_ne
+end
+pub have Ord
+    let lt = @int_lt
+    let le = @int_le
+    let gt = @int_gt
+    let ge = @int_ge
+end
 
 -- float
 pub have Add let op = @float_add end
@@ -33,6 +80,35 @@ pub have Sub let op = @float_sub end
 pub have Mul let op = @float_mul end
 pub have Div let op = @float_div end
 pub have Mod let op = @float_mod end
+pub have Eq
+    let eq = @float_eq
+    let ne = @float_ne
+end
+pub have Ord
+    let lt = @float_lt
+    let le = @float_le
+    let gt = @float_gt
+    let ge = @float_ge
+end
 
 -- string
 pub have Add let op = @string_concat end
+pub have Eq
+    let eq = @string_eq
+    let ne = @string_ne
+end
+pub have Ord
+    let lt = @string_lt
+    let le = @string_le
+    let gt = @string_gt
+    let ge = @string_ge
+end
+
+-- bool
+pub have BitAnd let op = @bool_and end
+pub have BitOr let op = @bool_or end
+pub have BitXor let op = @bool_xor end
+pub have Eq
+    let eq = @bool_eq
+    let ne = @bool_ne
+end

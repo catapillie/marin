@@ -217,6 +217,36 @@ impl<'a> VM<'a> {
                     };
                     self.push(result);
                 }
+                opcode::and => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a & b),
+                        (Val::Bool(a), Val::Bool(b)) => Val::Bool(a & b),
+                        _ => self.fatal("invalid 'and' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::or => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a | b),
+                        (Val::Bool(a), Val::Bool(b)) => Val::Bool(a | b),
+                        _ => self.fatal("invalid 'and' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::xor => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Int(a ^ b),
+                        (Val::Bool(a), Val::Bool(b)) => Val::Bool(a ^ b),
+                        _ => self.fatal("invalid 'and' operation"),
+                    };
+                    self.push(result);
+                }
                 opcode::exp => {
                     let val = self.pop();
                     let result = match val {
@@ -230,6 +260,86 @@ impl<'a> VM<'a> {
                     let result = match val {
                         Val::Float(a) => Val::Float(a.ln()),
                         _ => self.fatal("invalid 'ln' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::eq => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a == b),
+                        (Val::Float(a), Val::Float(b)) => Val::Bool(a == b),
+                        (Val::String(a), Val::String(b)) => {
+                            Val::Bool(self.heap.deref_string(a) == self.heap.deref_string(b))
+                        }
+                        (Val::Bool(a), Val::Bool(b)) => Val::Bool(a == b),
+                        _ => self.fatal("invalid 'eq' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::ne => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a != b),
+                        (Val::Float(a), Val::Float(b)) => Val::Bool(a != b),
+                        (Val::String(a), Val::String(b)) => {
+                            Val::Bool(self.heap.deref_string(a) != self.heap.deref_string(b))
+                        }
+                        (Val::Bool(a), Val::Bool(b)) => Val::Bool(a != b),
+                        _ => self.fatal("invalid 'ne' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::lt => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a < b),
+                        (Val::Float(a), Val::Float(b)) => Val::Bool(a < b),
+                        (Val::String(a), Val::String(b)) => {
+                            Val::Bool(self.heap.deref_string(a) < self.heap.deref_string(b))
+                        }
+                        _ => self.fatal("invalid 'lt' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::le => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a <= b),
+                        (Val::Float(a), Val::Float(b)) => Val::Bool(a <= b),
+                        (Val::String(a), Val::String(b)) => {
+                            Val::Bool(self.heap.deref_string(a) <= self.heap.deref_string(b))
+                        }
+                        _ => self.fatal("invalid 'le' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::gt => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a > b),
+                        (Val::Float(a), Val::Float(b)) => Val::Bool(a > b),
+                        (Val::String(a), Val::String(b)) => {
+                            Val::Bool(self.heap.deref_string(a) > self.heap.deref_string(b))
+                        }
+                        _ => self.fatal("invalid 'gt' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::ge => {
+                    let right = self.pop();
+                    let left = self.pop();
+                    let result = match (left, right) {
+                        (Val::Int(a), Val::Int(b)) => Val::Bool(a >= b),
+                        (Val::Float(a), Val::Float(b)) => Val::Bool(a >= b),
+                        (Val::String(a), Val::String(b)) => {
+                            Val::Bool(self.heap.deref_string(a) >= self.heap.deref_string(b))
+                        }
+                        _ => self.fatal("invalid 'ge' operation"),
                     };
                     self.push(result);
                 }

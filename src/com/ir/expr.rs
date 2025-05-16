@@ -80,7 +80,18 @@ pub enum Expr {
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Mod(Box<Expr>, Box<Expr>),
+    BitAnd(Box<Expr>, Box<Expr>),
+    BitOr(Box<Expr>, Box<Expr>),
+    BitXor(Box<Expr>, Box<Expr>),
+
     Pow(Box<Expr>, Box<Expr>),
     Exp(Box<Expr>),
     Ln(Box<Expr>),
+
+    Eq(Box<Expr>, Box<Expr>),
+    Ne(Box<Expr>, Box<Expr>),
+    Lt(Box<Expr>, Box<Expr>),
+    Le(Box<Expr>, Box<Expr>),
+    Gt(Box<Expr>, Box<Expr>),
+    Ge(Box<Expr>, Box<Expr>),
 }

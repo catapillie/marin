@@ -347,9 +347,20 @@ impl BytecodeBuilder {
             E::Mul(left, right) => self.build_binary_op(*left, *right, Opcode::mul),
             E::Div(left, right) => self.build_binary_op(*left, *right, Opcode::div),
             E::Mod(left, right) => self.build_binary_op(*left, *right, Opcode::modulo),
+            E::BitAnd(left, right) => self.build_binary_op(*left, *right, Opcode::and),
+            E::BitOr(left, right) => self.build_binary_op(*left, *right, Opcode::or),
+            E::BitXor(left, right) => self.build_binary_op(*left, *right, Opcode::xor),
+
             E::Pow(left, right) => self.build_binary_op(*left, *right, Opcode::pow),
             E::Exp(arg) => self.build_unary_op(*arg, Opcode::exp),
             E::Ln(arg) => self.build_unary_op(*arg, Opcode::ln),
+
+            E::Eq(left, right) => self.build_binary_op(*left, *right, Opcode::eq),
+            E::Ne(left, right) => self.build_binary_op(*left, *right, Opcode::ne),
+            E::Lt(left, right) => self.build_binary_op(*left, *right, Opcode::lt),
+            E::Le(left, right) => self.build_binary_op(*left, *right, Opcode::le),
+            E::Gt(left, right) => self.build_binary_op(*left, *right, Opcode::gt),
+            E::Ge(left, right) => self.build_binary_op(*left, *right, Opcode::ge),
         }
     }
 

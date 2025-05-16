@@ -83,9 +83,20 @@ pub enum Expr {
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
     Mod(Box<Expr>, Box<Expr>),
+    BitAnd(Box<Expr>, Box<Expr>),
+    BitOr(Box<Expr>, Box<Expr>),
+    BitXor(Box<Expr>, Box<Expr>),
+
     Pow(Box<Expr>, Box<Expr>),
     Exp(Box<Expr>),
     Ln(Box<Expr>),
+
+    Eq(Box<Expr>, Box<Expr>),
+    Ne(Box<Expr>, Box<Expr>),
+    Lt(Box<Expr>, Box<Expr>),
+    Le(Box<Expr>, Box<Expr>),
+    Gt(Box<Expr>, Box<Expr>),
+    Ge(Box<Expr>, Box<Expr>),
 }
 
 pub enum Decision {
@@ -696,6 +707,7 @@ impl Lowerer {
                 self.lower_expression(item_expr)
             }
             E::Builtin(builtin) => self.lower_builtin(builtin),
+
             E::Add(left, right) => Expr::Add(
                 Box::new(self.lower_expression(*left)),
                 Box::new(self.lower_expression(*right)),
@@ -716,12 +728,50 @@ impl Lowerer {
                 Box::new(self.lower_expression(*left)),
                 Box::new(self.lower_expression(*right)),
             ),
+            E::BitAnd(left, right) => Expr::BitAnd(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::BitOr(left, right) => Expr::BitOr(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::BitXor(left, right) => Expr::BitXor(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+
             E::Pow(left, right) => Expr::Pow(
                 Box::new(self.lower_expression(*left)),
                 Box::new(self.lower_expression(*right)),
             ),
             E::Exp(arg) => Expr::Exp(Box::new(self.lower_expression(*arg))),
             E::Ln(arg) => Expr::Ln(Box::new(self.lower_expression(*arg))),
+
+            E::Eq(left, right) => Expr::Eq(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Ne(left, right) => Expr::Ne(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Lt(left, right) => Expr::Lt(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Le(left, right) => Expr::Le(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Gt(left, right) => Expr::Gt(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
+            E::Ge(left, right) => Expr::Ge(
+                Box::new(self.lower_expression(*left)),
+                Box::new(self.lower_expression(*right)),
+            ),
         }
     }
 
@@ -1165,6 +1215,15 @@ impl Lowerer {
             | E::Mul(left, right)
             | E::Div(left, right)
             | E::Mod(left, right)
+            | E::BitAnd(left, right)
+            | E::BitOr(left, right)
+            | E::BitXor(left, right)
+            | E::Eq(left, right)
+            | E::Ne(left, right)
+            | E::Lt(left, right)
+            | E::Le(left, right)
+            | E::Gt(left, right)
+            | E::Ge(left, right)
             | E::Pow(left, right) => {
                 self.collect_expr_captured_variables(left, set, fun_map);
                 self.collect_expr_captured_variables(right, set, fun_map);
@@ -1233,15 +1292,45 @@ impl Lowerer {
             Bi::int_mul => builtin_binary!(self, Mul),
             Bi::int_div => builtin_binary!(self, Div),
             Bi::int_mod => builtin_binary!(self, Mod),
+            Bi::int_and => builtin_binary!(self, BitAnd),
+            Bi::int_or => builtin_binary!(self, BitOr),
+            Bi::int_xor => builtin_binary!(self, BitXor),
+            Bi::int_eq => builtin_binary!(self, Eq),
+            Bi::int_ne => builtin_binary!(self, Ne),
+            Bi::int_lt => builtin_binary!(self, Lt),
+            Bi::int_le => builtin_binary!(self, Le),
+            Bi::int_gt => builtin_binary!(self, Gt),
+            Bi::int_ge => builtin_binary!(self, Ge),
+
             Bi::float_add => builtin_binary!(self, Add),
             Bi::float_sub => builtin_binary!(self, Sub),
             Bi::float_mul => builtin_binary!(self, Mul),
             Bi::float_div => builtin_binary!(self, Div),
             Bi::float_mod => builtin_binary!(self, Mod),
+            Bi::float_eq => builtin_binary!(self, Eq),
+            Bi::float_ne => builtin_binary!(self, Ne),
+            Bi::float_lt => builtin_binary!(self, Lt),
+            Bi::float_le => builtin_binary!(self, Le),
+            Bi::float_gt => builtin_binary!(self, Gt),
+            Bi::float_ge => builtin_binary!(self, Ge),
+
+            Bi::string_concat => builtin_binary!(self, Add),
+            Bi::string_eq => builtin_binary!(self, Eq),
+            Bi::string_ne => builtin_binary!(self, Ne),
+            Bi::string_lt => builtin_binary!(self, Lt),
+            Bi::string_le => builtin_binary!(self, Le),
+            Bi::string_gt => builtin_binary!(self, Gt),
+            Bi::string_ge => builtin_binary!(self, Ge),
+
+            Bi::bool_and => builtin_binary!(self, BitAnd),
+            Bi::bool_or => builtin_binary!(self, BitOr),
+            Bi::bool_xor => builtin_binary!(self, BitXor),
+            Bi::bool_eq => builtin_binary!(self, Eq),
+            Bi::bool_ne => builtin_binary!(self, Ne),
+
             Bi::pow => builtin_binary!(self, Pow),
             Bi::exp => builtin_unary!(self, Exp),
             Bi::ln => builtin_unary!(self, Ln),
-            Bi::string_concat => builtin_binary!(self, Add),
         };
 
         self.add_work(
