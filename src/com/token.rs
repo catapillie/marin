@@ -35,6 +35,20 @@ pub enum Token {
     Div,
     #[token("%")]
     Mod,
+    #[token("==")]
+    Eq,
+    #[token("!=")]
+    Ne,
+    #[token("<=")]
+    Le,
+    #[token(">=")]
+    Ge,
+    #[token("&")]
+    BitAnd,
+    #[token("|")]
+    BitOr,
+    #[token("^")]
+    BitXor,
 
     #[token("=>")]
     Maps,
@@ -101,6 +115,12 @@ pub enum Token {
     Of,
     #[token("have")]
     Have,
+    #[token("and")]
+    And,
+    #[token("or")]
+    Or,
+    #[token("xor")]
+    Xor,
 
     #[regex(r"_+")]
     Underscores,
@@ -136,6 +156,13 @@ impl Display for Token {
             Token::Mul => write!(f, "'*'"),
             Token::Div => write!(f, "'/'"),
             Token::Mod => write!(f, "'%'"),
+            Token::Eq => write!(f, "'=='"),
+            Token::Ne => write!(f, "'!='"),
+            Token::Le => write!(f, "'<='"),
+            Token::Ge => write!(f, "'>='"),
+            Token::BitAnd => write!(f, "'&'"),
+            Token::BitOr => write!(f, "'|'"),
+            Token::BitXor => write!(f, "'^'"),
 
             Token::Maps => write!(f, "'=>'"),
             Token::Assign => write!(f, "'='"),
@@ -170,6 +197,9 @@ impl Display for Token {
             Token::Class => write!(f, "'class' keyword"),
             Token::Of => write!(f, "'of' keyword"),
             Token::Have => write!(f, "'have' keyword"),
+            Token::And => write!(f, "'and' keyword"),
+            Token::Or => write!(f, "'or' keyword"),
+            Token::Xor => write!(f, "'xor' keyword"),
 
             Token::Underscores => write!(f, "underscores"),
             Token::Ident => write!(f, "identifier"),

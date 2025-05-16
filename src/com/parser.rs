@@ -179,6 +179,18 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::Div => Some(ast::BinOp::Div),
             Token::Mul => Some(ast::BinOp::Mul),
             Token::Mod => Some(ast::BinOp::Mod),
+            Token::Eq => Some(ast::BinOp::Eq),
+            Token::Ne => Some(ast::BinOp::Ne),
+            Token::LeftChev => Some(ast::BinOp::Lt),
+            Token::Le => Some(ast::BinOp::Le),
+            Token::RightChev => Some(ast::BinOp::Gt),
+            Token::Ge => Some(ast::BinOp::Ge),
+            Token::BitAnd => Some(ast::BinOp::BitAnd),
+            Token::BitOr => Some(ast::BinOp::BitOr),
+            Token::BitXor => Some(ast::BinOp::BitXor),
+            Token::And => Some(ast::BinOp::And),
+            Token::Or => Some(ast::BinOp::Or),
+            Token::Xor => Some(ast::BinOp::Xor),
             _ => None,
         }
     }
