@@ -26,7 +26,7 @@ impl Checker<'_, '_> {
             Op::BitXor => ("BitXor", 0),
             Op::BitOr => ("BitOr", 0),
             Op::BitAnd => ("BitAnd", 0),
-            op => unimplemented!("binry operator '{op:?}'"),
+            op => unimplemented!("binary operator '{op:?}'"),
         };
 
         let ops_exports = self.get_marin_std_ops_exports(prelude_file);
