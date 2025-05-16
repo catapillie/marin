@@ -12,6 +12,11 @@ pub let ln = @ln
 pub let log(b)(x) = @float_div(@ln(x), @ln(b))
 pub let sqrt(x) = @pow(x, 0.5)
 
+-- hyperbolic functions
+pub let cosh(x) = @float_div(@float_add(@exp(x), @exp(@float_neg(x))), 2.0)
+pub let sinh(x) = @float_div(@float_sub(@exp(x), @exp(@float_neg(x))), 2.0)
+pub let tanh(x) = @float_div(sinh(x), cosh(x))
+
 -- trigonometric functions
 pub let sin = @sin
 pub let asin = @asin
