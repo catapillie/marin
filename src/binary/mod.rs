@@ -56,6 +56,12 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::le => Ok(Opcode::le),
         opcode::gt => Ok(Opcode::gt),
         opcode::ge => Ok(Opcode::ge),
+        opcode::sin => Ok(Opcode::sin),
+        opcode::cos => Ok(Opcode::cos),
+        opcode::tan => Ok(Opcode::tan),
+        opcode::asin => Ok(Opcode::asin),
+        opcode::acos => Ok(Opcode::acos),
+        opcode::atan => Ok(Opcode::atan),
         opcode::load_const => Ok(Opcode::load_const(r.read_u16::<LE>()?)),
         opcode::load_local => Ok(Opcode::load_local(r.read_u8()?)),
         opcode::set_local => Ok(Opcode::set_local(r.read_u8()?)),
@@ -184,6 +190,30 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         }
         Opcode::ge => {
             w.write_u8(opcode::ge)?;
+            Ok(())
+        }
+        Opcode::sin => {
+            w.write_u8(opcode::sin)?;
+            Ok(())
+        }
+        Opcode::cos => {
+            w.write_u8(opcode::cos)?;
+            Ok(())
+        }
+        Opcode::tan => {
+            w.write_u8(opcode::tan)?;
+            Ok(())
+        }
+        Opcode::asin => {
+            w.write_u8(opcode::asin)?;
+            Ok(())
+        }
+        Opcode::acos => {
+            w.write_u8(opcode::acos)?;
+            Ok(())
+        }
+        Opcode::atan => {
+            w.write_u8(opcode::atan)?;
             Ok(())
         }
         Opcode::load_const(x) => {

@@ -90,6 +90,12 @@ pub enum Expr {
     Pow(Box<Expr>, Box<Expr>),
     Exp(Box<Expr>),
     Ln(Box<Expr>),
+    Sin(Box<Expr>),
+    Cos(Box<Expr>),
+    Tan(Box<Expr>),
+    Asin(Box<Expr>),
+    Acos(Box<Expr>),
+    Atan(Box<Expr>),
 
     Eq(Box<Expr>, Box<Expr>),
     Ne(Box<Expr>, Box<Expr>),
@@ -747,6 +753,12 @@ impl Lowerer {
             ),
             E::Exp(arg) => Expr::Exp(Box::new(self.lower_expression(*arg))),
             E::Ln(arg) => Expr::Ln(Box::new(self.lower_expression(*arg))),
+            E::Sin(arg) => Expr::Sin(Box::new(self.lower_expression(*arg))),
+            E::Cos(arg) => Expr::Cos(Box::new(self.lower_expression(*arg))),
+            E::Tan(arg) => Expr::Tan(Box::new(self.lower_expression(*arg))),
+            E::Asin(arg) => Expr::Asin(Box::new(self.lower_expression(*arg))),
+            E::Acos(arg) => Expr::Acos(Box::new(self.lower_expression(*arg))),
+            E::Atan(arg) => Expr::Atan(Box::new(self.lower_expression(*arg))),
 
             E::Eq(left, right) => Expr::Eq(
                 Box::new(self.lower_expression(*left)),
@@ -1228,7 +1240,15 @@ impl Lowerer {
                 self.collect_expr_captured_variables(left, set, fun_map);
                 self.collect_expr_captured_variables(right, set, fun_map);
             }
-            E::Exp(arg) | E::Ln(arg) => {
+
+            E::Exp(arg)
+            | E::Ln(arg)
+            | E::Sin(arg)
+            | E::Cos(arg)
+            | E::Tan(arg)
+            | E::Asin(arg)
+            | E::Acos(arg)
+            | E::Atan(arg) => {
                 self.collect_expr_captured_variables(arg, set, fun_map);
             }
         }
@@ -1331,6 +1351,12 @@ impl Lowerer {
             Bi::pow => builtin_binary!(self, Pow),
             Bi::exp => builtin_unary!(self, Exp),
             Bi::ln => builtin_unary!(self, Ln),
+            Bi::sin => builtin_unary!(self, Sin),
+            Bi::cos => builtin_unary!(self, Cos),
+            Bi::tan => builtin_unary!(self, Tan),
+            Bi::asin => builtin_unary!(self, Asin),
+            Bi::acos => builtin_unary!(self, Acos),
+            Bi::atan => builtin_unary!(self, Atan),
         };
 
         self.add_work(

@@ -56,6 +56,12 @@ impl Checker<'_, '_> {
             "pow" => builtin_func!(self, span, pow :: float, float -> float),
             "exp" => builtin_func!(self, span, exp :: float -> float),
             "ln" => builtin_func!(self, span, ln :: float -> float),
+            "sin" => builtin_func!(self, span, sin :: float -> float),
+            "cos" => builtin_func!(self, span, cos :: float -> float),
+            "tan" => builtin_func!(self, span, tan :: float -> float),
+            "asin" => builtin_func!(self, span, asin :: float -> float),
+            "acos" => builtin_func!(self, span, acos :: float -> float),
+            "atan" => builtin_func!(self, span, atan :: float -> float),
 
             _ => {
                 self.reports.push(

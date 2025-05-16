@@ -47,6 +47,12 @@ pub enum Builtin {
     pow,
     exp,
     ln,
+    sin,
+    cos,
+    tan,
+    asin,
+    acos,
+    atan,
 }
 
 impl Display for Builtin {
@@ -96,6 +102,12 @@ impl Display for Builtin {
             Self::pow => write!(f, "pow"),
             Self::exp => write!(f, "exp"),
             Self::ln => write!(f, "ln"),
+            Self::sin => write!(f, "sin"),
+            Self::cos => write!(f, "cos"),
+            Self::tan => write!(f, "tan"),
+            Self::asin => write!(f, "asin"),
+            Self::acos => write!(f, "acos"),
+            Self::atan => write!(f, "atan"),
         }
     }
 }

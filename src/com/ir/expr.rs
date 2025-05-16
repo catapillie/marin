@@ -87,6 +87,12 @@ pub enum Expr {
     Pow(Box<Expr>, Box<Expr>),
     Exp(Box<Expr>),
     Ln(Box<Expr>),
+    Sin(Box<Expr>),
+    Cos(Box<Expr>),
+    Tan(Box<Expr>),
+    Asin(Box<Expr>),
+    Acos(Box<Expr>),
+    Atan(Box<Expr>),
 
     Eq(Box<Expr>, Box<Expr>),
     Ne(Box<Expr>, Box<Expr>),

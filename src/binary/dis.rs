@@ -94,6 +94,12 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
             Op::le => print!("{:>14}", "le"),
             Op::gt => print!("{:>14}", "gt"),
             Op::ge => print!("{:>14}", "ge"),
+            Op::sin => print!("{:>14}", "sin"),
+            Op::cos => print!("{:>14}", "cos"),
+            Op::tan => print!("{:>14}", "tan"),
+            Op::asin => print!("{:>14}", "asin"),
+            Op::acos => print!("{:>14}", "acos"),
+            Op::atan => print!("{:>14}", "atan"),
             Op::load_const(x) => print!(
                 "{:>14} #{} = {}",
                 "load_const",

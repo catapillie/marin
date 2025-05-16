@@ -354,6 +354,12 @@ impl BytecodeBuilder {
             E::Pow(left, right) => self.build_binary_op(*left, *right, Opcode::pow),
             E::Exp(arg) => self.build_unary_op(*arg, Opcode::exp),
             E::Ln(arg) => self.build_unary_op(*arg, Opcode::ln),
+            E::Sin(arg) => self.build_unary_op(*arg, Opcode::sin),
+            E::Cos(arg) => self.build_unary_op(*arg, Opcode::cos),
+            E::Tan(arg) => self.build_unary_op(*arg, Opcode::tan),
+            E::Asin(arg) => self.build_unary_op(*arg, Opcode::asin),
+            E::Acos(arg) => self.build_unary_op(*arg, Opcode::acos),
+            E::Atan(arg) => self.build_unary_op(*arg, Opcode::atan),
 
             E::Eq(left, right) => self.build_binary_op(*left, *right, Opcode::eq),
             E::Ne(left, right) => self.build_binary_op(*left, *right, Opcode::ne),

@@ -343,6 +343,54 @@ impl<'a> VM<'a> {
                     };
                     self.push(result);
                 }
+                opcode::sin => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(x) => Val::Float(x.sin()),
+                        _ => self.fatal("invalid 'sin' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::cos => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(x) => Val::Float(x.cos()),
+                        _ => self.fatal("invalid 'cos' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::tan => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(x) => Val::Float(x.tan()),
+                        _ => self.fatal("invalid 'tan' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::asin => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(x) => Val::Float(x.asin()),
+                        _ => self.fatal("invalid 'asin' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::acos => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(x) => Val::Float(x.acos()),
+                        _ => self.fatal("invalid 'acos' operation"),
+                    };
+                    self.push(result);
+                }
+                opcode::atan => {
+                    let val = self.pop();
+                    let result = match val {
+                        Val::Float(x) => Val::Float(x.atan()),
+                        _ => self.fatal("invalid 'atan' operation"),
+                    };
+                    self.push(result);
+                }
                 opcode::load_const => {
                     let index = self.read_u16() as usize;
                     self.push(self.constants[index].clone());
