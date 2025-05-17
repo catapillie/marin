@@ -397,7 +397,7 @@ Items
 The default value. Reimported as `default` in the prelude.
 
 **Provided implementations
-* [`Default(int)`](../std/default_primitives.mar)**
+* [`Default(int)`](../std/default_primitives.mar)
 * [`Default(float)`](../std/default_primitives.mar)
 * [`Default(string)`](../std/default_primitives.mar)
 * [`Default(bool)`](../std/default_primitives.mar)
@@ -420,7 +420,7 @@ Items
 The string representation of `x`. Reimported as `str` in the prelude.
 
 **Provided implementations
-* [`Display(string)`](../std/display_primitives.mar)**
+* [`Display(string)`](../std/display_primitives.mar)
 * [`Display(bool)`](../std/display_primitives.mar)
 * [`Display(())`](../std/display_tuples.mar)
 * [`Display((T, T))`](../std/display_tuples.mar)
