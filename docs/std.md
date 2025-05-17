@@ -72,37 +72,37 @@ $\sqrt x$
 
 Hyperbolic functions
 * **`Math.cosh(x)`**
-$\operatorname{cosh} x$
+$\text{cosh}~x$
 * **`Math.sinh(x)`**
-$\operatorname{sinh} x$
+$\text{sinh}~x$
 * **`Math.tanh(x)`**
-$\operatorname{tanh} x$
+$\text{tanh}~x$
 
 Trigonometric functions
 * **`Math.sin(x)`**
-$\operatorname{sin} x$
+$\text{sin}~x$
 * **`Math.asin(x)`**
-$\operatorname{asin} x$
+$\text{asin}~x$
 * **`Math.csc(x)`**
-$\operatorname{csc} x$
+$\text{csc}~x$
 * **`Math.acsc(x)`**
-$\operatorname{acsc} x$
+$\text{acsc}~x$
 * **`Math.cos(x)`**
-$\operatorname{cos} x$
+$\text{cos}~x$
 * **`Math.acos(x)`**
-$\operatorname{acos} x$
+$\text{acos}~x$
 * **`Math.sec(x)`**
-$\operatorname{sec} x$
+$\text{sec}~x$
 * **`Math.asec(x)`**
-$\operatorname{asec} x$
+$\text{asec}~x$
 * **`Math.tan(x)`**
-$\operatorname{tan} x$
+$\text{tan}~x$
 * **`Math.atan(x)`**
-$\operatorname{atan} x$
+$\text{atan}~x$
 * **`Math.cot(x)`**
-$\operatorname{cot} x$
+$\text{cot}~x$
 * **`Math.acot(x)`**
-$\operatorname{acot} x$
+$\text{acot}~x$
 * **`Math.atan2(y, x)`**
 The angle (measured in radians) between the $x$-axis and the line passing through the origin and $(x, y)$. The returned value is always contained in the range $\left]-\pi, +\pi\right]$.
 
