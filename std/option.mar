@@ -24,6 +24,11 @@ pub let map(f)(opt) match opt with
     none    => none
 end
 
+pub let unwrap(opt) match opt with
+    some(x) => x
+    none    => @panic("attempt to unwrap none variant")
+end
+
 pub let unwrap_or(y)(opt) match opt with
     some(x) => x
     none    => y
