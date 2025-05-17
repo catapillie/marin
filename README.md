@@ -62,4 +62,4 @@ Marin source files are meant to end with the `.mar` extension. Multiple files ca
 Find some examples in [`docs/overview.md`](./docs/overview.md).
 
 ## Standard library
-The current standard library for Marin, which is automatically imported in every file (except if `--no-std` is on). **You can find its documentation in [`docs/std.md`](./docs/std.md).**
+The current standard library for Marin is automatically imported in every file (except if `--no-std` is on), and contains various definitions such as data types, mathematical functions and operations, and typeclasses. **You can find its documentation in [`docs/std.md`](./docs/std.md).**
