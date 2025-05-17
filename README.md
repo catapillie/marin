@@ -30,7 +30,7 @@ Resources which I rely on for this project:
 ## Installation
 
 ### Requirements
-* Rust (2024 edition)
+* Rust +1.86.0 (2024 edition)
 * Cargo
 
 Clone the repository and build the application :
@@ -42,9 +42,12 @@ cargo build --release
 
 The executable should be located in `./target/release/`.
 
-> Please note that the app builds with an `std` folder meant for internal use by the compiler.
+> [!IMPORTANT]
+> The app builds with an `std` folder meant for internal use by the compiler.
 
 ## Usage
+
+> [!NOTE]
 > Currently the compiler is still it its initial WIP state and does not have many CLI options.
 
 Check and compile a program to bytecode, then immediately execute it with:
