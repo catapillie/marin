@@ -223,7 +223,7 @@ fn get_query_string(query: &Query) -> String {
         .iter()
         .map(|part| match part {
             Part::Dir(name, _) => name.clone(),
-            Part::Builtin(name) => format!("\"{}\"", name),
+            Part::Builtin(name) => format!("\"{name}\""),
             Part::Super(_) => "super".to_string(),
         })
         .collect::<Vec<_>>();

@@ -188,14 +188,14 @@ impl BytecodeBuilder {
 
     fn get_label(&self, label_id: ir::LabelID) -> &Label {
         let Some(label) = self.labels.get(&label_id) else {
-            panic!("unregistered label '{:?}'", label_id)
+            panic!("unregistered label '{label_id:?}'")
         };
         label
     }
 
     fn get_label_mut(&mut self, label_id: ir::LabelID) -> &mut Label {
         let Some(label) = self.labels.get_mut(&label_id) else {
-            panic!("unregistered label '{:?}'", label_id)
+            panic!("unregistered label '{label_id:?}'")
         };
         label
     }

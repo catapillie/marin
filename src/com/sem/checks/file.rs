@@ -22,7 +22,7 @@ impl<'src> Checker<'src, '_> {
         checker_print!(
             self,
             "\n{}",
-            format!("=== checking '{}' ===", file_name)
+            format!("=== checking '{file_name}' ===")
                 .on_bright_white()
                 .black()
         );

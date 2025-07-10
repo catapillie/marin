@@ -4,7 +4,7 @@ const MARIN_STD_PATH: &str = "std/";
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
-    println!("cargo::rerun-if-changed={}", MARIN_STD_PATH);
+    println!("cargo::rerun-if-changed={MARIN_STD_PATH}");
 
     let target_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let profile = std::env::var("PROFILE").unwrap();

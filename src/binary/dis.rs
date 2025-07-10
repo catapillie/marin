@@ -53,9 +53,9 @@ pub fn dissasemble<R: io::Read + io::Seek>(r: &mut R) -> super::Result<()> {
         match function_table.get(&(pos as u32)) {
             Some(fun_name) => {
                 println!("         ║ :: {}", fun_name.bold().bright_blue());
-                print!("{:0>8} ║ ", pos);
+                print!("{pos:0>8} ║ ");
             }
-            None => print!("{:0>8} ║ ", pos),
+            None => print!("{pos:0>8} ║ "),
         }
 
         let opcode = super::read_opcode(r)?;
