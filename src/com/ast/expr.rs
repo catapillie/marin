@@ -1,4 +1,4 @@
-use super::{mix_spans, BinOp, Label, UnOp};
+use super::{BinOp, Label, UnOp, mix_spans};
 use crate::com::loc::Span;
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,6 @@ pub enum Expr {
     Var(Lexeme),
     Tuple(Tuple),
     Array(Array),
-    Spread(Spread),
     Block(Block),
     Conditional(Conditional),
     Break(Break),
@@ -54,12 +53,6 @@ pub struct Array {
     pub left_bracket: Span,
     pub right_bracket: Span,
     pub items: Box<[Expr]>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Spread {
-    pub spread: Span,
-    pub name: Option<Span>,
 }
 
 #[derive(Debug, Clone)]
@@ -290,12 +283,6 @@ impl Array {
     }
 }
 
-impl Spread {
-    pub fn span(&self) -> Span {
-        mix_spans([self.spread, self.name.unwrap_or_default()])
-    }
-}
-
 impl Block {
     pub fn span(&self) -> Span {
         mix_spans([
@@ -502,7 +489,6 @@ impl Expr {
             Self::Var(e) => e.span,
             Self::Tuple(e) => e.span(),
             Self::Array(e) => e.span(),
-            Self::Spread(e) => e.span(),
             Self::Block(e) => e.span(),
             Self::Conditional(e) => e.span(),
             Self::Break(e) => e.span(),

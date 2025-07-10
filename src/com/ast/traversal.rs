@@ -30,7 +30,6 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
                 walk_expr(item, nodes);
             }
         }
-        E::Spread(..) => {}
         E::Block(e) => {
             for item in &e.items {
                 walk_expr(item, nodes);

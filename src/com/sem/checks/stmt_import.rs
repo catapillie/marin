@@ -88,11 +88,12 @@ impl Checker<'_, '_> {
 
         checker_print!(self, "{}", "import".bold());
         for query in &e.queries {
-            if let E::Spread(_) = &*query.query {
-                self.import_all_items(dep_file, public);
-                checker_print!(self, "    ..");
-                continue;
-            };
+            // // potential syntax to import everything from a file
+            // if (???) {
+            //     self.import_all_items(dep_file, public);
+            //     checker_print!(self, "    ..");
+            //     continue;
+            // };
 
             let E::Var(item_name_span) = &*query.query else {
                 self.reports.push(

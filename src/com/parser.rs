@@ -271,7 +271,6 @@ impl<'src, 'e> Parser<'src, 'e> {
             Token::False => self.try_parse_false_expression(),
             Token::Underscores => self.try_parse_underscores_expression(),
             Token::Ident => self.try_parse_var_expression(),
-            Token::Spread => self.try_parse_spread_expression(),
 
             Token::LeftParen => self.try_parse_tuple_expression(),
             Token::LeftBracket => self.try_parse_array_expression(),
@@ -387,13 +386,6 @@ impl<'src, 'e> Parser<'src, 'e> {
     fn try_parse_var_expression(&mut self) -> Option<ast::Expr> {
         self.try_expect_token(Token::Ident)
             .map(|token| ast::Expr::Var(ast::Lexeme { span: token }))
-    }
-
-    fn try_parse_spread_expression(&mut self) -> Option<ast::Expr> {
-        let spread = self.try_expect_token(Token::Spread)?;
-        let name = self.try_expect_token(Token::Ident);
-
-        Some(ast::Expr::Spread(ast::Spread { spread, name }))
     }
 
     fn try_parse_tuple_expression(&mut self) -> Option<ast::Expr> {
