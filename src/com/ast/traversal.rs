@@ -53,6 +53,12 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
                 walk_expr(arg, nodes);
             }
         }
+        E::Index(e) => {
+            walk_expr(&e.indexed, nodes);
+            for index in &e.indices {
+                walk_expr(index, nodes);
+            }
+        }
         E::Access(e) => walk_expr(&e.accessed, nodes),
         E::Let(e) => {
             walk_expr(&e.pattern, nodes);

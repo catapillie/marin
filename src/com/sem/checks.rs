@@ -23,6 +23,7 @@ mod expr_builtin;
 mod expr_call;
 mod expr_conditional;
 mod expr_fun;
+mod expr_index;
 mod expr_literal;
 mod expr_ops;
 mod expr_record;

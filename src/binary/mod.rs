@@ -38,6 +38,7 @@ pub fn read_opcode<R: io::Read>(r: &mut R) -> Result<Opcode> {
         opcode::index_big_dup => Ok(Opcode::index_big_dup(r.read_u64::<LE>()?)),
         opcode::index => Ok(Opcode::index(r.read_u8()?)),
         opcode::index_big => Ok(Opcode::index_big(r.read_u64::<LE>()?)),
+        opcode::index_dyn => Ok(Opcode::index_dyn),
         opcode::spill => Ok(Opcode::spill(r.read_u16::<LE>()?)),
         opcode::add => Ok(Opcode::add),
         opcode::sub => Ok(Opcode::sub),
@@ -121,6 +122,10 @@ pub fn write_opcode<W: io::Write>(w: &mut W, opcode: &Opcode) -> Result<()> {
         Opcode::index_big(count) => {
             w.write_u8(opcode::index_big)?;
             w.write_u64::<LE>(*count)?;
+            Ok(())
+        }
+        Opcode::index_dyn => {
+            w.write_u8(opcode::index_dyn)?;
             Ok(())
         }
         Opcode::spill(offset) => {

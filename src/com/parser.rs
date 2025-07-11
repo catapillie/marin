@@ -310,6 +310,19 @@ impl<'src, 'e> Parser<'src, 'e> {
                 continue;
             }
 
+            if let Some(left_bracket) = self.try_expect_token(Token::LeftBracket) {
+                let indices = self.parse_comma_separated_items();
+                let right_bracket = self.expect_token(Token::RightBracket);
+
+                expr = ast::Expr::Index(ast::Index {
+                    left_bracket,
+                    right_bracket,
+                    indexed: Box::new(expr),
+                    indices,
+                });
+                continue;
+            }
+
             self.skip_newlines();
             if let Some(dot) = self.try_expect_token(Token::Dot) {
                 let accessor = self.expect_accessor();

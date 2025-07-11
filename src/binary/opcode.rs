@@ -6,7 +6,8 @@ opcodes! {
     0x13 index_big_dup(u64)
     0x14 index(u8)
     0x16 index_big(u64)
-    0x17 spill(u16)
+    0x17 index_dyn
+    0x18 spill(u16)
     0x20 add
     0x21 sub
     0x22 mul

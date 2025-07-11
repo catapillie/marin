@@ -69,6 +69,10 @@ pub enum Expr {
         accessed: Box<Expr>,
         index: usize,
     },
+    Index {
+        indexed: Box<Expr>,
+        index: Box<Expr>,
+    },
     ClassItem {
         item_id: usize,
         constraint_id: usize,

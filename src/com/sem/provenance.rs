@@ -11,6 +11,8 @@ pub enum Provenance {
     ConditionalReturnValues(Loc),
     FunctionCall(TypeString, Loc),
     RecordFieldTypes(String, Loc),
+    IndexedMustBeArray(Loc),
+    IndexMustBeInteger(Loc),
 }
 
 impl Provenance {
@@ -33,6 +35,8 @@ impl Provenance {
             Pr::RecordFieldTypes(record, loc) => {
                 report.with_secondary_label(Label::RecordDefinition(record.clone()), *loc)
             }
+            Pr::IndexedMustBeArray(loc) => report.with_secondary_label(Label::IndexedMustBeArray, *loc),
+            Pr::IndexMustBeInteger(loc) => report.with_secondary_label(Label::IndexMustBeInteger, *loc),
         }
     }
 }

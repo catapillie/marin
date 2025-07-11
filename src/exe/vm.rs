@@ -140,6 +140,18 @@ impl<'a> VM<'a> {
                     let value = self.heap.deref_val(u, index);
                     self.push(value.clone());
                 }
+                opcode::index_dyn => {
+                    let Val::Int(i) = self.pop() else {
+                        self.fatal("invalid (dynamic) index with non-integer index")
+                    };
+                    let Val::Bundle(u) = self.pop() else {
+                        self.fatal("invalid (dynamic) index on a non-bundle value");
+                    };
+
+                    let value = self.heap.deref_val(u, i as usize);
+
+                    self.push(value.clone());
+                }
                 opcode::spill => {
                     let offset = self.read_u16() as usize;
                     let index = self.stack.len() - offset - 1;

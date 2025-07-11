@@ -60,6 +60,10 @@ pub enum Label {
     CannotAliasExpression,
     PublicStatement,
     ImportedHere(String),
+    UnsupportedMultidimensionalIndex,
+    MissingIndex,
+    IndexedMustBeArray,
+    IndexMustBeInteger,
 }
 
 impl Label {
@@ -207,6 +211,14 @@ impl Label {
                 => "this looks like the beginning of a public statement".to_string(),
             L::ImportedHere(name)
                 => format!("module '{name}' is imported here"),
+            L::UnsupportedMultidimensionalIndex
+                => "multidimensional indexing is not supported".to_string(),
+            L::MissingIndex
+                => "missing index when attempting to index an array".to_string(),
+            L::IndexedMustBeArray
+                => "indexed expression must be an array".to_string(),
+            L::IndexMustBeInteger
+                => "the index value must be an integer".to_string(),
         }
     }
 }

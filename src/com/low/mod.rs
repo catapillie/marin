@@ -24,6 +24,10 @@ pub enum Expr {
         accessed: Box<Expr>,
         index: u8,
     },
+    Index {
+        indexed: Box<Expr>,
+        index: Box<Expr>,
+    },
     Block {
         label: Option<ir::LabelID>,
         stmts: Box<[Stmt]>,
@@ -714,6 +718,7 @@ impl Lowerer {
             E::Variant { tag, items } => self.lower_variant(tag, items),
             E::Record { fields } => self.lower_small_bundle(fields),
             E::Access { accessed, index } => self.lower_access(*accessed, index),
+            E::Index { indexed, index } => self.lower_index(*indexed, *index),
             E::ClassItem {
                 item_id,
                 constraint_id,
@@ -914,6 +919,13 @@ impl Lowerer {
         Expr::Access {
             accessed: Box::new(self.lower_expression(accessed)),
             index: index.try_into().expect("cannot index beyond 255"),
+        }
+    }
+
+    fn lower_index(&mut self, indexed: ir::Expr, index: ir::Expr) -> Expr {
+        Expr::Index {
+            indexed: Box::new(self.lower_expression(indexed)),
+            index: Box::new(self.lower_expression(index)),
         }
     }
 
@@ -1237,6 +1249,10 @@ impl Lowerer {
             }
             E::Access { accessed, index: _ } => {
                 self.collect_expr_captured_variables(accessed, set, fun_map);
+            }
+            E::Index { indexed, index } => {
+                self.collect_expr_captured_variables(indexed, set, fun_map);
+                self.collect_expr_captured_variables(index, set, fun_map);
             }
             E::ClassItem {
                 item_id,

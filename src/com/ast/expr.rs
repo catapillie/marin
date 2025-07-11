@@ -19,6 +19,7 @@ pub enum Expr {
     Break(Break),
     Skip(Skip),
     Call(Call),
+    Index(Index),
     Access(Access),
     Let(Let),
     Pub(Pub),
@@ -144,6 +145,14 @@ pub struct Call {
     pub right_paren: Span,
     pub callee: Box<Expr>,
     pub args: Box<[Expr]>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Index {
+    pub left_bracket: Span,
+    pub right_bracket: Span,
+    pub indexed: Box<Expr>,
+    pub indices: Box<[Expr]>,
 }
 
 #[derive(Debug, Clone)]
@@ -335,6 +344,17 @@ impl Call {
     }
 }
 
+impl Index {
+    pub fn span(&self) -> Span {
+        mix_spans([
+            self.indexed.span(),
+            self.left_bracket,
+            item_spans(&self.indices),
+            self.right_bracket,
+        ])
+    }
+}
+
 impl Access {
     pub fn span(&self) -> Span {
         mix_spans([self.accessed.span(), self.dot, self.accessor.span()])
@@ -494,6 +514,7 @@ impl Expr {
             Self::Break(e) => e.span(),
             Self::Skip(e) => e.span(),
             Self::Call(e) => e.span(),
+            Self::Index(e) => e.span(),
             Self::Access(e) => e.span(),
             Self::Let(e) => e.span(),
             Self::Pub(e) => e.span(),

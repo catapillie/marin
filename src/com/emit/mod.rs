@@ -294,6 +294,11 @@ impl BytecodeBuilder {
                 self.build_expression(*accessed);
                 self.write_opcode(Opcode::index(index));
             }
+            E::Index { indexed, index } => {
+                self.build_expression(*indexed);
+                self.build_expression(*index);
+                self.write_opcode(Opcode::index_dyn);
+            }
             E::Block {
                 label,
                 stmts,

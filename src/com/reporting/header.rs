@@ -71,6 +71,7 @@ pub enum Header {
     AmbiguousConstraintSolution(ConstraintString),
     TopLevelConstraint(),
     ExpressionAlias(),
+    InvalidIndexing(),
 }
 
 impl Header {
@@ -141,6 +142,7 @@ impl Header {
             H::AmbiguousConstraintSolution(..) => "ambiguous_constraint_solution",
             H::TopLevelConstraint(..) => "top_level_constraints",
             H::ExpressionAlias(..) => "expression_alias",
+            H::InvalidIndexing(..) => "invalid_indexing",
         }
     }
 
@@ -287,6 +289,8 @@ impl Header {
                 => "unallowed top-level statement with unsatisfied class constraints".to_string(),
             H::ExpressionAlias()
                 => "disallowed usage of 'alias' for an expression".to_string(),
+            H::InvalidIndexing()
+                => "invalid indexing expression".to_string(),
         }
     }
 }
