@@ -4,7 +4,7 @@ mod ir;
 mod low;
 mod sem;
 
-mod loc;
+pub mod loc;
 mod scope;
 
 mod compiler;

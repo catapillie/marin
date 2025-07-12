@@ -1,0 +1,2 @@
+--- [unknown_binding]: "unknown binding 'idk' in the current scope"
+let _ = (\|idk|, 0)

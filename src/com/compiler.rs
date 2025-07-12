@@ -15,7 +15,7 @@ use codespan_reporting::{
 use std::path::{Path, PathBuf};
 
 pub struct Compiler<Stage, Info> {
-    reports: Vec<Report>,
+    pub(crate) reports: Vec<Report>,
     files: Files<Stage>,
     info: Info,
 }
