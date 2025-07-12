@@ -30,11 +30,18 @@ impl StagedFileInfo {
         Self { is_from_std: true }
     }
 }
-pub struct Staged(PathBuf, StagedFileInfo);
+pub enum Staged {
+    File {
+        canonicalized: PathBuf,
+        staged_path: PathBuf,
+        info: StagedFileInfo,
+    },
+    Source(String, String),
+}
 
-pub struct Sourced(StagedFileInfo);
+pub struct Sourced(Option<PathBuf>, StagedFileInfo);
 
-pub struct Parsed(pub ast::File, pub StagedFileInfo);
+pub struct Parsed(pub Option<PathBuf>, pub ast::File, pub StagedFileInfo);
 
 pub struct Checked(pub ir::Module);
 
@@ -173,11 +180,21 @@ impl Compiler<Staged, StagedInfo> {
         }
 
         let full_path = path.canonicalize().expect("cannot canonicalize file path");
-
         self.files.0.push((
             File::new(String::new(), String::new()),
-            full_path,
-            Staged(path.to_path_buf(), info),
+            Staged::File {
+                canonicalized: full_path,
+                staged_path: path.to_path_buf(),
+                info,
+            },
+        ))
+    }
+
+    #[allow(dead_code)]
+    pub fn add_source(&mut self, name: impl ToString, contents: impl ToString) {
+        self.files.0.push((
+            File::new(String::new(), String::new()),
+            Staged::Source(name.to_string(), contents.to_string()),
         ))
     }
 
@@ -191,21 +208,29 @@ impl Compiler<Staged, StagedInfo> {
         self.info.is_std_staged = true;
     }
 
-    fn read_file(staged: &Staged, reports: &mut Vec<Report>) -> File {
-        let path = &staged.0;
-        let file_path = path.display().to_string();
-        let source = match std::fs::read_to_string(path) {
-            Ok(source) => source,
-            Err(err) => {
-                reports.push(Report::error(Header::CompilerIO(
-                    file_path.clone(),
-                    err.to_string(),
-                )));
-                String::new()
-            }
-        };
+    fn read_file(staged: Staged, reports: &mut Vec<Report>) -> File {
+        match staged {
+            Staged::File {
+                canonicalized: _,
+                staged_path: path,
+                info: _,
+            } => {
+                let file_path = path.display().to_string();
+                let source = match std::fs::read_to_string(path) {
+                    Ok(source) => source,
+                    Err(err) => {
+                        reports.push(Report::error(Header::CompilerIO(
+                            file_path.clone(),
+                            err.to_string(),
+                        )));
+                        String::new()
+                    }
+                };
 
-        File::new(file_path, source)
+                File::new(file_path, source)
+            }
+            Staged::Source(name, source) => File::new(name, source),
+        }
     }
 
     pub fn read_sources(mut self) -> Compiler<Sourced, SourceInfo> {
@@ -218,7 +243,21 @@ impl Compiler<Staged, StagedInfo> {
             .files
             .0
             .into_iter()
-            .map(|(_, p, f)| (Self::read_file(&f, &mut reports), p, Sourced(f.1)))
+            .map(|(_, f)| {
+                let (opt_path, staged_info) = match &f {
+                    Staged::File {
+                        canonicalized: path_buf,
+                        staged_path: _,
+                        info,
+                    } => (Some(path_buf.clone()), info.clone()),
+                    Staged::Source(_, _) => (None, StagedFileInfo::default()),
+                };
+
+                (
+                    Self::read_file(f, &mut reports),
+                    Sourced(opt_path, staged_info),
+                )
+            })
             .collect();
         self.reports.append(&mut reports);
 
@@ -234,13 +273,14 @@ impl Compiler<Staged, StagedInfo> {
 
 impl Compiler<Sourced, SourceInfo> {
     fn parse_file(
+        opt_path: Option<PathBuf>,
         file: &File,
         id: usize,
         info: StagedFileInfo,
         reports: &mut Vec<Report>,
     ) -> Parsed {
         let mut parser = Parser::new(file.source(), id, reports);
-        Parsed(parser.parse_file(), info)
+        Parsed(opt_path, parser.parse_file(), info)
     }
 
     pub fn parse(mut self) -> Compiler<Parsed, ParsedInfo> {
@@ -250,9 +290,9 @@ impl Compiler<Sourced, SourceInfo> {
             .0
             .into_iter()
             .enumerate()
-            .map(|(id, (f, p, Sourced(info)))| {
-                let parsed = Self::parse_file(&f, id, info, &mut reports);
-                (f, p, parsed)
+            .map(|(id, (f, Sourced(opt_path, info)))| {
+                let parsed = Self::parse_file(opt_path, &f, id, info, &mut reports);
+                (f, parsed)
             })
             .collect();
         self.reports.append(&mut reports);
@@ -283,7 +323,7 @@ impl Compiler<Parsed, ParsedInfo> {
         for scc in &order {
             for id in scc {
                 let id = *id;
-                let (file, _, Parsed(ast, info)) = &files[id];
+                let (file, Parsed(_, ast, info)) = &files[id];
 
                 let options = sem::CheckModuleOptions::new()
                     .set_verbose(!info.is_from_std)
@@ -301,10 +341,9 @@ impl Compiler<Parsed, ParsedInfo> {
         let checked_files = files
             .into_iter()
             .zip(irs)
-            .map(|((file, path, _), ir)| {
-                let ir =
-                    ir.unwrap_or_else(|| panic!("file '{}' was left unchecked", &path.display()));
-                (file, path, ir)
+            .map(|((file, _), ir)| {
+                let ir = ir.unwrap_or_else(|| panic!("file '{}' was left unchecked", file.name()));
+                (file, ir)
             })
             .collect();
 
@@ -323,9 +362,9 @@ impl Compiler<Checked, CheckedInfo> {
     pub fn emit(self) -> Compiler<Compiled, CompiledInfo> {
         let mut modules = Vec::with_capacity(self.files.0.len());
         let mut compiled_files = Vec::with_capacity(self.files.0.len());
-        for (file, path, Checked(module)) in self.files.0 {
+        for (file, Checked(module)) in self.files.0 {
             modules.push(module);
-            compiled_files.push((file, path, Compiled));
+            compiled_files.push((file, Compiled));
         }
 
         let lowered = low::lower(modules, self.info.entities, self.info.dependency_order);
@@ -340,7 +379,7 @@ impl Compiler<Checked, CheckedInfo> {
 }
 
 pub type File = SimpleFile<String, String>;
-pub struct Files<T>(pub Vec<(File, PathBuf, T)>);
+pub struct Files<T>(pub Vec<(File, T)>);
 
 impl<T> Default for Files<T> {
     fn default() -> Self {
@@ -355,21 +394,21 @@ impl<'a, T> files::Files<'a> for Files<T> {
 
     fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
         match self.0.get(id) {
-            Some((file, _, _)) => Ok(file.name()),
+            Some((file, _)) => Ok(file.name()),
             None => Err(files::Error::FileMissing),
         }
     }
 
     fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
         match self.0.get(id) {
-            Some((file, _, _)) => Ok(file.source()),
+            Some((file, _)) => Ok(file.source()),
             None => Err(files::Error::FileMissing),
         }
     }
 
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
         match self.0.get(id) {
-            Some((file, _, _)) => file.line_index((), byte_index),
+            Some((file, _)) => file.line_index((), byte_index),
             None => Err(files::Error::FileMissing),
         }
     }
@@ -380,7 +419,7 @@ impl<'a, T> files::Files<'a> for Files<T> {
         line_index: usize,
     ) -> Result<std::ops::Range<usize>, files::Error> {
         match self.0.get(id) {
-            Some((file, _, _)) => file.line_range((), line_index),
+            Some((file, _)) => file.line_range((), line_index),
             None => Err(files::Error::FileMissing),
         }
     }

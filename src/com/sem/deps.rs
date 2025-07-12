@@ -45,8 +45,10 @@ pub fn analyse_dependencies(
     reports: &mut Vec<Report>,
 ) -> Dependencies {
     let mut file_tree = FileTree::new();
-    for (file_id, (_, path, _)) in files.0.iter().enumerate() {
-        file_tree.add_file(path, file_id);
+    for (file_id, (_, Parsed(opt_path, _, _))) in files.0.iter().enumerate() {
+        if let Some(path) = opt_path {
+            file_tree.add_file(path, file_id);
+        }
     }
 
     // initialize output
@@ -65,7 +67,8 @@ pub fn analyse_dependencies(
         .canonicalize()
         .expect("couldn't normalize current directory");
 
-    for (file_id, (file, path, Parsed(ast::File(ast), file_info))) in files.0.iter().enumerate() {
+    for (file_id, (file, Parsed(opt_path, ast::File(ast), file_info))) in files.0.iter().enumerate()
+    {
         graph.add_edge(file_id, file_id, Default::default());
 
         if is_std_staged && !file_info.is_from_std {
@@ -83,6 +86,13 @@ pub fn analyse_dependencies(
                 process_import(item, file_id, source, reports, &mut queries);
             }
         }
+
+        let Some(path) = opt_path else {
+            if !queries.is_empty() {
+                panic!("imports not allowed in manually added source files");
+            }
+            continue;
+        };
 
         let mut import_spans = HashMap::<_, Span>::new();
         for (query, is_total, uid, span) in queries {
