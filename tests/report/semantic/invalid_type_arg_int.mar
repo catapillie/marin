@@ -1,0 +1,4 @@
+--- [invalid_type_arg]: "invalid type argument syntax"
+
+class Cl(\|1|)
+end

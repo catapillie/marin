@@ -1,0 +1,7 @@
+--- [invalid_accessor]: "invalid accessor expression syntax"
+
+class Cl(T)
+    val: T
+end
+
+Cl.\|super|

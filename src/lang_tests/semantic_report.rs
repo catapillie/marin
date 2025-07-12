@@ -16,6 +16,27 @@ sem_rep_test!(invalid_expression_alias);
 sem_rep_test!(invalid_expression_alias_big);
 sem_rep_test!(invalid_expression_super);
 
+sem_rep_test!(invalid_super_accessor_class);
+sem_rep_test!(invalid_super_accessor_record);
+sem_rep_test!(invalid_super_accessor_union);
+
+sem_rep_test!(invalid_type_block);
+sem_rep_test!(invalid_type_bool);
+sem_rep_test!(invalid_type_break);
+sem_rep_test!(invalid_type_empty_array);
+sem_rep_test!(invalid_type_float);
+sem_rep_test!(invalid_type_if);
+sem_rep_test!(invalid_type_int);
+sem_rep_test!(invalid_type_loop);
+sem_rep_test!(invalid_type_match);
+sem_rep_test!(invalid_type_skip);
+sem_rep_test!(invalid_type_string);
+sem_rep_test!(invalid_type_while);
+
+sem_rep_test!(invalid_type_arg_int);
+sem_rep_test!(invalid_type_arg_float);
+sem_rep_test!(invalid_type_arg_block);
+
 // ------------------------------------------------------------------------
 
 #[derive(Default)]

@@ -1,0 +1,5 @@
+--- [invalid_type]: "invalid type syntax"
+
+record R
+    field: \|match error with end|
+end

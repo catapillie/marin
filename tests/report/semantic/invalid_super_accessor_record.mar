@@ -1,0 +1,6 @@
+--- [invalid_accessor]: "invalid accessor expression syntax"
+
+record R
+end
+
+R.\|super|
