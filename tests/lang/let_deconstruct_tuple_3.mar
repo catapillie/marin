@@ -1,0 +1,5 @@
+let () = ()
+let ((), a, (y, t)) = ((), "a", (1, ("c", 0.42)))
+let (za, zb, zc, zd) = (true, 2, 4.0, "zd")
+
+(a, y, t, za, zb, zc, zd)

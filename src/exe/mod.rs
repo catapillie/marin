@@ -5,9 +5,8 @@ pub mod value;
 pub use value::Value;
 
 use crate::binary;
-use colored::Colorize;
 
-pub fn run_bytecode(mut bytecode: &[u8]) {
+pub fn run_bytecode(mut bytecode: &[u8]) -> Value {
     binary::read_magic(&mut bytecode).expect("not marin bytecode (magic bytes mismatch)");
     let constants = binary::read_constant_pool(&mut bytecode).unwrap();
     let _ = binary::read_function_table(&mut bytecode).unwrap();
@@ -17,6 +16,5 @@ pub fn run_bytecode(mut bytecode: &[u8]) {
         vm.add_constant(&value);
     }
 
-    let result = vm.run();
-    println!("--> {}", result.to_string().green());
+    vm.run()
 }

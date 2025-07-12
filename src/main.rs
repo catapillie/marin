@@ -1,6 +1,11 @@
+use colored::Colorize;
+
 mod binary;
 mod com;
 mod exe;
+
+#[cfg(test)]
+mod lang_tests;
 
 fn main() {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -48,5 +53,7 @@ fn main() {
     }
 
     println!();
-    exe::run_bytecode(&bytecode);
+
+    let value = exe::run_bytecode(&bytecode);
+    println!("-> {}", value.to_string().green());
 }

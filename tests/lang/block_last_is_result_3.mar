@@ -1,0 +1,14 @@
+do
+    do
+        1
+        2
+        3
+    end
+    4
+    do
+        5
+        6
+        7
+        "done"
+    end
+end

@@ -1,0 +1,5 @@
+let x = 888
+let y = "yyy"
+let z = 5.55
+
+(x, y, z)

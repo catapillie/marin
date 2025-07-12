@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Value {
     Nil,
     Int(i64),

@@ -1,0 +1,4 @@
+let (xa, xb, xc) = (1, 2, 3)
+let (yy, (zz, ww)) = ("yy", ("zz", "ww"))
+
+(xa, xb, xc, yy, zz, ww)
