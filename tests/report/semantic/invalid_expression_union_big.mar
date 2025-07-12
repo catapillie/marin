@@ -1,0 +1,6 @@
+--- [invalid_expression]: "invalid expression syntax"
+let x = \|union X(T)
+    a(T)
+    b(T)
+    c(T, X(T))
+end|

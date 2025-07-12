@@ -1,0 +1,6 @@
+--- [invalid_expression]: "invalid expression syntax"
+let x = \|let y() do
+    "hello"
+    "world"
+    "there goes your test"
+end|

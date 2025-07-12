@@ -1,0 +1,2 @@
+--- [invalid_expression]: "invalid expression syntax"
+let x = \|let y = 0|

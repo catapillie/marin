@@ -1,4 +1,20 @@
 sem_rep_test!(unknown_binding_global);
+sem_rep_test!(unknown_binding_local);
+sem_rep_test!(invalid_integer_too_big);
+
+sem_rep_test!(invalid_expression_record);
+sem_rep_test!(invalid_expression_record_big);
+sem_rep_test!(invalid_expression_have);
+sem_rep_test!(invalid_expression_have_big);
+sem_rep_test!(invalid_expression_union);
+sem_rep_test!(invalid_expression_union_big);
+sem_rep_test!(invalid_expression_class);
+sem_rep_test!(invalid_expression_class_big);
+sem_rep_test!(invalid_expression_let);
+sem_rep_test!(invalid_expression_let_big);
+sem_rep_test!(invalid_expression_alias);
+sem_rep_test!(invalid_expression_alias_big);
+sem_rep_test!(invalid_expression_super);
 
 // ------------------------------------------------------------------------
 

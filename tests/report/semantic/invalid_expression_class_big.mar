@@ -1,0 +1,5 @@
+--- [invalid_expression]: "invalid expression syntax"
+let x = \|class X(K)
+    val: K
+    action(K) => ()
+end|

@@ -1,0 +1,7 @@
+--- [unknown_binding]: "unknown binding 'x' in the current scope"
+
+do
+    let x = 1
+end
+
+let _ = (\|x|, 0)

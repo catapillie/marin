@@ -1,0 +1,5 @@
+--- [invalid_expression]: "invalid expression syntax"
+let x = \|have X
+    let a = 0
+    let b() = 1
+end|
