@@ -32,3 +32,11 @@ fn unit() -> exe::Value {
 fn func<const N: usize>(captured: [exe::Value; N]) -> exe::Value {
     bun([exe::Value::Func, bun(captured)])
 }
+
+fn record<const N: usize>(fields: [exe::Value; N]) -> exe::Value {
+    bun(fields)
+}
+
+fn union<const N: usize>(variant: i64, items: [exe::Value; N]) -> exe::Value {
+    bun([int(variant), bun(items)])
+}

@@ -1,0 +1,10 @@
+record R(X, Y)
+    x: X
+    y: Y
+end
+
+(
+    { x = 1, y = 2 }
+    { x = 42, y = 22.2 }
+    { x = "a", y = true }
+)

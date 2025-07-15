@@ -103,6 +103,31 @@ full_test!(let_generalize_1 => bun([int(42), str("a"), float(12.3)]));
 full_test!(let_generalize_2 => bun([bun([int(2), float(1.0)]), bun([bool(true), str("a")]), bun([int(0), func([])])]));
 full_test!(let_generalize_3 => bun([str("u"), int(42), str("a")]));
 
+full_test!(array_index_1 => int(1));
+full_test!(array_index_2 => int(3));
+full_test!(array_index_3 => int(43));
+
+full_test!(record_empty => record([]));
+full_test!(record_fields => record([float(42.0), float(22.2)]));
+full_test!(record_generic_1 => bun([record([float(42.0), float(22.2)]), record([int(42), int(22)]), record([str("a"), str("b")])]));
+full_test!(record_generic_2 => bun([record([int(1), int(2)]), record([int(42), float(22.2)]), record([str("a"), bool(true)])]));
+full_test!(record_getter => bun([float(42.0), float(22.2)]));
+
+full_test!(union_variants_empty_a => union(0, []));
+full_test!(union_variants_empty_b => union(1, []));
+full_test!(union_variants_fields_a => union(0, [int(42)]));
+full_test!(union_variants_fields_b => union(1, [float(81.7)]));
+full_test!(union_variants_recursive_a => union(0, []));
+full_test!(union_variants_recursive_ba => union(1, [union(0, [])]));
+full_test!(union_variants_recursive_bba => union(1, [union(1, [union(0, [])])]));
+full_test!(union_generic_1_a_1 => union(0, [str("c")]));
+full_test!(union_generic_1_a_2 => union(0, [int(3)]));
+full_test!(union_generic_1_b_1 => union(1, [str("a"), str("b")]));
+full_test!(union_generic_1_b_2 => union(1, [int(1), int(2)]));
+full_test!(union_generic_2_a => union(0, [int(1)]));
+full_test!(union_generic_2_b => union(1, [unit()]));
+full_test!(union_generic_2_ab => union(2, [str("3"), int(4)]));
+
 // ------------------------------------------------------------------------
 
 fn test_full_program(path: impl AsRef<Path>, expected: exe::Value) {

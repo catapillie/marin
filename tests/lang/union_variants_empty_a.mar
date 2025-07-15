@@ -1,0 +1,6 @@
+union U
+    a
+    b
+end
+
+U.a

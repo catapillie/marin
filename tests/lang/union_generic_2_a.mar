@@ -1,0 +1,7 @@
+union U(A, B)
+    a(A)
+    b(B)
+    ab(A, B)
+end
+
+U.a(1)

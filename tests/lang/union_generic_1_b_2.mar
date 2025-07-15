@@ -1,0 +1,6 @@
+union U(T)
+    a(T)
+    b(T, T)
+end
+
+U.b(1, 2)

@@ -1,0 +1,6 @@
+record R
+    x: float
+    y: float
+end
+
+{ x = 42.0, y = 22.2 }

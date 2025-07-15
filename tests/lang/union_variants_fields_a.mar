@@ -1,0 +1,6 @@
+union U
+    a(int)
+    b(float)
+end
+
+U.a(42)

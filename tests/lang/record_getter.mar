@@ -1,0 +1,9 @@
+record R
+    x: float
+    y: float
+end
+
+(
+    R.x({ x = 42.0, y = 22.2 })
+    R.y({ x = 42.0, y = 22.2 })
+)

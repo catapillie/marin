@@ -1,0 +1,6 @@
+union U
+    empty
+    cons(U)
+end
+
+U.cons(U.empty)
