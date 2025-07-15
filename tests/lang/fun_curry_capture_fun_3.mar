@@ -1,0 +1,9 @@
+let f(x) = x
+let g(x) = 43
+let h(x) = (x, x)
+
+(
+    
+    fun(hh)(z, w)(t) => (hh, (f(42), g(0), h(z), w), t)
+
+)("h")(44, 45)("t")

@@ -65,6 +65,33 @@ full_test!(loop_break_val => str("val"));
 full_test!(loop_break_nested_unit => unit());
 full_test!(loop_break_nested_val => str("val"));
 
+full_test!(fun_int => int(42));
+full_test!(fun_unit => unit());
+
+full_test!(fun_deconstruct_arg_1 => str("a"));
+full_test!(fun_deconstruct_arg_2 => str("b"));
+full_test!(fun_deconstruct_arg_3 => str("c"));
+full_test!(fun_deconstruct_tuple_1 => bun([str("a"), str("b")]));
+full_test!(fun_deconstruct_tuple_2 => bun([int(1), int(2), int(3), int(4)]));
+full_test!(fun_deconstruct_tuple_3 => bun([str("a"), int(1), bun([str("c"), float(0.42)])]));
+
+full_test!(fun_capture_var_1 => int(42));
+full_test!(fun_capture_var_2 => bun([int(42), int(43)]));
+full_test!(fun_capture_var_3 => bun([int(42), int(43), int(44), int(45)]));
+full_test!(fun_capture_fun_1 => int(42));
+full_test!(fun_capture_fun_2 => bun([int(42), int(43)]));
+full_test!(fun_capture_fun_3 => bun([int(42), int(43), bun([int(44), int(44)]), int(45)]));
+
+full_test!(fun_curry_1 => int(42));
+full_test!(fun_curry_2 => bun([str("a"), str("b")]));
+full_test!(fun_curry_3 => bun([int(1), int(2), int(3), int(4)]));
+full_test!(fun_curry_capture_var_1 => int(42));
+full_test!(fun_curry_capture_var_2 => bun([str("h"), bun([int(42), int(43)])]));
+full_test!(fun_curry_capture_var_3 => bun([str("h"), bun([int(42), int(43), int(44), int(45)]), str("t")]));
+full_test!(fun_curry_capture_fun_1 => int(42));
+full_test!(fun_curry_capture_fun_2 => bun([str("h"), bun([int(42), int(43)])]));
+full_test!(fun_curry_capture_fun_3 => bun([str("h"), bun([int(42), int(43), bun([int(44), int(44)]), int(45)]), str("t")]));
+
 // ------------------------------------------------------------------------
 
 fn test_full_program(path: impl AsRef<Path>, expected: exe::Value) {
