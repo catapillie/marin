@@ -831,7 +831,7 @@ impl<'src, 'e> Parser<'src, 'e> {
             return ast::Label::Empty(self.span_here());
         };
 
-        let name_expr = self.expect_expression();
+        let name_expr = self.expect_primary_expression();
         let right_chev = self.expect_token(Token::RightChev);
 
         ast::Label::Named(ast::NamedLabel {
