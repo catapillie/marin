@@ -1,0 +1,7 @@
+let swap((a, b)) = (b, a)
+
+(
+    swap((1.0, 2))
+    swap(("a", true))
+    swap((swap, 0))
+)

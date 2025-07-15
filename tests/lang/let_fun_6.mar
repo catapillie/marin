@@ -1,0 +1,5 @@
+let f(x) = (x, x)
+
+let ftest(y) = f(y)
+
+ftest(12)

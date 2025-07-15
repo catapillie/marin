@@ -1,0 +1,3 @@
+let rot_append((a, b), (c, d)) = (d, c, a, b)
+
+rot_append((3, 4), (2, 1))

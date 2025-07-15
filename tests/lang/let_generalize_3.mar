@@ -1,0 +1,10 @@
+let constant(x) do
+    let getter() = x
+    getter
+end
+
+(
+    constant("u")()
+    constant(42)()
+    constant(constant("a"))()()
+)

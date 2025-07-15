@@ -92,6 +92,17 @@ full_test!(fun_curry_capture_fun_1 => int(42));
 full_test!(fun_curry_capture_fun_2 => bun([str("h"), bun([int(42), int(43)])]));
 full_test!(fun_curry_capture_fun_3 => bun([str("h"), bun([int(42), int(43), bun([int(44), int(44)]), int(45)]), str("t")]));
 
+full_test!(let_fun_1 => int(42));
+full_test!(let_fun_2 => bun([int(42), str("43")]));
+full_test!(let_fun_3 => bun([int(1), int(2), int(3), int(4)]));
+full_test!(let_fun_4 => bun([bun([int(8), int(8)]), bun([int(8), int(8)]), bun([int(8), int(8)])]));
+full_test!(let_fun_5 => bun([int(42), int(42)]));
+full_test!(let_fun_6 => bun([int(12), int(12)]));
+
+full_test!(let_generalize_1 => bun([int(42), str("a"), float(12.3)]));
+full_test!(let_generalize_2 => bun([bun([int(2), float(1.0)]), bun([bool(true), str("a")]), bun([int(0), func([])])]));
+full_test!(let_generalize_3 => bun([str("u"), int(42), str("a")]));
+
 // ------------------------------------------------------------------------
 
 fn test_full_program(path: impl AsRef<Path>, expected: exe::Value) {

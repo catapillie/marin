@@ -1,0 +1,5 @@
+let compose(g, f)(x) = f(g(x))
+
+let dup(x) = (x, x)
+let trip(x) = (x, x, x)
+compose(dup, trip)(8)
