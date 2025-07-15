@@ -21,6 +21,7 @@ full_test!(block_singleton_3 => bun([str("single"), bun([bool(true), str("block"
 full_test!(block_last_is_result_1 => unit());
 full_test!(block_last_is_result_2 => str("okay"));
 full_test!(block_last_is_result_3 => str("done"));
+full_test!(block_let_frame => bun([int(1), int(2), int(3)]));
 
 full_test!(let_is_unit_1 => unit());
 full_test!(let_is_unit_2 => unit());
@@ -31,6 +32,38 @@ full_test!(let_deconstruct_variable_3 => bun([int(888), str("yyy"), float(5.55)]
 full_test!(let_deconstruct_tuple_1 => bun([bool(true), bool(false)]));
 full_test!(let_deconstruct_tuple_2 => bun([int(1), int(2), int(3), str("yy"), str("zz"), str("ww")]));
 full_test!(let_deconstruct_tuple_3 => bun([str("a"), int(1), bun([str("c"), float(0.42)]), bool(true), int(2), float(4.0), str("zd")]));
+
+full_test!(break_block => int(42));
+full_test!(break_block_label => int(42));
+full_test!(break_block_nested => int(3));
+full_test!(break_block_nested_label => int(3));
+full_test!(break_block_nested_early => int(2));
+full_test!(break_block_nested_early_label => int(2));
+full_test!(break_block_unit => unit());
+
+full_test!(if_true => str("true"));
+full_test!(if_false => str("false"));
+full_test!(if_true_frame => str("true"));
+full_test!(if_false_frame => str("false"));
+full_test!(if_unexhaustive_true => unit());
+full_test!(if_unexhaustive_false => unit());
+full_test!(if_break_true => str("break"));
+full_test!(if_break_false => str("break"));
+full_test!(if_break_nested_true => str("break"));
+full_test!(if_break_nested_false => str("break"));
+
+full_test!(while_is_unit => unit());
+full_test!(while_exhaustive_break => str("break"));
+full_test!(while_exhaustive_else => str("else"));
+full_test!(while_exhaustive_label_break => str("break"));
+full_test!(while_exhaustive_label_else => str("else"));
+full_test!(while_exhaustive_nested_break => str("break"));
+full_test!(while_exhaustive_nested_else => str("else"));
+
+full_test!(loop_break_unit => unit());
+full_test!(loop_break_val => str("val"));
+full_test!(loop_break_nested_unit => unit());
+full_test!(loop_break_nested_val => str("val"));
 
 // ------------------------------------------------------------------------
 

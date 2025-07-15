@@ -1,0 +1,7 @@
+do
+    break
+    1
+    2
+    3
+    @panic("'break_block_unit' failure")
+end

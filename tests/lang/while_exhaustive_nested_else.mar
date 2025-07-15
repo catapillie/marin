@@ -1,0 +1,10 @@
+while false do
+    break "break"
+else<a>
+    do
+        1
+        break<a> "else"
+        2
+    end
+    "unreachable"
+end

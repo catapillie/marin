@@ -1,0 +1,9 @@
+if false then
+    "true"
+else<a>
+    do
+        break<a> "break"
+        "false"
+    end
+    "fail"
+end

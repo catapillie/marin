@@ -1,0 +1,10 @@
+loop<l>
+    do
+        break<l>
+        1
+        2
+        3
+        @panic("'loop_break_unit' failure")
+    end
+    "fail"
+end

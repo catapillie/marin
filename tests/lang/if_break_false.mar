@@ -1,0 +1,6 @@
+if false then
+    "true"
+else
+    break "break"
+    "false"
+end

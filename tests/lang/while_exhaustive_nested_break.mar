@@ -1,0 +1,10 @@
+while<a> true do
+    do
+        1
+        break<a> "break"
+        2
+    end
+    "while"
+else
+    "else"
+end

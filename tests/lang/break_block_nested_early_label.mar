@@ -1,0 +1,8 @@
+do<a>
+    do<b>
+        0
+        break<a> 2
+        1
+    end
+    3
+end

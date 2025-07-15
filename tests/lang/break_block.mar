@@ -1,0 +1,4 @@
+do
+    break 42
+    1
+end
