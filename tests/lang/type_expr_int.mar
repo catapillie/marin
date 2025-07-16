@@ -1,0 +1,9 @@
+record R
+
+    x: int
+
+end
+
+{ x = 0 }
+
+()

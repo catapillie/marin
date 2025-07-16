@@ -1,0 +1,5 @@
+record R(X)
+
+    x: (X, X)
+
+end

@@ -1,0 +1,9 @@
+record R
+
+    x: float
+
+end
+
+{ x = 0.0 }
+
+()

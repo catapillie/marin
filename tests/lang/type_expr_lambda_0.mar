@@ -1,0 +1,9 @@
+record R(X)
+
+    x: fun() => ()
+
+end
+
+{ x = fun() => () }
+
+()

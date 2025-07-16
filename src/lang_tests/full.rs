@@ -128,6 +128,20 @@ full_test!(union_generic_2_a => union(0, [int(1)]));
 full_test!(union_generic_2_b => union(1, [unit()]));
 full_test!(union_generic_2_ab => union(2, [str("3"), int(4)]));
 
+full_test!(type_expr_var => unit());
+full_test!(type_expr_int => unit());
+full_test!(type_expr_float => unit());
+full_test!(type_expr_string => unit());
+full_test!(type_expr_bool => unit());
+full_test!(type_expr_parenthesized => unit());
+full_test!(type_expr_tuple_0 => unit());
+full_test!(type_expr_tuple_2 => unit());
+full_test!(type_expr_array => unit());
+full_test!(type_expr_lambda_0 => unit());
+full_test!(type_expr_lambda_1 => unit());
+full_test!(type_expr_lambda_2 => unit());
+full_test!(type_expr_lambda_curry => unit());
+
 // ------------------------------------------------------------------------
 
 fn test_full_program(path: impl AsRef<Path>, expected: exe::Value) {

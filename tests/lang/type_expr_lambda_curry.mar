@@ -1,0 +1,9 @@
+record R(X)
+
+    x: fun(X, X)()(int) => ()
+
+end
+
+{ x = fun(_, _)()(_) => () }
+
+()

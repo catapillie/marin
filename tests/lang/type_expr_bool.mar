@@ -1,0 +1,9 @@
+record R
+
+    x: bool
+
+end
+
+{ x = true }
+
+()

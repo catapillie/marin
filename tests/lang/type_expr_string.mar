@@ -1,0 +1,9 @@
+record R
+
+    x: string
+
+end
+
+{ x = "hello" }
+
+()

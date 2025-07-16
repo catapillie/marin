@@ -1,0 +1,9 @@
+record R(X)
+
+    x: fun(X, X) => X
+
+end
+
+{ x = fun(a, b) => a }
+
+()
