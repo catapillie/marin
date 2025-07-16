@@ -98,6 +98,7 @@ fn walk_expr<'a>(expr: &'a Expr, nodes: &mut Vec<&'a Expr>) {
         E::Unary(e) => {
             walk_expr(&e.arg, nodes);
         }
+        E::ArrayType(..) => {}
     }
 }
 

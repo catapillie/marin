@@ -35,6 +35,7 @@ pub enum Expr {
     Have(Have),
     Binary(Binary),
     Unary(Unary),
+    ArrayType(ArrayType),
 }
 
 #[derive(Debug, Clone)]
@@ -276,6 +277,13 @@ pub struct Unary {
     pub arg: Box<Expr>,
 }
 
+#[derive(Debug, Clone)]
+pub struct ArrayType {
+    pub left_bracket: Span,
+    pub right_bracket: Span,
+    pub ty: Box<Expr>,
+}
+
 impl Tuple {
     pub fn span(&self) -> Span {
         mix_spans([self.left_paren, item_spans(&self.items), self.right_paren])
@@ -495,6 +503,12 @@ impl Unary {
     }
 }
 
+impl ArrayType {
+    pub fn span(&self) -> Span {
+        mix_spans([self.left_bracket, self.right_bracket, self.ty.span()])
+    }
+}
+
 impl Expr {
     pub fn span(&self) -> Span {
         match self {
@@ -530,6 +544,7 @@ impl Expr {
             Self::Have(e) => e.span(),
             Self::Binary(e) => e.span(),
             Self::Unary(e) => e.span(),
+            Self::ArrayType(e) => e.span(),
         }
     }
 }

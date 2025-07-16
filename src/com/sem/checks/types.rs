@@ -844,6 +844,7 @@ impl<'src> Checker<'src, '_> {
             E::Tuple(t) => self.check_tuple_type(t),
             E::Call(t) => self.check_call_type(t),
             E::Fun(t) => self.check_fun_type(t),
+            E::ArrayType(t) => self.check_array_type(t),
             _ => {
                 self.reports.push(
                     Report::error(Header::InvalidType())
