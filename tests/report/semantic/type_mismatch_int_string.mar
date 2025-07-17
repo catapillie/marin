@@ -1,0 +1,8 @@
+--- [type_mismatch]: "type mismatch between int and string"
+
+let unify(left, right) do
+    if true then right else left end
+    ()
+end
+
+unify(\|"a"|, \|1|)

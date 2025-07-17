@@ -1,0 +1,8 @@
+--- [type_mismatch]: "type mismatch between float and int"
+
+let unify(left, right) do
+    if true then right else left end
+    ()
+end
+
+unify(\|0|, \|1.0|)

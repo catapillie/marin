@@ -37,6 +37,13 @@ test!(invalid_type_arg_int);
 test!(invalid_type_arg_float);
 test!(invalid_type_arg_block);
 
+test!(type_mismatch_float_bool);
+test!(type_mismatch_float_int);
+test!(type_mismatch_float_string);
+test!(type_mismatch_int_bool);
+test!(type_mismatch_int_string);
+test!(type_mismatch_string_bool);
+
 // ------------------------------------------------------------------------
 
 #[derive(Default)]
@@ -50,7 +57,10 @@ impl regex::Replacer for &mut ReportLabelReplacer {
         let snippet = cap.get(1).unwrap().as_str();
         dst.push_str(snippet); // actual replacement here
 
-        let start = full_match.start();
+        // take into account the label test syntax \|...|
+        // which adds 3 characters
+        // this works only if we assume they are matched in order of appearance
+        let start = full_match.start() - self.expected_spans.len() * 3;
         let end = start + snippet.len();
         let expected_span = Span::new(start, end);
         self.expected_spans.push(expected_span); // store the expected span
@@ -100,6 +110,7 @@ fn report_test(path: impl AsRef<Path>) {
 
     // check label spans and count
     let mut primary_label_count = 0;
+    println!("{:?}", replacer.expected_spans);
     for (_, loc, severity) in &report.labels {
         if !matches!(severity, LabelStyle::Primary) {
             continue;
@@ -108,6 +119,7 @@ fn report_test(path: impl AsRef<Path>) {
         let lexeme = loc.span.lexeme(&processed_source);
         let span = loc.span;
         primary_label_count += 1;
+        println!("{:?}", span);
         assert!(
             replacer.expected_spans.contains(&span),
             "report label for '{lexeme}' was unexpected"
