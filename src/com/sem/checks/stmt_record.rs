@@ -112,7 +112,7 @@ impl Checker<'_, '_> {
             .filter_map(
                 |(i, info)| match Self::is_record_admissible(info, field_names) {
                     true => Some((ir::RecordID(i), info)),
-                    false => todo!(),
+                    false => None,
                 },
             )
             .collect::<Vec<_>>()
