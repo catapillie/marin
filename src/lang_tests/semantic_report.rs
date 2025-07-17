@@ -110,7 +110,6 @@ fn report_test(path: impl AsRef<Path>) {
 
     // check label spans and count
     let mut primary_label_count = 0;
-    println!("{:?}", replacer.expected_spans);
     for (_, loc, severity) in &report.labels {
         if !matches!(severity, LabelStyle::Primary) {
             continue;
@@ -119,7 +118,6 @@ fn report_test(path: impl AsRef<Path>) {
         let lexeme = loc.span.lexeme(&processed_source);
         let span = loc.span;
         primary_label_count += 1;
-        println!("{:?}", span);
         assert!(
             replacer.expected_spans.contains(&span),
             "report label for '{lexeme}' was unexpected"
