@@ -1,0 +1,14 @@
+let unify(left, right) do
+    if true then left else right end
+    ()
+end
+
+union U(X)
+    a
+    b(X)
+end
+
+unify(
+    U.a
+    U.b("b")
+)

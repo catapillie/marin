@@ -1,0 +1,4 @@
+loop
+    break "a"
+    break "b"
+end

@@ -1,41 +1,41 @@
-sem_rep_test!(unknown_binding_global);
-sem_rep_test!(unknown_binding_local);
-sem_rep_test!(invalid_integer_too_big);
+test!(unknown_binding_global);
+test!(unknown_binding_local);
+test!(invalid_integer_too_big);
 
-sem_rep_test!(invalid_expression_record);
-sem_rep_test!(invalid_expression_record_big);
-sem_rep_test!(invalid_expression_have);
-sem_rep_test!(invalid_expression_have_big);
-sem_rep_test!(invalid_expression_union);
-sem_rep_test!(invalid_expression_union_big);
-sem_rep_test!(invalid_expression_class);
-sem_rep_test!(invalid_expression_class_big);
-sem_rep_test!(invalid_expression_let);
-sem_rep_test!(invalid_expression_let_big);
-sem_rep_test!(invalid_expression_alias);
-sem_rep_test!(invalid_expression_alias_big);
-sem_rep_test!(invalid_expression_super);
+test!(invalid_expression_record);
+test!(invalid_expression_record_big);
+test!(invalid_expression_have);
+test!(invalid_expression_have_big);
+test!(invalid_expression_union);
+test!(invalid_expression_union_big);
+test!(invalid_expression_class);
+test!(invalid_expression_class_big);
+test!(invalid_expression_let);
+test!(invalid_expression_let_big);
+test!(invalid_expression_alias);
+test!(invalid_expression_alias_big);
+test!(invalid_expression_super);
 
-sem_rep_test!(invalid_super_accessor_class);
-sem_rep_test!(invalid_super_accessor_record);
-sem_rep_test!(invalid_super_accessor_union);
+test!(invalid_super_accessor_class);
+test!(invalid_super_accessor_record);
+test!(invalid_super_accessor_union);
 
-sem_rep_test!(invalid_type_block);
-sem_rep_test!(invalid_type_bool);
-sem_rep_test!(invalid_type_break);
-sem_rep_test!(invalid_type_empty_array);
-sem_rep_test!(invalid_type_float);
-sem_rep_test!(invalid_type_if);
-sem_rep_test!(invalid_type_int);
-sem_rep_test!(invalid_type_loop);
-sem_rep_test!(invalid_type_match);
-sem_rep_test!(invalid_type_skip);
-sem_rep_test!(invalid_type_string);
-sem_rep_test!(invalid_type_while);
+test!(invalid_type_block);
+test!(invalid_type_bool);
+test!(invalid_type_break);
+test!(invalid_type_empty_array);
+test!(invalid_type_float);
+test!(invalid_type_if);
+test!(invalid_type_int);
+test!(invalid_type_loop);
+test!(invalid_type_match);
+test!(invalid_type_skip);
+test!(invalid_type_string);
+test!(invalid_type_while);
 
-sem_rep_test!(invalid_type_arg_int);
-sem_rep_test!(invalid_type_arg_float);
-sem_rep_test!(invalid_type_arg_block);
+test!(invalid_type_arg_int);
+test!(invalid_type_arg_float);
+test!(invalid_type_arg_block);
 
 // ------------------------------------------------------------------------
 
@@ -120,7 +120,7 @@ fn report_test(path: impl AsRef<Path>) {
     );
 }
 
-macro_rules! sem_rep_test {
+macro_rules! test {
     (
         $test_name:ident
     ) => {
@@ -134,7 +134,7 @@ macro_rules! sem_rep_test {
 
 use std::path::Path;
 
-use sem_rep_test;
+use test;
 
 use codespan_reporting::diagnostic::LabelStyle;
 use regex::Regex;

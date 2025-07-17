@@ -1,0 +1,9 @@
+let unify(left, right) do
+    if true then left else right end
+    ()
+end
+
+unify(
+    fun()(a, b)(x) => (a, b, x)
+    fun()(a, b)(x) => (x, b, a)
+)

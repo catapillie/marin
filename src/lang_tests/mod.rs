@@ -1,3 +1,4 @@
+mod check;
 mod full;
 mod semantic_report;
 

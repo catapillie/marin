@@ -1,0 +1,14 @@
+let unify(left, right) do
+    if true then left else right end
+    ()
+end
+
+union U
+    a
+    b(int)
+end
+
+unify(
+    U.b(0)
+    U.b(1)
+)
