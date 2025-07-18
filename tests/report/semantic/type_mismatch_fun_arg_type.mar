@@ -1,0 +1,12 @@
+--- type_mismatch
+
+let unify(left, right) do
+    if true then right else left end
+    ()
+end
+
+unify(
+    fun(\|(x, x, x)|) => ()
+    fun(\|(x, x)|) => ()
+)
+

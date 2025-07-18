@@ -1,0 +1,7 @@
+--- type_mismatch
+
+while true do
+    break \|"break"|
+else
+    \|0|
+end

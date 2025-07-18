@@ -1,0 +1,6 @@
+--- type_mismatch
+
+do
+    break \|"a"|
+    break \|0|
+end

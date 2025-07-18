@@ -1,0 +1,4 @@
+--- type_mismatch
+
+if \|0| then
+end

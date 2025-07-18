@@ -43,11 +43,21 @@ test!(type_mismatch_float_string);
 test!(type_mismatch_int_bool);
 test!(type_mismatch_int_string);
 test!(type_mismatch_string_bool);
-
 test!(type_mismatch_tuple_1);
 test!(type_mismatch_tuple_2);
 test!(type_mismatch_tuple_sizes);
 test!(type_mismatch_array);
+test!(type_mismatch_while_items);
+test!(type_mismatch_while_guard);
+test!(type_mismatch_loop_items);
+test!(type_mismatch_if_items);
+test!(type_mismatch_if_guard);
+test!(type_mismatch_do_items);
+test!(type_mismatch_fun_arg_count);
+test!(type_mismatch_fun_arg_type);
+test!(type_mismatch_fun_ret);
+test!(type_mismatch_fun_apply_arg_count);
+test!(type_mismatch_fun_apply_arg_type);
 
 // ------------------------------------------------------------------------
 

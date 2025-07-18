@@ -1,0 +1,7 @@
+--- type_mismatch
+
+if true then
+    \|"true"|
+else
+    \|0|
+end
