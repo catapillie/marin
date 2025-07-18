@@ -1,0 +1,15 @@
+--- [type_mismatch]: "type mismatch between string and bool"
+
+let unify(left, right) do
+    if true then right else left end
+    ()
+end
+
+let a = 0
+let b = "a"
+
+unify(
+    (a, a, a)
+    (b, a, a)
+)
+

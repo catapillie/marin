@@ -44,6 +44,11 @@ test!(type_mismatch_int_bool);
 test!(type_mismatch_int_string);
 test!(type_mismatch_string_bool);
 
+test!(type_mismatch_tuple_1);
+test!(type_mismatch_tuple_2);
+test!(type_mismatch_tuple_sizes);
+test!(type_mismatch_array);
+
 // ------------------------------------------------------------------------
 
 #[derive(Default)]
