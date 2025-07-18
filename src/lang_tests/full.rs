@@ -128,6 +128,38 @@ test!(union_generic_2_a => union(0, [int(1)]));
 test!(union_generic_2_b => union(1, [unit()]));
 test!(union_generic_2_ab => union(2, [str("3"), int(4)]));
 
+test!(match_empty_is_unit => unit());
+test!(match_binding => int(42));
+test!(match_int_fallback => int(2));
+test!(match_int_success => int(42));
+test!(match_tuple_deconstruct => bun([int(43), int(42)]));
+test!(match_tuple_left_fallback => bun([int(2), int(2)]));
+test!(match_tuple_left_success => bun([int(42), int(2)]));
+test!(match_tuple_right_fallback => bun([int(2), int(2)]));
+test!(match_tuple_right_success => bun([int(2), int(42)]));
+test!(match_tuple_both_fallback_both => bun([int(2), int(2)]));
+test!(match_tuple_both_fallback_left => bun([int(2), int(1)]));
+test!(match_tuple_both_fallback_right => bun([int(1), int(2)]));
+test!(match_tuple_both_success => bun([int(42), int(42)]));
+test!(match_tuple_nested_deconstruct => bun([int(1), int(42), int(43)]));
+test!(match_tuple_nested_test_fallback => bun([int(1), int(44), int(43)]));
+test!(match_tuple_nested_test_success => bun([int(1), int(999), int(43)]));
+test!(match_union_exhaustive_a => str("a"));
+test!(match_union_exhaustive_b => str("b"));
+test!(match_union_deconstruct_1_a => str("a"));
+test!(match_union_deconstruct_1_b => str("sss"));
+test!(match_union_deconstruct_2_a => bun([str("a1"), str("a2")]));
+test!(match_union_deconstruct_2_b => bun([str("s1"), str("s2")]));
+test!(match_record_deconstruct => bun([int(42), float(1.0)]));
+test!(match_record_test_x_fallback => bun([int(44), float(1.0)]));
+test!(match_record_test_x_success => bun([int(999), float(1.0)]));
+test!(match_record_test_y_fallback => bun([int(44), float(1.0)]));
+test!(match_record_test_y_success => bun([int(44), float(999.0)]));
+test!(match_record_test_both_fallback_both => bun([int(1), float(1.0)]));
+test!(match_record_test_both_fallback_x => bun([int(1), float(42.0)]));
+test!(match_record_test_both_fallback_y => bun([int(42), float(1.0)]));
+test!(match_record_test_both_success => bun([int(999), float(999.0)]));
+
 // ------------------------------------------------------------------------
 
 fn test_full_program(path: impl AsRef<Path>, expected: exe::Value) {

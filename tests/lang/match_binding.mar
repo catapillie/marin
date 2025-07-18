@@ -1,0 +1,3 @@
+match 42 with
+    x => x
+end

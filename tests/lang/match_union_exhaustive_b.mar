@@ -1,0 +1,9 @@
+union U
+    a
+    b
+end
+
+match U.b with
+    U.a => "a"
+    U.b => "b"
+end

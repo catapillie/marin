@@ -1,0 +1,4 @@
+match (2, 2) with
+    (a, 1) => (a, 42)
+    (a, b) => (a, b)
+end

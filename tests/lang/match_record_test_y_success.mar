@@ -1,0 +1,9 @@
+record R
+    x: int
+    y: float
+end
+
+match { x = 44, y = 42.0 } with
+    { x, y = 42.0 } => (x, 999.0)
+    { x, y } => (x, y)
+end

@@ -1,0 +1,9 @@
+union U
+    a
+    b(string, string)
+end
+
+match U.b("s1", "s2") with
+    U.a => ("a1", "a2")
+    U.b(s1, s2) => (s1, s2)
+end

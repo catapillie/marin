@@ -1,0 +1,4 @@
+match 1 with
+    1 => 42
+    x => x
+end

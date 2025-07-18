@@ -1,0 +1,9 @@
+union U
+    a
+    b(string)
+end
+
+match U.a with
+    U.a => "a"
+    U.b(s) => s
+end
