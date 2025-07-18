@@ -1,4 +1,4 @@
---- [invalid_accessor]: "invalid accessor expression syntax"
+--- invalid_accessor
 
 class Cl(T)
     val: T

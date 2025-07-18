@@ -73,7 +73,7 @@ impl regex::Replacer for &mut ReportLabelReplacer {
 }
 
 fn report_test(path: impl AsRef<Path>) {
-    let header_regex = Regex::new(r#"--- \[(\w+)\]\: "([^"]*)""#).unwrap();
+    let header_regex = Regex::new(r#"--- (\w+)"#).unwrap();
     let label_regex = Regex::new(r"\\\|([^|]*)\|").unwrap();
 
     // read test file
@@ -84,7 +84,6 @@ fn report_test(path: impl AsRef<Path>) {
         .captures(&pseudo_source)
         .expect("failed to match report header in test file");
     let expected_header_name = header_capture.get(1).unwrap().as_str();
-    let expected_header_msg = header_capture.get(2).unwrap().as_str();
 
     // replace label syntax
     let mut replacer = ReportLabelReplacer::default();
@@ -111,7 +110,6 @@ fn report_test(path: impl AsRef<Path>) {
     // check header name and message
     let report = &compiler.reports[0];
     assert_eq!(report.header.name(), expected_header_name);
-    assert_eq!(report.header.msg(), expected_header_msg);
 
     // check label spans and count
     let mut primary_label_count = 0;

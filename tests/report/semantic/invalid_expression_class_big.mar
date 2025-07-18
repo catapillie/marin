@@ -1,4 +1,4 @@
---- [invalid_expression]: "invalid expression syntax"
+--- invalid_expression
 let x = \|class X(K)
     val: K
     action(K) => ()

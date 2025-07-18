@@ -1,4 +1,4 @@
---- [invalid_type]: "invalid type syntax"
+--- invalid_type
 
 record R
     field: \|match error with end|

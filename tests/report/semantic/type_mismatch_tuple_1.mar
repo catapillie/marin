@@ -1,4 +1,4 @@
---- [type_mismatch]: "type mismatch between string and bool"
+--- type_mismatch
 
 let unify(left, right) do
     if true then right else left end
@@ -9,7 +9,7 @@ let a = 0
 let b = "a"
 
 unify(
-    (a, a, a)
-    (b, a, a)
+    (\|a|, a, a)
+    (\|b|, a, a)
 )
 

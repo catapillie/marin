@@ -1,4 +1,4 @@
---- [unknown_binding]: "unknown binding 'x' in the current scope"
+--- unknown_binding
 
 do
     let x = 1

@@ -1,2 +1,2 @@
---- [invalid_expression]: "invalid expression syntax"
+--- invalid_expression
 let x = \|alias Module.x as x|

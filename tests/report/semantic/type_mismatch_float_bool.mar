@@ -1,4 +1,4 @@
---- [type_mismatch]: "type mismatch between float and bool"
+--- type_mismatch
 
 let unify(left, right) do
     if true then right else left end

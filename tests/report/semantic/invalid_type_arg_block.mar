@@ -1,4 +1,4 @@
---- [invalid_type_arg]: "invalid type argument syntax"
+--- invalid_type_arg
 
 class Cl(\|do end|)
 end

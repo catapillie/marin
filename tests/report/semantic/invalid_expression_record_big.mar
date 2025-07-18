@@ -1,4 +1,4 @@
---- [invalid_expression]: "invalid expression syntax"
+--- invalid_expression
 let x = \|record X(T)
     a: T
     b: T
