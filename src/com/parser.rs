@@ -296,16 +296,15 @@ impl<'src, 'e> Parser<'src, 'e> {
             _ => None,
         }?;
 
-        if let ast::Expr::Array(array) = &expr {
-            if array.items.is_empty() {
-                if let Some(ty) = self.try_parse_primary_expression() {
-                    return Some(ast::Expr::ArrayType(ast::ArrayType {
-                        left_bracket: array.left_bracket,
-                        right_bracket: array.right_bracket,
-                        ty: Box::new(ty),
-                    }));
-                }
-            }
+        if let ast::Expr::Array(array) = &expr
+            && array.items.is_empty()
+            && let Some(ty) = self.try_parse_primary_expression()
+        {
+            return Some(ast::Expr::ArrayType(ast::ArrayType {
+                left_bracket: array.left_bracket,
+                right_bracket: array.right_bracket,
+                ty: Box::new(ty),
+            }));
         }
 
         loop {

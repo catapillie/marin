@@ -82,7 +82,7 @@ where
         self.bindings.insert(key, val)
     }
 
-    pub fn iter(&self) -> hash_map::Iter<K, T> {
+    pub fn iter(&'_ self) -> hash_map::Iter<'_, K, T> {
         self.bindings.iter()
     }
 
@@ -90,11 +90,12 @@ where
         &mut self.info
     }
 
-    pub fn infos_iter(&self) -> ScopeInfoIterator<K, I, T> {
+    pub fn infos_iter(&'_ self) -> ScopeInfoIterator<'_, K, I, T> {
         ScopeInfoIterator { scope: Some(self) }
     }
 }
 
+#[allow(dead_code)]
 pub struct ScopeIterator<'a, K, I, T>
 where
     K: Eq + Hash,

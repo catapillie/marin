@@ -16,10 +16,10 @@ impl Checker<'_, '_> {
 
         while let Some(item) = iter.next() {
             let s = self.check_statement(item);
-            if iter.peek().is_none() {
-                if let ir::Stmt::Expr { expr: _, ty } = &s {
-                    last_type = *ty;
-                }
+            if iter.peek().is_none()
+                && let ir::Stmt::Expr { expr: _, ty } = &s
+            {
+                last_type = *ty;
             }
             stmts.push(s);
         }

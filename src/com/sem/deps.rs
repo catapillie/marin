@@ -71,10 +71,11 @@ pub fn analyse_dependencies(
     {
         graph.add_edge(file_id, file_id, Default::default());
 
-        if is_std_staged && !file_info.is_from_std {
-            if let Some(prelude_id) = info.prelude_file {
-                graph.add_edge(file_id, prelude_id, Default::default());
-            }
+        if is_std_staged
+            && !file_info.is_from_std
+            && let Some(prelude_id) = info.prelude_file
+        {
+            graph.add_edge(file_id, prelude_id, Default::default());
         }
 
         let source = file.source();
